@@ -1,0 +1,2169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>企业办公物资管理系统</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<style>
+  @font-face{font-family:'HarmonyOS Sans';font-weight:300;font-style:normal;font-display:swap;src:url('https://cdn.jsdelivr.net/npm/@fontpkg/harmony-os-sans@1.0.3/HarmonyOS_Sans_Light.ttf') format('truetype');}
+  @font-face{font-family:'HarmonyOS Sans';font-weight:400;font-style:normal;font-display:swap;src:url('https://cdn.jsdelivr.net/npm/@fontpkg/harmony-os-sans@1.0.3/HarmonyOS_Sans_Regular.ttf') format('truetype');}
+  @font-face{font-family:'HarmonyOS Sans';font-weight:500;font-style:normal;font-display:swap;src:url('https://cdn.jsdelivr.net/npm/@fontpkg/harmony-os-sans@1.0.3/HarmonyOS_Sans_Medium.ttf') format('truetype');}
+  @font-face{font-family:'HarmonyOS Sans';font-weight:700;font-style:normal;font-display:swap;src:url('https://cdn.jsdelivr.net/npm/@fontpkg/harmony-os-sans@1.0.3/HarmonyOS_Sans_Bold.ttf') format('truetype');}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+  :root{
+    --primary:#5b8cff;
+    --primary-deep:#3a5bf0;
+    --primary-soft:rgba(91,140,255,.16);
+    --accent:#ff9d4d;
+    --c-office:#5b8cff;   /* 办公用品 */
+    --c-tobacco:#ff8a4c;  /* 烟酒茶 */
+    --c-gift:#c08bff;     /* 礼品 */
+    --success:#2fe6a0;
+    --success-soft:rgba(47,230,160,.14);
+    --warning:#ffc24b;
+    --warning-soft:rgba(255,194,75,.14);
+    --danger:#ff5d6c;
+    --danger-soft:rgba(255,93,108,.14);
+    --ink:#eef2fc;
+    --ink-2:#b6c1dc;
+    --ink-3:#8593b3;
+    --line:rgba(255,255,255,.13);
+    --line-2:rgba(255,255,255,.07);
+    --surface:rgba(255,255,255,.055);
+    --card:rgba(255,255,255,.085);
+    --radius:16px;
+    --radius-sm:10px;
+    --shadow-sm:0 4px 20px rgba(0,0,0,.30);
+    --shadow-md:0 10px 34px rgba(0,0,0,.42);
+    --shadow-lg:0 18px 60px rgba(0,0,0,.55);
+    --font:'HarmonyOS Sans','华为系统字体',-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+    --ease:cubic-bezier(.22,.61,.36,1);
+    --ease-out:cubic-bezier(.2,.85,.25,1);
+    --ease-soft:cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  html{overflow:hidden}
+  body{
+    font-family:var(--font);
+    color:var(--ink);
+    background:#070b16;
+    overflow-y:auto;overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+    min-height:100vh;
+    transition:background-color .45s var(--ease-soft),background-image .45s var(--ease-soft);
+    background-image:
+      radial-gradient(1100px 700px at 10% -10%, rgba(79,110,247,.20), transparent 60%),
+      radial-gradient(900px 600px at 100% 0%, rgba(168,94,234,.16), transparent 55%),
+      radial-gradient(900px 700px at 85% 100%, rgba(56,224,255,.12), transparent 55%),
+      linear-gradient(160deg,#070b16 0%,#0b1120 50%,#080d1a 100%);
+    background-attachment:fixed;
+  }
+  /* 滚动条：平时隐藏不占空间，鼠标移到页面（右侧）时才显示，内容超出才需要 */
+  body::-webkit-scrollbar{width:0;background:transparent}
+  body:hover::-webkit-scrollbar{width:8px}
+  body::-webkit-scrollbar-thumb{background:rgba(150,160,180,.5);border-radius:6px}
+  body::-webkit-scrollbar-thumb:hover{background:rgba(150,160,180,.72)}
+  body::-webkit-scrollbar-track{background:transparent}
+  body{scrollbar-width:thin;scrollbar-color:transparent transparent}
+  body:hover{scrollbar-color:rgba(150,160,180,.5) transparent}
+  body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:48px 48px;-webkit-mask-image:radial-gradient(circle at 50% 25%,#000,transparent 78%);mask-image:radial-gradient(circle at 50% 25%,#000,transparent 78%)}
+  body::after{content:'';position:fixed;inset:-25%;z-index:-2;pointer-events:none;background:radial-gradient(620px 520px at 22% 32%, rgba(91,140,255,.18), transparent 60%),radial-gradient(540px 540px at 82% 72%, rgba(168,94,234,.15), transparent 60%);filter:blur(24px);animation:auraShift 20s ease-in-out infinite}
+  @keyframes auraShift{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(2.5%,-2.5%,0)}}
+  .app{position:relative;display:flex;min-height:100vh;opacity:0;visibility:hidden;transition:opacity .35s var(--ease)}
+  .app.ready{opacity:1;visibility:visible}
+  /* 主界面背景：仓库内部底图，登录页保持 login-bg.png 不变 */
+  .app::before{
+    content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      linear-gradient(160deg, rgba(7,11,22,.55) 0%, rgba(11,17,32,.5) 50%, rgba(8,13,26,.58) 100%),
+      url('warehouse-bg.png') center/cover no-repeat;
+  }
+
+  /* ===== Sidebar ===== */
+  .sidebar{
+    width:264px;flex:0 0 264px;
+    background:linear-gradient(180deg, rgba(15,22,42,.38), rgba(11,16,32,.34));
+    backdrop-filter:blur(20px) saturate(150%);
+    -webkit-backdrop-filter:blur(20px) saturate(150%);
+    border-right:1px solid var(--line);
+    color:#cdd6ee;
+    display:flex;flex-direction:column;
+    padding:22px 16px;
+    position:sticky;top:0;height:100vh;
+    box-shadow:8px 0 30px rgba(0,0,0,.25);
+    transition:background-color .4s var(--ease-soft),color .4s var(--ease-soft),border-color .4s var(--ease-soft);
+  }
+  .brand{display:flex;align-items:center;gap:12px;padding:6px 8px 20px}
+  .brand .logo{
+    width:42px;height:42px;border-radius:12px;
+    background:linear-gradient(135deg,var(--primary),#7d8cff);
+    display:grid;place-items:center;font-size:22px;
+    box-shadow:0 6px 20px rgba(91,140,255,.55),inset 0 1px 0 rgba(255,255,255,.4);
+  }
+  .brand .name{font-size:16px;font-weight:700;color:#fff;letter-spacing:.3px;text-shadow:0 1px 12px rgba(91,140,255,.35)}
+  .brand .sub{font-size:11px;color:#8b94b2;margin-top:1px}
+  .nav{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+  .nav-label{font-size:11px;color:#6f7c9c;letter-spacing:.14em;padding:14px 12px 6px;font-weight:600}
+  .nav-item{
+    display:flex;align-items:center;gap:12px;
+    padding:11px 12px;border-radius:11px;
+    font-size:14px;font-weight:600;color:#aeb9d4;cursor:pointer;
+    transition:all .2s ease;border:1px solid transparent;position:relative;overflow:hidden;
+  }
+  .nav-item .ico{width:20px;height:20px;flex:0 0 20px;opacity:.9}
+  .nav-item:hover{background:rgba(255,255,255,.09);color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.32)}
+  .nav-item.active{
+    background:linear-gradient(90deg,rgba(91,140,255,.22),rgba(91,140,255,.04));
+    color:#fff;border-color:rgba(91,140,255,.38);
+    box-shadow:inset 0 0 18px rgba(91,140,255,.12);
+  }
+  .nav-item::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:linear-gradient(180deg,var(--primary),#7d8cff);box-shadow:0 0 12px rgba(91,140,255,.9);opacity:0;transition:opacity .3s var(--ease),top .3s var(--ease),bottom .3s var(--ease)}
+  .nav-item.active::before{opacity:1}
+  .nav-item.active .ico{opacity:1}
+  .nav-item .badge{
+    margin-left:auto;background:var(--danger);color:#fff;
+    font-size:11px;font-weight:700;padding:1px 7px;border-radius:20px;
+    box-shadow:0 0 10px rgba(255,93,108,.5);
+  }
+  .side-foot{margin-top:auto;display:flex;align-items:center;gap:11px;
+    padding:12px;border-radius:12px;background:rgba(255,255,255,.04);cursor:pointer;border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .side-foot .av{width:36px;height:36px;border-radius:50%;
+    background:linear-gradient(135deg,#f0a,#f80);display:grid;place-items:center;color:#fff;font-weight:700;box-shadow:0 4px 14px rgba(255,136,68,.4)}
+  .side-foot .nm{font-size:13px;color:#fff;font-weight:600}
+  .side-foot .rl{font-size:11px;color:#8b94b2}
+
+  /* ===== Main ===== */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{
+    height:68px;background:linear-gradient(180deg,rgba(13,19,36,.38),rgba(13,19,36,.22));backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:18px;padding:0 28px;position:sticky;top:0;z-index:20;
+    transition:background-color .4s var(--ease-soft),border-color .4s var(--ease-soft);
+  }
+  .topbar h1{font-size:19px;font-weight:700;color:#fff;text-shadow:0 1px 10px rgba(0,0,0,.3)}
+  .breadcrumb{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .search{
+    margin-left:auto;display:flex;align-items:center;gap:8px;
+    background:rgba(255,255,255,.04);border:1px solid var(--line);
+    border-radius:11px;padding:9px 14px;width:280px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  }
+  .search input{border:none;background:none;outline:none;font-family:var(--font);font-size:13px;width:100%;color:var(--ink)}
+  .search input::placeholder{color:var(--ink-3)}
+  .icon-btn{
+    width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
+    background:rgba(255,255,255,.04);display:grid;place-items:center;cursor:pointer;position:relative;transition:all .15s,transform .12s;color:var(--ink-2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  }
+  .icon-btn:hover{background:rgba(91,140,255,.14);border-color:rgba(91,140,255,.4);color:#fff}
+  .icon-btn .bell{width:20px;height:20px;fill:currentColor}
+  .icon-btn .fs-ico{width:20px;height:20px;fill:currentColor}
+  .icon-btn .dot{position:absolute;top:8px;right:9px;width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,#ff5d6c,#ff8a4c);border:2px solid #0b1120;box-shadow:0 0 10px rgba(255,93,108,.85)}
+  .top-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#4f6ef7,#7d8cff);display:grid;place-items:center;color:#fff;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(91,140,255,.5)}
+
+  .content{padding:26px 28px 40px;overflow:auto}
+  .view{display:none;animation:fade .4s var(--ease)}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* ===== Cards / Grid ===== */
+  .grid{display:grid;gap:18px}
+  .kpi-row{grid-template-columns:repeat(4,1fr)}
+  .card{background:linear-gradient(155deg,rgba(255,255,255,.035),rgba(255,255,255,.015));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm),inset 0 1px 0 rgba(255,255,255,.07);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%)}
+  .kpi{position:relative;display:flex;flex-direction:column;gap:10px;padding:20px;overflow:hidden}
+  .kpi .top{display:flex;align-items:center;justify-content:flex-start;min-height:26px}
+  .kpi .ic{position:absolute;top:16px;right:16px;width:62px;height:62px;border-radius:16px;display:grid;place-items:center;font-size:30px;background:linear-gradient(135deg,rgba(91,140,255,.24),rgba(91,140,255,.1));box-shadow:0 8px 22px rgba(91,140,255,.28),inset 0 1px 0 rgba(255,255,255,.22);opacity:.95;transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
+  .kpi:hover .ic{transform:translateY(-3px) scale(1.06);box-shadow:0 14px 30px rgba(91,140,255,.42),inset 0 1px 0 rgba(255,255,255,.3)}
+  .kpi .val{font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;color:#fff;text-shadow:0 2px 18px rgba(91,140,255,.25)}
+  .kpi .lbl{font-size:13px;color:var(--ink-2)}
+  .trend{font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:3px}
+  .trend.up{color:var(--success)} .trend.down{color:var(--danger)}
+
+  .panel-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 4px}
+  .panel-head h3{font-size:15px;font-weight:700;color:#fff}
+  .panel-head .sub{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .more{font-size:12px;color:#9db4ff;font-weight:600;cursor:pointer}
+
+  .row-2{grid-template-columns:1.4fr 1fr}
+  .row-3{grid-template-columns:repeat(3,1fr)}
+
+  /* Category legend */
+  .legend{display:flex;flex-direction:column;gap:14px;padding:8px 20px 22px}
+  .legend .li{display:flex;align-items:center;gap:12px}
+  .legend .sw{width:12px;height:12px;border-radius:4px;flex:0 0 12px;box-shadow:0 0 8px rgba(255,255,255,.18)}
+  .legend .ln{font-size:14px;font-weight:600;color:#dbe2f5}
+  .legend .lq{margin-left:auto;font-size:13px;color:var(--ink-2)}
+  .legend .pct{font-size:12px;color:var(--ink-3);width:46px;text-align:right}
+
+  /* Table */
+  .toolbar{display:flex;align-items:center;gap:12px;padding:16px 20px;flex-wrap:wrap}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{
+    padding:7px 14px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;
+    border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--ink-2);transition:all .18s;display:flex;align-items:center;gap:7px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  }
+  .chip .d{width:8px;height:8px;border-radius:50%}
+  .chip:hover{border-color:rgba(91,140,255,.5);background:rgba(91,140,255,.12);color:#fff}
+  .chip.active{background:#4b5563;color:#fff;border-color:#4b5563}
+  .chip.active.c-office{background:var(--c-office);border-color:var(--c-office);box-shadow:0 0 14px rgba(91,140,255,.5)}
+  .chip.active.c-tobacco{background:var(--c-tobacco);border-color:var(--c-tobacco);box-shadow:0 0 14px rgba(255,138,76,.5)}
+  .chip.active.c-gift{background:var(--c-gift);border-color:var(--c-gift);box-shadow:0 0 14px rgba(192,139,255,.5)}
+  .btn{
+    height:40px;padding:0 18px;border-radius:11px;border:none;cursor:pointer;
+    font-family:var(--font);font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:7px;transition:all .18s;color:#fff;
+  }
+  .btn-primary{background:linear-gradient(135deg,#5b8cff,#7d8cff);color:#fff;box-shadow:0 6px 20px rgba(91,140,255,.45),inset 0 1px 0 rgba(255,255,255,.3)}
+  .btn-primary:hover{background:linear-gradient(135deg,#4f7cf0,#6f80f5);transform:translateY(-1px);box-shadow:0 10px 28px rgba(91,140,255,.6)}
+  .btn-ghost{background:rgba(255,255,255,.05);color:var(--ink);border:1px solid var(--line);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .btn-ghost:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2)}
+  .spacer{flex:1}
+
+  table{width:100%;border-collapse:collapse}
+  thead th{
+    text-align:left;font-size:12px;color:var(--ink-3);font-weight:600;
+    padding:8px 20px;background:rgba(255,255,255,.04);border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  }
+  tbody td{padding:7px 20px;font-size:14px;border-bottom:1px solid var(--line-2);color:var(--ink)}
+  tbody tr:hover{background:rgba(255,255,255,.04)}
+  .code{font-family:var(--font);font-size:13px;color:var(--ink-3)}
+  .tag{padding:3px 10px;border-radius:7px;font-size:12px;font-weight:400;display:inline-flex;align-items:center;gap:5px}
+  .tag .d{width:7px;height:7px;border-radius:50%}
+  .tag.office{background:rgba(91,140,255,.16);color:#9db4ff}
+  .tag.tobacco{background:rgba(255,138,76,.16);color:#ffb088}
+  .tag.gift{background:rgba(192,139,255,.16);color:#cda6ff}
+  .status{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:400}
+  .status.ok{background:rgba(47,230,160,.15);color:#6ff0bf}
+  .status.low{background:rgba(255,194,75,.16);color:#ffd486}
+  .status.out{background:rgba(255,93,108,.16);color:#ff97a1}
+  .num{font-variant-numeric:tabular-nums}
+  .row-act{color:#9db4ff;font-weight:400;cursor:pointer;font-size:13px}
+  .row-act:hover{text-shadow:0 0 10px rgba(91,140,255,.6)}
+
+  /* Activity timeline */
+  .timeline{padding:6px 20px 22px}
+  .tl-item{display:flex;gap:14px;padding:11px 0;border-bottom:1px solid var(--line-2)}
+  .tl-item:last-child{border:none}
+  .tl-dot{width:34px;height:34px;border-radius:10px;flex:0 0 34px;display:grid;place-items:center;font-size:16px}
+  .tl-dot.in{background:rgba(47,230,160,.15);color:#6ff0bf}
+  .tl-dot.out{background:rgba(91,140,255,.15);color:#9db4ff}
+  .tl-dot.warn{background:rgba(255,93,108,.15);color:#ff97a1}
+  .tl-body .t1{font-size:14px;font-weight:600;color:#e9eefb}
+  .tl-body .t2{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .tl-time{margin-left:auto;font-size:12px;color:var(--ink-3);white-space:nowrap}
+
+  /* Forms */
+  .form-card{padding:22px;background:linear-gradient(155deg,rgba(255,255,255,.035),rgba(255,255,255,.015));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm),inset 0 1px 0 rgba(255,255,255,.07);backdrop-filter:blur(16px) saturate(150%)}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .field{display:flex;flex-direction:column;gap:7px}
+  .field.full{grid-column:1/-1}
+  .field label{font-size:13px;font-weight:600;color:var(--ink-2)}
+  .field input,.field select,.field textarea{
+    height:44px;border:1.5px solid var(--line);border-radius:11px;padding:0 14px;
+    font-family:var(--font);font-size:14px;color:var(--ink);background:rgba(255,255,255,.04);outline:none;transition:border-color .18s,box-shadow .18s,background-color .35s var(--ease-soft);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  }
+  .field textarea{height:auto;padding:12px 14px;resize:vertical;min-height:84px}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.2),0 0 14px rgba(91,140,255,.25)}
+  .field select option{background:#0e1526;color:var(--ink)}
+  .rec-list{padding:8px 20px 18px;display:flex;flex-direction:column;gap:10px}
+  .rec{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .rec .ri{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:18px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
+  .rec .rt{font-size:14px;font-weight:600;color:#e9eefb}
+  .rec .rs{font-size:12px;color:var(--ink-3);margin-top:1px}
+  .rec .rq{margin-left:auto;font-weight:700;font-size:14px}
+  .rec .rq.in{color:var(--success)} .rec .rq.out{color:#9db4ff}
+
+  .section-title{font-size:16px;font-weight:700;margin:4px 2px 2px;color:#fff}
+  .section-sub{font-size:13px;color:var(--ink-3);margin:0 2px 14px}
+  .mt{margin-top:22px}
+  .chart-box{position:relative;height:240px;padding:6px 16px 18px}
+  .chart-box.sm{height:200px}
+  .note{font-size:12px;color:var(--ink-3);padding:0 20px 16px}
+  .empty{text-align:center;color:var(--ink-3);padding:40px;font-size:14px}
+
+  /* ===== 盘点管理 ===== */
+  .tabs{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .tab{padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;color:var(--ink-2);cursor:pointer;transition:all .18s;border:none;background:none;font-family:var(--font)}
+  .tab.active{background:linear-gradient(135deg,rgba(91,140,255,.25),rgba(91,140,255,.1));color:#fff;box-shadow:0 4px 14px rgba(91,140,255,.3)}
+  .tabpane{display:none;animation:fade .35s var(--ease)}
+  .tabpane.active{display:block}
+  .diff{font-weight:400;font-variant-numeric:tabular-nums}
+  .diff.zero{color:var(--ink-3)} .diff.up{color:var(--success)} .diff.down{color:var(--danger)}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px}
+  .pill.self{background:rgba(91,140,255,.16);color:#9db4ff}
+  .pill.join{background:rgba(47,230,160,.15);color:#6ff0bf}
+  .real-input{width:72px;height:34px;border:1.5px solid var(--line);border-radius:8px;text-align:center;font-family:var(--font);font-size:14px;color:var(--ink);outline:none;background:rgba(255,255,255,.04);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .real-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.2)}
+  .plan-meta{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .dropzone{border:2px dashed var(--line);border-radius:16px;padding:38px;text-align:center;background:rgba(255,255,255,.025);cursor:pointer;transition:all .18s;margin-top:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .dropzone:hover{border-color:var(--primary);background:rgba(91,140,255,.1)}
+  .dropzone.drag{border-color:var(--primary);background:rgba(91,140,255,.14)}
+  .dz-ico{font-size:40px}
+  .field select.real-input{width:auto;height:38px;min-width:150px}
+  .safe-table{width:100%;border-collapse:collapse;table-layout:auto;white-space:nowrap;font-size:12px}
+  #safeTabs{padding:0;background:none;border:none;backdrop-filter:none}
+  #safeTabs .chip{padding:5px 11px;font-size:12px;border-radius:20px}
+  #safeTabs .chip .d{width:6px;height:6px}
+  .safe-table tbody tr{animation:rowIn .42s ease backwards}
+  .safe-table tbody tr:nth-child(1){animation-delay:.02s}
+  .safe-table tbody tr:nth-child(2){animation-delay:.05s}
+  .safe-table tbody tr:nth-child(3){animation-delay:.08s}
+  .safe-table tbody tr:nth-child(4){animation-delay:.11s}
+  .safe-table tbody tr:nth-child(5){animation-delay:.14s}
+  .safe-table tbody tr:nth-child(6){animation-delay:.17s}
+  .safe-table tbody tr:nth-child(7){animation-delay:.2s}
+  .safe-table tbody tr:nth-child(n+8){animation-delay:.23s}
+  .safe-table thead th{font-size:11px;font-weight:700;color:var(--ink-2);padding:6px 10px;letter-spacing:-.2px}
+  .safe-table tbody td{padding:5px 10px;font-size:12px}
+  .safe-table td:first-child{max-width:130px;overflow:hidden;text-overflow:ellipsis}
+  .safe-table td:first-child:hover{overflow:visible;white-space:normal;background:rgba(255,255,255,.06);border-radius:4px}
+  .safe-table .num{text-align:right}
+  .safe-table td .real-input{width:60px;height:28px;font-size:12px;padding:0}
+  .safe-table .status{font-size:11px;padding:2px 7px}
+  .ov-tag{font-size:10px;color:var(--primary);margin-left:5px;background:rgba(91,140,255,.14);padding:1px 5px;border-radius:9px;font-weight:600}
+
+  /* ===== 登录 ===== */
+  .login-screen{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:flex-start;padding-left:8vw;background:url('login-bg.png') center/cover no-repeat;background-color:#0b1326;font-family:var(--font);overflow:hidden;opacity:0;transition:opacity .45s ease}
+  .login-card{width:300px;max-width:92vw;background:linear-gradient(155deg,rgba(255,255,255,.76),rgba(255,255,255,.6));border:1px solid rgba(255,255,255,.72);border-radius:20px;padding:22px 24px 20px;box-shadow:0 18px 50px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.7),inset 0 0 30px rgba(255,255,255,.25);backdrop-filter:blur(34px) saturate(170%);-webkit-backdrop-filter:blur(34px) saturate(170%);opacity:0;transform:translateY(14px);transition:opacity .5s ease .12s,transform .5s ease .12s,box-shadow .35s ease;color:#1d2433}
+  .login-screen.bg-ready{opacity:1}
+  .login-screen.bg-ready .login-card{opacity:1;transform:none}
+  .login-foot{margin-top:16px;text-align:center;font-size:11px;color:#5b6577;opacity:.9}
+  .login-card:hover{box-shadow:0 26px 64px rgba(0,0,0,.3)}
+  .login-brand{display:flex;align-items:center;gap:12px}
+  .login-brand .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--primary),#7d8cff);display:grid;place-items:center;font-size:21px;box-shadow:0 6px 16px rgba(79,110,247,.45)}
+  .login-brand .name{font-size:17px;font-weight:800;color:#1d2433}
+  .login-brand .sub{font-size:12px;color:#5b6577}
+  .login-title{font-size:15px;font-weight:700;margin:18px 0 4px;color:#1d2433}
+  .login-hint{font-size:12px;color:#5b6577;margin-bottom:14px}
+  .login-field{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+  .login-field label{font-size:13px;font-weight:600;color:#5b6577}
+  .login-field input{height:46px;border:1.5px solid rgba(0,0,0,.12);border-radius:12px;padding:0 14px;font-size:14px;font-family:var(--font);outline:none;transition:border-color .15s;background:rgba(255,255,255,.7);color:#1d2433}
+  .login-field input:focus{border-color:var(--primary)}
+  .login-err{color:var(--danger);font-size:13px;font-weight:600;min-height:18px;margin-bottom:8px}
+  .locked input,.locked select{background:rgba(0,0,0,.04)!important;color:#8a93a6;cursor:not-allowed}
+  .top-user{display:flex;align-items:center;gap:10px;padding-left:4px}
+  .tu-name{font-size:13px;font-weight:700;line-height:1.15;color:#fff}
+  .tu-role{font-size:11px;color:var(--ink-3)}
+
+  /* responsive */
+  @media(max-width:1280px){
+    .row-2,.row-3{grid-template-columns:1fr}
+  }
+  @media(max-width:1180px){
+    .sidebar{width:232px;flex:0 0 232px}
+    .kpi-row{grid-template-columns:repeat(2,1fr)}
+  }
+  @media(max-width:920px){
+    .sidebar{width:200px;flex:0 0 200px;padding:18px 10px}
+    .brand .name{font-size:15px}
+    .nav-item{font-size:13px;padding:10px 10px;gap:10px}
+    .topbar{padding:0 18px;gap:12px}
+    .topbar h1{font-size:17px}
+    .search{width:200px}
+  }
+  @media(max-width:760px){
+    .sidebar{display:none}
+    .kpi-row{grid-template-columns:1fr}
+    .search{display:none}
+    .form-grid{grid-template-columns:1fr}
+    .breadcrumb{display:none}
+    .card{overflow-x:auto}
+    .chart-box{height:210px}
+  }
+  /* ---- 数据管理 ---- */
+  .data-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .data-toolbar .search{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1.5px solid var(--line);border-radius:11px;padding:0 12px;height:36px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .data-toolbar .search input{border:none;background:none;outline:none;font-family:var(--font);font-size:13px;width:100%;color:var(--ink)}
+  .data-toolbar .search input::placeholder{color:var(--ink-3)}
+  .lnk{color:#9db4ff;font-weight:400;cursor:pointer;font-size:12px}
+  .lnk:hover{text-decoration:underline;text-shadow:0 0 10px rgba(91,140,255,.5)}
+  .lnk.dl{color:#ffb088}
+  .lnk+.lnk{margin-left:10px}
+  /* 数据管理/库存表格：表头加大、单元格居中、字号统一、比例协调 */
+  .data-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;line-height:1.4}
+  .data-table th,.data-table td{white-space:nowrap;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;text-align:center}
+  .data-table thead th{
+    padding:8px 8px;font-size:14px;font-weight:700;color:var(--ink-3);
+    background:rgba(255,255,255,.04);
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    letter-spacing:.6px;
+  }
+  .data-table thead th:first-child{border-top-left-radius:10px}
+  .data-table thead th:last-child{border-top-right-radius:10px}
+  .data-table tbody td{padding:6px 8px;font-size:13px;color:var(--ink);border-bottom:1px solid var(--line-2)}
+  .data-table tbody tr{cursor:pointer;transition:background .15s}
+  .data-table tbody tr:hover{background:rgba(255,255,255,.06)}
+  .data-table tbody tr:active{background:rgba(255,255,255,.1)}
+  .data-table .status,.data-table .tag{font-size:12px;padding:3px 9px;display:inline-block;vertical-align:middle}
+  .data-table .lnk,.data-table .row-act{font-size:13px}
+  /* 入库记录列宽（百分比，自适应填满卡片；质保期/到期日为新增列） */
+  #pane-data-in .data-table th:nth-child(1),#pane-data-in .data-table td:nth-child(1){width:8.0%}
+  #pane-data-in .data-table th:nth-child(2),#pane-data-in .data-table td:nth-child(2){width:6.3%}
+  #pane-data-in .data-table th:nth-child(3),#pane-data-in .data-table td:nth-child(3){width:9.2%}
+  #pane-data-in .data-table th:nth-child(4),#pane-data-in .data-table td:nth-child(4){width:5.9%}
+  #pane-data-in .data-table th:nth-child(5),#pane-data-in .data-table td:nth-child(5){width:5.8%}
+  #pane-data-in .data-table th:nth-child(6),#pane-data-in .data-table td:nth-child(6){width:4.1%}
+  #pane-data-in .data-table th:nth-child(7),#pane-data-in .data-table td:nth-child(7){width:4.3%}
+  #pane-data-in .data-table th:nth-child(8),#pane-data-in .data-table td:nth-child(8){width:5.7%}
+  #pane-data-in .data-table th:nth-child(9),#pane-data-in .data-table td:nth-child(9){width:6.0%}
+  #pane-data-in .data-table th:nth-child(10),#pane-data-in .data-table td:nth-child(10){width:6.6%}
+  #pane-data-in .data-table th:nth-child(11),#pane-data-in .data-table td:nth-child(11){width:5.2%}
+  #pane-data-in .data-table th:nth-child(12),#pane-data-in .data-table td:nth-child(12){width:7.3%}
+  #pane-data-in .data-table th:nth-child(13),#pane-data-in .data-table td:nth-child(13){width:6.3%}
+  #pane-data-in .data-table th:nth-child(14),#pane-data-in .data-table td:nth-child(14){width:7.2%}
+  #pane-data-in .data-table th:nth-child(15),#pane-data-in .data-table td:nth-child(15){width:5.7%}
+  #pane-data-in .data-table th:nth-child(16),#pane-data-in .data-table td:nth-child(16){width:6.4%}
+  /* 出库记录列宽（单号/日期/操作略宽，用途/部门略收） */
+  #pane-data-out .data-table th:nth-child(1),#pane-data-out .data-table td:nth-child(1){width:12.5%}
+  #pane-data-out .data-table th:nth-child(2),#pane-data-out .data-table td:nth-child(2){width:8.8%}
+  #pane-data-out .data-table th:nth-child(3),#pane-data-out .data-table td:nth-child(3){width:7.1%}
+  #pane-data-out .data-table th:nth-child(4),#pane-data-out .data-table td:nth-child(4){width:8.0%}
+  #pane-data-out .data-table th:nth-child(5),#pane-data-out .data-table td:nth-child(5){width:11.2%}
+  #pane-data-out .data-table th:nth-child(6),#pane-data-out .data-table td:nth-child(6){width:7.5%}
+  #pane-data-out .data-table th:nth-child(7),#pane-data-out .data-table td:nth-child(7){width:5.2%}
+  #pane-data-out .data-table th:nth-child(8),#pane-data-out .data-table td:nth-child(8){width:5.0%}
+  #pane-data-out .data-table th:nth-child(9),#pane-data-out .data-table td:nth-child(9){width:11.5%}
+  #pane-data-out .data-table th:nth-child(10),#pane-data-out .data-table td:nth-child(10){width:7.3%}
+  #pane-data-out .data-table th:nth-child(11),#pane-data-out .data-table td:nth-child(11){width:6.9%}
+  #pane-data-out .data-table th:nth-child(12),#pane-data-out .data-table td:nth-child(12){width:9.0%}
+  /* 库存管理表格比例（编号/名称/规格略收，质保期/到期日新增） */
+  #view-inventory .data-table th:nth-child(1),#view-inventory .data-table td:nth-child(1){width:9.0%}
+  #view-inventory .data-table th:nth-child(2),#view-inventory .data-table td:nth-child(2){width:13.0%}
+  #view-inventory .data-table th:nth-child(3),#view-inventory .data-table td:nth-child(3){width:9.0%}
+  #view-inventory .data-table th:nth-child(4),#view-inventory .data-table td:nth-child(4){width:10.5%}
+  #view-inventory .data-table th:nth-child(5),#view-inventory .data-table td:nth-child(5){width:6.0%}
+  #view-inventory .data-table th:nth-child(6),#view-inventory .data-table td:nth-child(6){width:9.5%}
+  #view-inventory .data-table th:nth-child(7),#view-inventory .data-table td:nth-child(7){width:9.5%}
+  #view-inventory .data-table th:nth-child(8),#view-inventory .data-table td:nth-child(8){width:8.0%}
+  #view-inventory .data-table th:nth-child(9),#view-inventory .data-table td:nth-child(9){width:10.0%}
+  #view-inventory .data-table th:nth-child(10),#view-inventory .data-table td:nth-child(10){width:8.0%}
+  #view-inventory .data-table th:nth-child(11),#view-inventory .data-table td:nth-child(11){width:7.5%}
+  /* 库存表表头居中 */
+  #view-inventory .data-table thead th{text-align:center}
+  /* 数据管理（入库/出库）表头居中 */
+  #pane-data-in .data-table thead th,#pane-data-out .data-table thead th{text-align:center}
+  /* 子标签统一缩小，与表格字号协调 */
+  .tabs{padding:3px;border-radius:10px}
+  .tab{padding:6px 14px;border-radius:7px;font-size:12px}
+  .modal-mask{position:fixed;inset:0;background:rgba(20,26,44,.28);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:2000;padding:20px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .25s ease,visibility .25s ease}
+  .modal-mask.show{opacity:1;visibility:visible;pointer-events:auto}
+  .modal{background:linear-gradient(160deg,rgba(22,30,54,.76),rgba(14,20,38,.76));border:1px solid var(--line);border-radius:18px;width:min(560px,100%);max-height:86vh;overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);color:var(--ink);transform:translateY(14px) scale(.96);opacity:0;transition:transform .3s cubic-bezier(.2,.85,.25,1),opacity .3s ease}
+  .modal-mask.show .modal{transform:translateY(0) scale(1);opacity:1}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line)}
+  .modal-head h3{font-size:17px;font-weight:700;margin:0;color:#fff}
+  .modal-close{cursor:pointer;border:none;background:rgba(255,255,255,.06);width:32px;height:32px;border-radius:9px;font-size:16px;color:var(--ink-2);transition:all .15s}
+  .modal-close:hover{background:rgba(255,255,255,.14);color:#fff}
+  .modal-body{padding:6px 22px 22px}
+  .modal-mask.show .modal-body > *{animation:riseIn .42s var(--ease) backwards}
+  .modal-mask.show .modal-body > *:nth-child(2){animation-delay:.04s}
+  .modal-mask.show .modal-body > *:nth-child(3){animation-delay:.08s}
+  .modal-mask.show .modal-body > *:nth-child(4){animation-delay:.12s}
+  .modal-mask.show .modal-body > *:nth-child(5){animation-delay:.16s}
+  .modal-mask.show .modal-body > *:nth-child(6){animation-delay:.20s}
+  .modal-mask.show .modal-body > *:nth-child(7){animation-delay:.24s}
+  .modal-mask.show .modal-body > *:nth-child(n+8){animation-delay:.28s}
+  .rec-detail{display:grid;grid-template-columns:108px 1fr;gap:13px 16px;margin-top:6px}
+  .rec-detail dt{color:var(--ink-3);font-size:13px;margin:0}
+  .rec-detail dd{margin:0;font-size:14px;font-weight:400;color:var(--ink)}
+  .modal-tag{display:inline-block;padding:3px 10px;border-radius:7px;font-size:12px;font-weight:600;color:#fff}
+
+  /* ===== 动画反馈增强 ===== */
+  /* 1. Toast 轻提示（操作反馈主入口） */
+  .toast-wrap{position:fixed;top:80px;right:22px;z-index:3000;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+  .toast{display:flex;align-items:flex-start;gap:10px;min-width:240px;max-width:380px;background:linear-gradient(155deg,rgba(22,30,54,.96),rgba(14,20,38,.96));border:1px solid var(--line);border-left:4px solid var(--primary);border-radius:12px;padding:12px 15px;box-shadow:var(--shadow-lg),inset 0 1px 0 rgba(255,255,255,.06);font-size:13px;color:var(--ink);pointer-events:auto;backdrop-filter:blur(12px) saturate(140%);-webkit-backdrop-filter:blur(12px) saturate(140%);transform:translateX(120%);opacity:0;transition:transform .38s cubic-bezier(.2,.9,.25,1),opacity .3s ease}
+  .toast.show{transform:translateX(0);opacity:1}
+  .toast.ok{border-left-color:var(--success)}
+  .toast.warn{border-left-color:var(--accent)}
+  .toast.err{border-left-color:var(--danger)}
+  .toast .ti{width:22px;height:22px;flex:0 0 22px;display:grid;place-items:center;font-size:13px;font-weight:700;border-radius:50%;color:#fff;margin-top:1px;animation:popIn .45s var(--ease) backwards}
+  .toast.ok .ti{background:var(--success)} .toast.warn .ti{background:var(--accent)} .toast.err .ti{background:var(--danger)} .toast.info .ti{background:var(--primary)}
+  .toast .tx{line-height:1.45}
+  .toast .tx b{font-weight:700}
+  .toast .tx .ts{display:block;font-size:11px;color:var(--ink-3);margin-top:2px}
+
+  /* 2. 卡片悬浮微抬升 */
+  .card{transition:transform .22s var(--ease),box-shadow .22s var(--ease),border-color .22s var(--ease),background-color .35s var(--ease-soft)}
+  .card:hover{transform:translateY(-4px);box-shadow:var(--shadow-md);border-color:rgba(255,255,255,.2)}
+
+  /* 3. 按钮按压反馈 + 涟漪 */
+  .btn{position:relative;overflow:hidden}
+  .btn:active{transform:translateY(0) scale(.97)}
+  .btn-primary:active{background:var(--primary-deep)}
+  .btn-ghost:active{background:#e7eaf3}
+  .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.45);transform:scale(0);animation:ripple .6s ease-out;pointer-events:none;z-index:1}
+  @keyframes ripple{to{transform:scale(2.6);opacity:0}}
+  .icon-btn:active{transform:scale(.92)}
+  .icon-btn{transition:all .15s,transform .12s}
+  .chip:active{transform:scale(.96)}
+  .real-input:active,.field input:active,.field select:active{transform:scale(.995)}
+
+  /* 4. 视图切换·卡片错峰淡入上浮 */
+  @keyframes riseIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .view.active .card{animation:riseIn .5s var(--ease) backwards}
+  .view.active .card:nth-child(2){animation-delay:.05s}
+  .view.active .card:nth-child(3){animation-delay:.1s}
+  .view.active .card:nth-child(4){animation-delay:.15s}
+  .view.active .card:nth-child(5){animation-delay:.2s}
+  .view.active .card:nth-child(6){animation-delay:.25s}
+  .view.active .card:nth-child(7){animation-delay:.3s}
+  .view.active .card:nth-child(8){animation-delay:.35s}
+  .view.active .card:nth-child(n+9){animation-delay:.4s}
+
+  /* 5. 表格行入场（错峰） */
+  @keyframes rowIn{from{opacity:0;transform:translateX(-7px)}to{opacity:1;transform:none}}
+  .data-table tbody tr{animation:rowIn .42s ease backwards}
+  .data-table tbody tr:nth-child(1){animation-delay:.02s}
+  .data-table tbody tr:nth-child(2){animation-delay:.05s}
+  .data-table tbody tr:nth-child(3){animation-delay:.08s}
+  .data-table tbody tr:nth-child(4){animation-delay:.11s}
+  .data-table tbody tr:nth-child(5){animation-delay:.14s}
+  .data-table tbody tr:nth-child(6){animation-delay:.17s}
+  .data-table tbody tr:nth-child(7){animation-delay:.2s}
+  .data-table tbody tr:nth-child(8){animation-delay:.23s}
+  .data-table tbody tr:nth-child(n+9){animation-delay:.26s}
+
+  /* 6. KPI 数字跳动 / 计数完成提示 */
+  @keyframes pulseVal{0%{transform:scale(1)}40%{transform:scale(1.07)}100%{transform:scale(1)}}
+  .kpi .val.bump{animation:pulseVal .55s ease;display:inline-block}
+
+  /* 7. 登录错误抖动 */
+  @keyframes shakeX{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
+  .login-card.shake{animation:shakeX .5s ease}
+  @keyframes popIn{from{transform:scale(0) rotate(-12deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+  @media(max-width:720px){
+    .login-screen{justify-content:center;padding-left:0}
+    .login-card{width:min(420px,92vw);background:rgba(255,255,255,.92)}
+  }
+
+  /* ===== 无障碍：尊重系统「减少动态效果」偏好 ===== */
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;transition-delay:0s!important;scroll-behavior:auto!important}
+    body::after{animation:none!important}
+  }
+
+  /* ===== 亮色主题（data-theme="light"） ===== */
+  [data-theme="light"]{
+    --primary:#3a5bf0;--primary-deep:#2e49d6;--primary-soft:rgba(58,91,240,.12);
+    --accent:#e07c2c;
+    --c-office:#3a5bf0;--c-tobacco:#e8612c;--c-gift:#9b54e0;
+    --success:#13a06a;--success-soft:rgba(19,160,106,.12);
+    --warning:#c98a12;--warning-soft:rgba(201,138,18,.14);
+    --danger:#e23b46;--danger-soft:rgba(226,59,70,.12);
+    --ink:#1d2433;--ink-2:#5b6577;--ink-3:#8a93a6;
+    --line:rgba(20,30,60,.1);--line-2:rgba(20,30,60,.06);
+    --surface:rgba(20,30,60,.025);--card:rgba(255,255,255,.78);
+    --shadow-sm:0 4px 20px rgba(20,30,60,.08);
+    --shadow-md:0 10px 30px rgba(20,30,60,.12);
+    --shadow-lg:0 18px 50px rgba(20,30,60,.18);
+  }
+  [data-theme="light"] body{
+    color:var(--ink);
+    background:#eef1f8;
+    background-image:
+      radial-gradient(1100px 700px at 10% -10%, rgba(91,140,255,.14), transparent 60%),
+      radial-gradient(900px 600px at 100% 0%, rgba(155,84,224,.10), transparent 55%),
+      radial-gradient(900px 700px at 85% 100%, rgba(56,224,255,.08), transparent 55%),
+      linear-gradient(160deg,#f3f5fb 0%,#eef1f8 50%,#e9edf6 100%);
+  }
+  [data-theme="light"] body::before{background-image:linear-gradient(rgba(20,30,60,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(20,30,60,.05) 1px,transparent 1px)}
+  [data-theme="light"] body::after{opacity:.4}
+  [data-theme="light"] .app::before{
+    background:
+      linear-gradient(160deg, rgba(243,245,251,.78) 0%, rgba(238,241,248,.72) 50%, rgba(233,237,246,.78) 100%),
+      url('warehouse-bg.png') center/cover no-repeat;
+  }
+  [data-theme="light"] .sidebar{
+    background:linear-gradient(180deg, rgba(231,237,250,.62), rgba(214,223,243,.58));
+    color:#2f3a52;border-right:1px solid rgba(20,30,60,.12);box-shadow:8px 0 30px rgba(20,30,60,.12);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  }
+  [data-theme="light"] .brand .name{color:#1d2433;font-weight:800;text-shadow:none}
+  [data-theme="light"] .brand .sub{color:var(--ink-3)}
+  [data-theme="light"] .nav-label{color:var(--ink-3);font-weight:700}
+  [data-theme="light"] .nav-item{color:#3f4a64;font-weight:700}
+  [data-theme="light"] .nav-item:hover{background:rgba(20,30,60,.07);color:#10182c;box-shadow:0 5px 16px rgba(20,30,60,.14)}
+  [data-theme="light"] .nav-item.active{color:#fff;background:linear-gradient(90deg,#5b8cff,#7d8cff);border-color:transparent;box-shadow:0 6px 18px rgba(91,140,255,.38)}
+  [data-theme="light"] .nav-item.active::before{background:linear-gradient(180deg,#fff,#dbe4ff);box-shadow:0 0 10px rgba(255,255,255,.8)}
+  [data-theme="light"] .side-foot{background:rgba(20,30,60,.06);border-color:rgba(20,30,60,.10)}
+  [data-theme="light"] .side-foot .nm{color:#1d2433}
+  [data-theme="light"] .side-foot .rl{color:var(--ink-3)}
+  [data-theme="light"] .topbar{
+    background:linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.32));
+    border-bottom:1px solid var(--line);
+  }
+  [data-theme="light"] .topbar h1{color:#1d2433;text-shadow:none}
+  [data-theme="light"] .search{background:rgba(255,255,255,.46);border:1px solid var(--line)}
+  [data-theme="light"] .icon-btn{background:rgba(255,255,255,.46);color:var(--ink-2)}
+  [data-theme="light"] .icon-btn:hover{background:var(--primary-soft);color:#1d2433}
+  [data-theme="light"] .icon-btn .dot{border-color:#fff}
+  [data-theme="light"] .card{
+    background:linear-gradient(155deg, rgba(255,255,255,.66), rgba(255,255,255,.56));
+    border-color:var(--line);box-shadow:var(--shadow-sm),inset 0 1px 0 rgba(255,255,255,.6);
+  }
+  [data-theme="light"] .card:hover{box-shadow:var(--shadow-md);border-color:rgba(20,30,60,.16)}
+  [data-theme="light"] .kpi .val{color:#1d2433;text-shadow:none}
+  [data-theme="light"] .kpi .ic{background:linear-gradient(135deg,rgba(91,140,255,.2),rgba(91,140,255,.09));box-shadow:0 8px 24px rgba(91,140,255,.22)}
+  [data-theme="light"] .panel-head h3{color:#1d2433}
+  [data-theme="light"] .more{color:#3a5bf0}
+  [data-theme="light"] .legend .ln{color:#1d2433}
+  [data-theme="light"] .chip{background:rgba(255,255,255,.46);color:var(--ink-2)}
+  [data-theme="light"] .chip:hover{border-color:rgba(58,91,240,.5);background:var(--primary-soft);color:#1d2433}
+  [data-theme="light"] .chip.active{background:#4b5563;color:#fff;border-color:#4b5563;box-shadow:none}
+  [data-theme="light"] .chip.active.c-office{background:rgba(58,91,240,.14);color:#3a5bf0;border-color:rgba(58,91,240,.25);box-shadow:none}
+  [data-theme="light"] .chip.active.c-tobacco{background:rgba(232,97,44,.14);color:#e8612c;border-color:rgba(232,97,44,.25);box-shadow:none}
+  [data-theme="light"] .chip.active.c-gift{background:rgba(155,84,224,.14);color:#9b54e0;border-color:rgba(155,84,224,.25);box-shadow:none}
+  [data-theme="light"] .btn-ghost{background:rgba(255,255,255,.5);color:var(--ink)}
+  [data-theme="light"] .btn-ghost:hover{background:#eef1f8;border-color:rgba(20,30,60,.18)}
+  [data-theme="light"] thead th{background:rgba(20,30,60,.04);color:#5b6577}
+  [data-theme="light"] tbody tr:hover{background:rgba(20,30,60,.04)}
+  [data-theme="light"] .data-table thead th{color:#2b3344;background:linear-gradient(180deg,#f7f9fd 0%,#eef2fa 100%);border-bottom:2px solid #d7def0;box-shadow:inset 0 -1px 0 rgba(79,110,247,.22)}
+  [data-theme="light"] .data-table tbody tr:hover{background:#eef3ff}
+  [data-theme="light"] .data-table tbody tr:active{background:#e4ebff}
+  [data-theme="light"] .tag.office{color:#3a5bf0}
+  [data-theme="light"] .tag.tobacco{color:#e8612c}
+  [data-theme="light"] .tag.gift{color:#9b54e0}
+  [data-theme="light"] .status.ok{color:#0f9d6a}
+  [data-theme="light"] .status.low{color:#b5790f}
+  [data-theme="light"] .status.out{color:#d23b46}
+  [data-theme="light"] .row-act{color:#3a5bf0}
+  [data-theme="light"] .row-act:hover{text-shadow:0 0 10px rgba(58,91,240,.4)}
+  [data-theme="light"] .tl-body .t1{color:#1d2433}
+  [data-theme="light"] .tl-dot.in{color:#0f9d6a}
+  [data-theme="light"] .tl-dot.out{color:#3a5bf0}
+  [data-theme="light"] .tl-dot.warn{color:#d23b46}
+  [data-theme="light"] .field input,
+  [data-theme="light"] .field select,
+  [data-theme="light"] .field textarea{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+  [data-theme="light"] .field select option{background:#fff;color:var(--ink)}
+  [data-theme="light"] .rec{background:rgba(255,255,255,.7);border-color:var(--line)}
+  [data-theme="light"] .rec .ri{background:rgba(255,255,255,.9);border-color:var(--line)}
+  [data-theme="light"] .rec .rt{color:#1d2433}
+  [data-theme="light"] .section-title{color:#1d2433}
+  [data-theme="light"] .tabs{background:rgba(255,255,255,.72);border-color:var(--line)}
+  [data-theme="light"] .tab{color:#5b6577}
+  [data-theme="light"] .tab:hover{background:rgba(91,140,255,.12);color:#3a5bf0}
+  [data-theme="light"] .tab.active{background:linear-gradient(135deg,#5b8cff,#7d8cff);color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(91,140,255,.35)}
+  [data-theme="light"] .real-input{background:#fff;border:1.5px solid var(--line)}
+  [data-theme="light"] .safe-table td:first-child:hover{background:rgba(20,30,60,.06)}
+  [data-theme="light"] .dropzone{background:rgba(255,255,255,.6);border-color:var(--line)}
+  [data-theme="light"] .dropzone:hover,[data-theme="light"] .dropzone.drag{background:var(--primary-soft)}
+  [data-theme="light"] .tu-name{color:#1d2433}
+  [data-theme="light"] .modal{
+    background:linear-gradient(160deg, rgba(255,255,255,.97), rgba(245,247,254,.97));
+    color:var(--ink);border:1px solid var(--line);
+    box-shadow:0 30px 80px rgba(20,30,60,.25),inset 0 1px 0 rgba(255,255,255,.7);
+  }
+  [data-theme="light"] .modal-head{border-bottom:1px solid var(--line)}
+  [data-theme="light"] .modal-head h3{color:#1d2433}
+  [data-theme="light"] .modal-close{background:rgba(20,30,60,.06);color:var(--ink-2)}
+  [data-theme="light"] .modal-close:hover{background:rgba(20,30,60,.12);color:#1d2433}
+  [data-theme="light"] .toast{
+    background:linear-gradient(155deg, rgba(255,255,255,.97), rgba(245,247,254,.97));
+    color:var(--ink);border:1px solid var(--line);
+    box-shadow:var(--shadow-lg),inset 0 1px 0 rgba(255,255,255,.7);
+  }
+  [data-theme="light"] .toast .tx .ts{color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">📦</div>
+      <div>
+        <div class="name">物资管理平台</div>
+        <div class="sub">Enterprise Assets</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="nav-label">运营管理</div>
+      <div class="nav-item active" data-view="dashboard"><span class="ico">🏠</span>工作台</div>
+      <div class="nav-item" data-view="inventory"><span class="ico">🗃️</span>库存管理</div>
+      <div class="nav-item" data-view="inbound"><span class="ico">⬇️</span>入库管理</div>
+      <div class="nav-item" data-view="outbound"><span class="ico">⬆️</span>出库领用<span class="badge">3</span></div>
+      <div class="nav-item" data-view="check"><span class="ico">🧮</span>盘点管理</div>
+      <div class="nav-item" data-view="import"><span class="ico">📥</span>数据导入</div>
+      <div class="nav-item" data-view="data"><span class="ico">🗄️</span>数据管理</div>
+      <div class="nav-label">分析 & 系统</div>
+      <div class="nav-item" data-view="reports"><span class="ico">📊</span>统计报表</div>
+      <div class="nav-item" data-view="settings"><span class="ico">⚙️</span>系统设置</div>
+    </nav>
+    <div class="side-foot">
+      <div class="av">管</div>
+      <div>
+        <div class="nm">admin · 管理员</div>
+        <div class="rl">办公室</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="pageTitle">工作台</h1>
+        <div class="breadcrumb" id="pageCrumb">首页 / 工作台</div>
+      </div>
+      <div class="search">
+        <span>🔍</span>
+        <input placeholder="搜索物资、单号、领用人…" />
+      </div>
+      <div class="icon-btn" id="notifyBtn" title="通知"><svg class="bell" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h20v-1l-2-2z"/></svg><span class="dot"></span></div>
+      <div class="icon-btn" id="themeToggle" title="切换到浅色模式"><span id="themeIcon">🌙</span></div>
+      <div class="icon-btn" id="fullscreenBtn" title="全屏显示"><svg class="fs-ico" viewBox="0 0 24 24" aria-hidden="true"><path id="fsPath" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></div>
+      <div class="top-user" id="topUser">
+        <div style="text-align:right">
+          <div class="tu-name" id="tuName">—</div>
+          <div class="tu-role" id="tuRole">—</div>
+        </div>
+        <button class="btn btn-ghost" id="logoutBtn" style="height:36px;padding:0 14px">退出</button>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- ============ DASHBOARD ============ -->
+      <section class="view active" id="view-dashboard">
+        <div class="grid kpi-row">
+          <div class="card kpi">
+            <div class="top"><div class="lbl">物资品类</div><div class="ic">📚</div></div>
+            <div class="val">3 类 / 36 项</div>
+            <div class="trend up">▲ 较上月 +2 项</div>
+          </div>
+          <div class="card kpi">
+            <div class="top"><div class="lbl">库存总量</div><div class="ic">📦</div></div>
+            <div class="val" data-count="12480">12,480</div>
+            <div class="trend up">▲ 较上月 +8.4%</div>
+          </div>
+          <div class="card kpi">
+            <div class="top"><div class="lbl">本月入库</div><div class="ic">⬇️</div></div>
+            <div class="val" data-count="1260">1,260</div>
+            <div class="trend up">▲ 较上月 +12%</div>
+          </div>
+          <div class="card kpi">
+            <div class="top"><div class="lbl">本月领用</div><div class="ic">⬆️</div></div>
+            <div class="val" data-count="982">982</div>
+            <div class="trend down">▼ 较上月 -3%</div>
+          </div>
+        </div>
+
+        <div class="grid row-2 mt">
+          <div class="card">
+            <div class="panel-head"><div><h3>近 6 个月出入库趋势</h3><div class="sub">单位：件</div></div><span class="more">导出报表</span></div>
+            <div class="chart-box"><canvas id="trendChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="panel-head"><div><h3>库存分类占比</h3><div class="sub">按物资数量</div></div></div>
+            <div class="chart-box sm"><canvas id="catChart"></canvas></div>
+            <div class="legend">
+              <div class="li"><span class="sw" style="background:var(--c-office)"></span><span class="ln">办公用品</span><span class="lq">6,540 件</span><span class="pct">52%</span></div>
+              <div class="li"><span class="sw" style="background:var(--c-tobacco)"></span><span class="ln">烟酒茶</span><span class="lq">3,180 件</span><span class="pct">26%</span></div>
+              <div class="li"><span class="sw" style="background:var(--c-gift)"></span><span class="ln">礼品</span><span class="lq">2,760 件</span><span class="pct">22%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid row-2 mt">
+          <div class="card">
+            <div class="panel-head"><div><h3>库存预警</h3><div class="sub">低于安全库存的物资</div></div><span class="more">全部处理</span></div>
+            <table>
+              <thead><tr><th>物资名称</th><th>分类</th><th>当前库存</th><th>安全库存</th><th>状态</th></tr></thead>
+              <tbody>
+                <tr><td>中华（软）香烟</td><td><span class="tag tobacco"><span class="d" style="background:var(--c-tobacco)"></span>烟酒茶</span></td><td class="num">12 条</td><td class="num">30 条</td><td><span class="status out">缺货</span></td></tr>
+                <tr><td>A4 复印纸 70g</td><td><span class="tag office"><span class="d" style="background:var(--c-office)"></span>办公用品</span></td><td class="num">18 箱</td><td class="num">25 箱</td><td><span class="status low">偏低</span></td></tr>
+                <tr><td>商务保温杯</td><td><span class="tag gift"><span class="d" style="background:var(--c-gift)"></span>礼品</span></td><td class="num">9 个</td><td class="num">20 个</td><td><span class="status low">偏低</span></td></tr>
+                <tr><td>普洱礼盒茶</td><td><span class="tag tobacco"><span class="d" style="background:var(--c-tobacco)"></span>烟酒茶</span></td><td class="num">14 盒</td><td class="num">15 盒</td><td><span class="status low">偏低</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="panel-head"><div><h3>最近动态</h3><div class="sub">实时业务流水</div></div></div>
+            <div class="timeline">
+              <div class="tl-item"><div class="tl-dot out">⬆️</div><div class="tl-body"><div class="t1">张伟 领用 签字笔 ×5</div><div class="t2">办公室 · 已审批</div></div><div class="tl-time">10分钟前</div></div>
+              <div class="tl-item"><div class="tl-dot in">⬇️</div><div class="tl-body"><div class="t1">入库 茅台酒 ×6 瓶</div><div class="t2">供应商：华兴商贸 · 经手 李娜</div></div><div class="tl-time">1小时前</div></div>
+              <div class="tl-item"><div class="tl-dot warn">⚠️</div><div class="tl-body"><div class="t1">中华香烟 库存预警</div><div class="t2">低于安全库存，建议补货</div></div><div class="tl-time">2小时前</div></div>
+              <div class="tl-item"><div class="tl-dot out">⬆️</div><div class="tl-body"><div class="t1">王芳 领用 商务礼盒 ×3</div><div class="t2">销售部 · 客户拜访</div></div><div class="tl-time">今天 09:20</div></div>
+              <div class="tl-item"><div class="tl-dot in">⬇️</div><div class="tl-body"><div class="t1">入库 A4 复印纸 ×20 箱</div><div class="t2">供应商：得力办公 · 经手 李娜</div></div><div class="tl-time">昨天 17:40</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid row-2 mt">
+          <div class="card">
+            <div class="panel-head"><div><h3>质保期预警</h3><div class="sub">临期 / 已过保物资（剩余 ≤ 90 天）</div></div><span class="more" id="openWarBtn">查看预警窗口</span></div>
+            <table>
+              <thead><tr><th>物资名称</th><th>分类</th><th>到期日</th><th>剩余天数</th><th>状态</th></tr></thead>
+              <tbody id="warBody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="panel-head"><div><h3>质保期概览</h3><div class="sub">按到期状态分布</div></div></div>
+            <div class="legend" id="warLegend"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ INVENTORY ============ -->
+      <section class="view" id="view-inventory">
+        <div class="card">
+          <div class="toolbar">
+            <div class="chips" id="invChips">
+              <div class="chip active" data-cat="all">全部</div>
+              <div class="chip c-office" data-cat="office"><span class="d" style="background:var(--c-office)"></span>办公用品</div>
+              <div class="chip c-tobacco" data-cat="tobacco"><span class="d" style="background:var(--c-tobacco)"></span>烟酒茶</div>
+              <div class="chip c-gift" data-cat="gift"><span class="d" style="background:var(--c-gift)"></span>礼品</div>
+            </div>
+            <div class="spacer"></div>
+            <button class="btn btn-ghost" data-perm="data">⬇ 导出</button>
+            <button class="btn btn-primary" data-perm="data">＋ 新增物资</button>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead><tr><th>编号</th><th>物资名称</th><th>分类</th><th>规格</th><th>单位</th><th>库存数量</th><th>安全库存</th><th>质保期(月)</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody id="invBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ INBOUND ============ -->
+      <section class="view" id="view-inbound">
+        <div class="grid row-2">
+          <div class="card form-card">
+            <div class="section-title">入库登记</div>
+            <div class="section-sub">登记新到货物资，系统自动更新库存</div>
+            <div class="form-grid">
+              <div class="field"><label>物资分类</label><select><option>办公用品</option><option>烟酒茶</option><option>礼品</option></select></div>
+              <div class="field"><label>物资名称</label><input placeholder="如：A4 复印纸 70g" /></div>
+              <div class="field"><label>入库数量</label><input placeholder="0" type="number" /></div>
+              <div class="field"><label>单位</label><input id="inUnit" list="unitOptions" placeholder="可选预设或输入自定义单位" autocomplete="off" /><datalist id="unitOptions"><option value="箱"></option><option value="个"></option><option value="条"></option><option value="瓶"></option><option value="盒"></option><option value="支"></option><option value="把"></option><option value="件"></option><option value="袋"></option><option value="包"></option><option value="套"></option><option value="台"></option><option value="本"></option><option value="卷"></option><option value="千克"></option><option value="公斤"></option><option value="克"></option><option value="升"></option><option value="毫升"></option><option value="米"></option></datalist></div>
+              <div class="field"><label>单价（元）</label><input placeholder="0.00" type="number" /></div>
+              <div class="field"><label>供应商</label><input placeholder="如：得力办公" /></div>
+              <div class="field"><label>经手人</label><input placeholder="李娜" /></div>
+              <div class="field"><label>入库仓库</label><select><option>行政库房 A</option><option>烟酒专用柜 B</option><option>礼品仓储 C</option></select></div>
+              <div class="field"><label>入库日期</label><input type="date" id="inDate" value="2026-08-06" /></div>
+              <div class="field"><label>质保期(月) <span style="color:var(--ink-3);font-weight:400">选填</span></label><input type="number" id="inWarranty" placeholder="如：12（烟酒茶/礼品类必填）" min="0" /></div>
+              <div class="field full"><label>备注</label><textarea placeholder="选填：批次、发票号、验收情况…"></textarea></div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:18px">
+              <button class="btn btn-primary" style="flex:1;justify-content:center" data-perm="data">✓ 确认入库</button>
+              <button class="btn btn-ghost" data-perm="data">重置</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="panel-head"><div><h3>最近入库记录</h3><div class="sub">共 24 条</div></div></div>
+            <div class="rec-list">
+              <div class="rec"><div class="ri">🍶</div><div><div class="rt">茅台酒 ×6 瓶</div><div class="rs">烟酒茶 · 华兴商贸 · 李娜</div></div><div class="rq in">+6</div></div>
+              <div class="rec"><div class="ri">📄</div><div><div class="rt">A4 复印纸 ×20 箱</div><div class="rs">办公用品 · 得力办公 · 李娜</div></div><div class="rq in">+20</div></div>
+              <div class="rec"><div class="ri">🎁</div><div><div class="rt">商务礼盒 ×30 盒</div><div class="rs">礼品 · 锦上添礼 · 王芳</div></div><div class="rq in">+30</div></div>
+              <div class="rec"><div class="ri">🍵</div><div><div class="rt">龙井茶 ×15 盒</div><div class="rs">烟酒茶 · 西湖茶业 · 李娜</div></div><div class="rq in">+15</div></div>
+              <div class="rec"><div class="ri">✒️</div><div><div class="rt">签字笔 ×200 支</div><div class="rs">办公用品 · 晨光 · 李娜</div></div><div class="rq in">+200</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ OUTBOUND ============ -->
+      <section class="view" id="view-outbound">
+        <div class="grid row-2">
+          <div class="card form-card">
+            <div class="section-title">领用申请</div>
+            <div class="section-sub">员工发起领用，管理员审批后出库</div>
+            <div class="form-grid">
+              <div class="field"><label>领用人</label><input placeholder="如：张伟" /></div>
+              <div class="field"><label>所属部门</label><select><option>总经理</option><option>财务总监</option><option>项目经理</option><option>办公室</option><option>财务部</option><option>海外事业部</option><option>销售部</option><option>采购部</option><option>人力资源部</option><option>法务/董办</option></select></div>
+              <div class="field"><label>物资分类</label><select><option>办公用品</option><option>烟酒茶</option><option>礼品</option></select></div>
+              <div class="field"><label>物资名称</label><input placeholder="如：签字笔" /></div>
+              <div class="field"><label>领用数量</label><input placeholder="0" type="number" /></div>
+              <div class="field"><label>审批人</label><input placeholder="admin" /></div>
+              <div class="field full"><label>用途说明</label><textarea placeholder="如：部门日常办公 / 客户拜访礼品…"></textarea></div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:18px">
+              <button class="btn btn-primary" style="flex:1;justify-content:center" data-perm="data">📨 提交申请</button>
+              <button class="btn btn-ghost" data-perm="data">存草稿</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="panel-head"><div><h3>待审批领用</h3><div class="sub">3 条待处理</div></div><span class="more">全部审批</span></div>
+            <div class="rec-list">
+              <div class="rec"><div class="ri">✒️</div><div><div class="rt">张伟 申请 签字笔 ×5</div><div class="rs">办公室 · 日常办公</div></div><div class="rq out">−5</div></div>
+              <div class="rec"><div class="ri">🎁</div><div><div class="rt">王芳 申请 商务礼盒 ×3</div><div class="rs">销售部 · 客户拜访</div></div><div class="rq out">−3</div></div>
+              <div class="rec"><div class="ri">📒</div><div><div class="rt">刘强 申请 文件夹 ×10</div><div class="rs">财务部 · 档案整理</div></div><div class="rq out">−10</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 盘点管理 ============ -->
+      <section class="view" id="view-check">
+        <div class="grid kpi-row">
+          <div class="card kpi">
+            <div class="top"><div class="lbl">年度盘点计划</div><div class="ic">🗓️</div></div>
+            <div class="val">6 次</div>
+            <div class="plan-meta">季度盘点 4 次 + 年度盘点 2 次</div>
+          </div>
+          <div class="card kpi">
+            <div class="top"><div class="lbl">已完成盘点</div><div class="ic">✅</div></div>
+            <div class="val">1 / 6</div>
+            <div class="trend up">▲ 2026 Q1 已归档</div>
+          </div>
+          <div class="card kpi">
+            <div class="top"><div class="lbl">盘点差异项</div><div class="ic">⚠️</div></div>
+            <div class="val">3 项</div>
+            <div class="plan-meta">待复核确认</div>
+          </div>
+          <div class="card kpi">
+            <div class="top"><div class="lbl">盘亏 / 盘盈</div><div class="ic">⚖️</div></div>
+            <div class="val">¥ 1,240</div>
+            <div class="trend down">盘亏净额（需处理）</div>
+          </div>
+        </div>
+
+        <div class="grid row-2 mt">
+          <div class="card">
+            <div class="panel-head">
+              <div><h3>盘点计划</h3><div class="sub">按制度执行的周期性盘点安排</div></div>
+              <div class="tabs" id="checkTabs">
+                <button class="tab active" data-tab="quarter">季度盘点</button>
+                <button class="tab" data-tab="year">年度盘点</button>
+              </div>
+            </div>
+
+            <!-- 季度盘点 -->
+            <div class="tabpane active" id="pane-quarter">
+              <div class="plan-meta" style="padding:0 20px 6px">每季度末由仓库管理员自行盘点，每年 4 次（全盘）。</div>
+              <table>
+                <thead><tr><th>盘点周期</th><th>计划时间</th><th>盘点人</th><th>方式</th><th>状态</th><th>差异</th></tr></thead>
+                <tbody>
+                  <tr><td>2026 Q1</td><td class="code">03-31</td><td>李娜</td><td><span class="pill self">🧑‍💼 自盘</span></td><td><span class="status ok">已完成</span></td><td class="num">0</td></tr>
+                  <tr><td>2026 Q2</td><td class="code">06-30</td><td>李娜</td><td><span class="pill self">🧑‍💼 自盘</span></td><td><span class="status low">进行中</span></td><td class="num">—</td></tr>
+                  <tr><td>2026 Q3</td><td class="code">09-30</td><td>李娜</td><td><span class="pill self">🧑‍💼 自盘</span></td><td><span class="status out">待开始</span></td><td class="num">—</td></tr>
+                  <tr><td>2026 Q4</td><td class="code">12-31</td><td>李娜</td><td><span class="pill self">🧑‍💼 自盘</span></td><td><span class="status out">待开始</span></td><td class="num">—</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 年度盘点 -->
+            <div class="tabpane" id="pane-year">
+              <div class="plan-meta" style="padding:0 20px 6px">每半年与年末开展联合盘点，仓库管理员牵头、财务监盘人员共同参与，全面盘点，每年 2 次。</div>
+              <table>
+                <thead><tr><th>盘点名称</th><th>计划时间</th><th>牵头（仓库）</th><th>监盘（财务）</th><th>范围</th><th>状态</th></tr></thead>
+                <tbody>
+                  <tr><td>2026 年中全面盘点</td><td class="code">06-30</td><td>李娜</td><td>赵敏（财务）</td><td><span class="pill join">🤝 全面</span></td><td><span class="status out">待开始</span></td></tr>
+                  <tr><td>2026 年末全面盘点</td><td class="code">12-31</td><td>李娜</td><td>赵敏（财务）</td><td><span class="pill join">🤝 全面</span></td><td><span class="status out">待开始</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="panel-head"><div><h3>最近盘点记录</h3><div class="sub">盘点任务流水</div></div><span class="more">全部记录</span></div>
+            <div class="timeline">
+              <div class="tl-item"><div class="tl-dot in">🧮</div><div class="tl-body"><div class="t1">2026 Q1 季度盘点完成</div><div class="t2">李娜 · 全盘 36 项 · 无差异</div></div><div class="tl-time">03-31</div></div>
+              <div class="tl-item"><div class="tl-dot warn">⚠️</div><div class="tl-body"><div class="t1">Q2 季度盘点进行中</div><div class="t2">李娜 · 已盘 28/36 项</div></div><div class="tl-time">进行中</div></div>
+              <div class="tl-item"><div class="tl-dot out">🤝</div><div class="tl-body"><div class="t1">年中全面盘点待启动</div><div class="t2">牵头：李娜 · 监盘：赵敏（财务）</div></div><div class="tl-time">06-30</div></div>
+              <div class="tl-item"><div class="tl-dot in">🧮</div><div class="tl-body"><div class="t1">2025 年末全面盘点归档</div><div class="t2">联合盘点 · 盘亏 ¥1,240 已报批</div></div><div class="tl-time">2025-12-31</div></div>
+            </div>
+            <div style="padding:0 20px 20px"><button class="btn btn-primary" id="newCheck" style="width:100%;justify-content:center">＋ 新建盘点单</button></div>
+          </div>
+        </div>
+
+        <!-- 盘点单录入 -->
+        <div class="card mt">
+          <div class="panel-head"><div><h3>盘点单录入 · 实盘核对</h3><div class="sub">录入实盘数量，系统自动计算账实差异</div></div></div>
+          <div class="form-grid" style="padding:16px 20px 4px">
+            <div class="field"><label>盘点类型</label><select><option>季度盘点（自盘）</option><option>年度盘点（联合）</option></select></div>
+            <div class="field"><label>盘点范围</label><select><option>全面盘点</option><option>抽盘（按分类）</option></select></div>
+            <div class="field"><label>牵头人（仓库管理员）</label><input value="李娜" /></div>
+            <div class="field"><label>监盘人（财务）</label><input value="赵敏" placeholder="联合盘点必填" /></div>
+            <div class="field"><label>计划盘点日期</label><input value="2026-06-30" type="date" /></div>
+            <div class="field"><label>备注</label><input placeholder="选填：盘点说明、特殊情况…" /></div>
+          </div>
+          <table style="margin-top:8px">
+            <thead><tr><th>物资名称</th><th>分类</th><th>系统库存</th><th>实盘数量</th><th>差异（实盘-系统）</th><th>处理</th></tr></thead>
+            <tbody id="checkBody"></tbody>
+          </table>
+          <div class="note">差异为负 = 盘亏（实物少于账面），为正 = 盘盈（实物多于账面）；0 表示账实相符。差异项需仓库管理员与财务共同复核后调整账面。</div>
+          <div style="display:flex;gap:12px;align-items:center;padding:0 20px 20px;flex-wrap:wrap">
+            <button class="btn btn-primary" id="downloadCheck" style="justify-content:center">⬇ 下载盘点记录</button>
+            <span class="plan-meta" id="checkDownMsg"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 数据导入 ============ -->
+      <section class="view" id="view-import">
+        <div class="card form-card">
+          <div class="section-title">XLSX 批量数据录入</div>
+          <div class="section-sub">上传现有电子表格，系统按表头智能抓取字段并映射，确认后一键导入库存</div>
+          <div class="dropzone" id="dropzone">
+            <div class="dz-ico">📥</div>
+            <div style="font-size:15px;font-weight:600;margin-top:8px">点击或拖拽 XLSX 文件到此处</div>
+            <div class="plan-meta" style="margin-top:6px">支持 .xlsx / .xls，自动读取公式计算结果</div>
+            <input type="file" id="fileInput" accept=".xlsx,.xls" hidden />
+          </div>
+          <div class="note">智能抓取规则：扫描表头，按关键词自动匹配——「品名 / 名称 → 物资名称」「类别 / 分类 → 分类」「现存量 / 库存 → 库存数量」「安全库存 / 下限 → 安全库存」；含公式的单元格直接抓取计算后的数值。映射可调，未识别列可手动指定或忽略。</div>
+        </div>
+
+        <div id="importResult" style="display:none">
+          <div class="card mt">
+            <div class="panel-head"><div><h3>字段智能映射</h3><div class="sub" id="sheetInfo"></div></div><span class="more" id="resetImport">重新上传</span></div>
+            <table>
+              <thead><tr><th>原表头（你的列）</th><th>映射到系统字段</th></tr></thead>
+              <tbody id="mapBody"></tbody>
+            </table>
+          </div>
+
+          <div class="card mt">
+            <div class="panel-head"><div><h3>抓取数据预览</h3><div class="sub" id="prevInfo"></div></div></div>
+            <table>
+              <thead><tr><th>物资名称</th><th>分类</th><th>规格</th><th>单位</th><th>库存数量</th><th>安全库存</th><th>校验</th></tr></thead>
+              <tbody id="prevBody"></tbody>
+            </table>
+            <div style="padding:0 20px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-primary" id="confirmImport" data-perm="data">✓ 确认导入 <span id="importCount"></span> 条</button>
+              <span class="plan-meta" id="importMsg"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 数据管理 ============ -->
+      <section class="view" id="view-data">
+        <div class="card">
+          <div class="panel-head">
+            <div><h3>数据管理 · 后台数据记录</h3><div class="sub">入库记录与出库记录的查询、查看与下载（系统管理员 / 管理员 / 仓库管理员可访问）</div></div>
+            <div class="tabs" id="dataTabs">
+              <button class="tab active" data-tab="in">入库记录</button>
+              <button class="tab" data-tab="out">出库记录</button>
+            </div>
+          </div>
+
+          <div class="data-toolbar">
+            <div class="search">🔍<input id="dataSearch" placeholder="搜索单号 / 物资名称 / 供应商 / 领用人 / 部门…" /></div>
+            <span class="plan-meta" id="dataCount"></span>
+            <button class="btn btn-ghost" id="downloadAll" data-perm="data">⬇ 下载全部（当前筛选）</button>
+          </div>
+
+          <!-- 入库记录 -->
+          <div class="tabpane active" id="pane-data-in">
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead><tr><th>单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>规格</th><th>单位</th><th>数量</th><th>单价(元)</th><th>金额(元)</th><th>供应商</th><th>经手人</th><th>仓库</th><th>质保期(月)</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
+                <tbody id="inBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 出库记录 -->
+          <div class="tabpane" id="pane-data-out">
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead><tr><th>单号</th><th>日期</th><th>领用人</th><th>部门</th><th>物资名称</th><th>分类</th><th>数量</th><th>单位</th><th>用途</th><th>审批人</th><th>状态</th><th>操作</th></tr></thead>
+                <tbody id="outBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ REPORTS ============ -->
+      <section class="view" id="view-reports">
+        <div class="grid row-3">
+          <div class="card kpi"><div class="top"><div class="lbl">库存总金额</div><div class="ic">💰</div></div><div class="val">¥ 486,200</div><div class="trend up">▲ 较上月 +5.1%</div></div>
+          <div class="card kpi"><div class="top"><div class="lbl">本月领用次数</div><div class="ic">🧾</div></div><div class="val">982</div><div class="trend up">▲ +6%</div></div>
+          <div class="card kpi"><div class="top"><div class="lbl">周转天数</div><div class="ic">🔄</div></div><div class="val">23 天</div><div class="trend down">▼ 效率提升</div></div>
+        </div>
+        <div class="grid row-2 mt">
+          <div class="card">
+            <div class="panel-head"><div><h3>各部门领用占比</h3><div class="sub">本月 Top 部门</div></div></div>
+            <div class="chart-box"><canvas id="deptChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="panel-head"><div><h3>分类库存金额</h3><div class="sub">单位：万元</div></div></div>
+            <div class="chart-box"><canvas id="valueChart"></canvas></div>
+          </div>
+        </div>
+        <div class="card mt">
+          <div class="panel-head"><div><h3>分类领用排行</h3><div class="sub">本月各分类领用件数</div></div></div>
+          <div class="chart-box"><canvas id="rankChart"></canvas></div>
+        </div>
+      </section>
+
+      <!-- ============ SETTINGS ============ -->
+      <section class="view" id="view-settings">
+        <div class="grid row-2">
+          <div class="card form-card">
+            <div class="section-title">库存分类管理</div>
+            <div class="section-sub">系统当前启用 3 个物资分类</div>
+            <div class="rec-list">
+              <div class="rec"><div class="ri" style="color:var(--c-office)">🖇️</div><div><div class="rt">办公用品</div><div class="rs">复印纸、笔墨、文件夹等 · 18 项</div></div><span class="tag office"><span class="d" style="background:var(--c-office)"></span>启用</span></div>
+              <div class="rec"><div class="ri" style="color:var(--c-tobacco)">🍵</div><div><div class="rt">烟酒茶</div><div class="rs">香烟、酒水、茶叶 · 12 项</div></div><span class="tag tobacco"><span class="d" style="background:var(--c-tobacco)"></span>启用</span></div>
+              <div class="rec"><div class="ri" style="color:var(--c-gift)">🎁</div><div><div class="rt">礼品</div><div class="rs">礼盒、周边、定制礼品 · 6 项</div></div><span class="tag gift"><span class="d" style="background:var(--c-gift)"></span>启用</span></div>
+            </div>
+            <button class="btn btn-ghost" id="addCat" style="margin:4px 20px 20px">＋ 新增分类</button>
+          </div>
+          <div class="card form-card">
+            <div class="section-title">安全库存阈值</div>
+            <div class="section-sub">可按分类设置默认预警线，并支持单品单独覆盖</div>
+            <div class="form-grid">
+              <div class="field"><label>办公用品 · 默认预警线</label><input id="def-office" type="number" min="0" /></div>
+              <div class="field"><label>烟酒茶 · 默认预警线</label><input id="def-tobacco" type="number" min="0" /></div>
+              <div class="field"><label>礼品 · 默认预警线</label><input id="def-gift" type="number" min="0" /></div>
+              <div class="field"><label>默认审批人</label><input value="admin" /></div>
+            </div>
+            <div class="chips" id="safeTabs" style="margin-top:14px">
+              <button class="chip c-office active" data-cat="office"><span class="d" style="background:var(--c-office)"></span>办公用品</button>
+              <button class="chip c-tobacco" data-cat="tobacco"><span class="d" style="background:var(--c-tobacco)"></span>烟酒茶</button>
+              <button class="chip c-gift" data-cat="gift"><span class="d" style="background:var(--c-gift)"></span>礼品</button>
+            </div>
+            <div style="margin-top:12px;overflow-x:auto;border:1px solid var(--line);border-radius:12px">
+              <table class="safe-table">
+                <thead><tr><th>物资名称</th><th class="num">现存量</th><th class="num">默认值</th><th>单独预警</th><th>状态</th></tr></thead>
+                <tbody id="safeBody"></tbody>
+              </table>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;margin-top:14px">
+              <button class="btn btn-primary" id="saveSettings">保存设置</button>
+              <span class="plan-meta" id="safeMsg"></span>
+            </div>
+            <div class="note" style="padding-left:0;padding-right:0;font-size:11px;margin-top:8px">提示：单品「单独预警」留空时沿用分类默认值；填写数值则单独设定。保存后库存管理 / 预警同步更新。</div>
+          </div>
+        </div>
+
+        <div class="card form-card mt" data-perm="login">
+          <div class="section-title">登录管理</div>
+          <div class="section-sub" id="loginMgmtSub">配置 4 类角色的登录账号与密码，仅系统管理员可修改</div>
+          <div id="loginMgmtBody" style="display:flex;flex-direction:column;gap:14px;margin-top:6px"></div>
+          <div style="display:flex;gap:12px;align-items:center;margin-top:18px">
+            <button class="btn btn-primary" id="saveLogin">保存登录设置</button>
+            <span class="plan-meta" id="loginMsg"></span>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============ 登录页 ============ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="logo">📦</div>
+      <div><div class="name">物资管理平台</div><div class="sub">Enterprise Assets</div></div>
+    </div>
+    <div class="login-title">账号登录</div>
+    <div class="login-hint">请输入您的登录账号与密码</div>
+    <div class="login-field"><label>登录账号</label><input id="loginUser" placeholder="如：sysadmin" autocomplete="username" /></div>
+    <div class="login-field"><label>密码</label><input id="loginPass" type="password" placeholder="请输入密码" autocomplete="current-password" /></div>
+    <div class="login-err" id="loginErr"></div>
+    <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;height:46px">登录系统</button>
+    <div class="login-foot">物资管理平台 v1.0.0</div>
+  </div>
+</div>
+
+  <!-- 记录查看弹窗 -->
+  <div class="modal-mask" id="recModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="recModalTitle">记录详情</h3>
+        <button class="modal-close" id="recModalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <dl class="rec-detail" id="recModalBody"></dl>
+        <div style="margin-top:18px;display:flex;gap:12px">
+          <button class="btn btn-primary" id="recModalDownload" style="flex:1;justify-content:center" data-perm="data">⬇ 下载此记录</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 库存物资详情弹窗 -->
+  <div class="modal-mask" id="invModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="invModalTitle">库存物资详情</h3>
+        <button class="modal-close" id="invModalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <dl class="rec-detail" id="invModalBody"></dl>
+        <div style="margin-top:18px;display:flex;gap:12px">
+          <button class="btn btn-ghost" id="invModalCloseBtn" style="flex:1;justify-content:center">关闭</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 质保期预警提示窗口 -->
+  <div class="modal-mask" id="warModal">
+    <div class="modal" style="max-width:680px">
+      <div class="modal-head">
+        <h3 id="warModalTitle">⚠️ 质保期预警提示</h3>
+        <button class="modal-close" id="warModalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="note" id="warModalNote" style="margin-bottom:14px"></div>
+        <table>
+          <thead><tr><th>物资名称</th><th>分类</th><th>到期日</th><th>剩余天数</th><th>状态</th></tr></thead>
+          <tbody id="warModalBody"></tbody>
+        </table>
+        <div style="margin-top:18px;display:flex;gap:12px">
+          <button class="btn btn-primary" id="warModalCloseBtn" style="flex:1;justify-content:center">我知道了</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 盘点记录下载窗口 -->
+  <div class="modal-mask" id="checkModal">
+    <div class="modal" style="max-width:720px">
+      <div class="modal-head">
+        <h3>🧮 盘点记录下载</h3>
+        <button class="modal-close" id="checkModalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="section-sub" style="margin-bottom:12px">完成实盘核对后可导出本次盘点记录，便于存档与财务复核。下方为本次需要盘点的项目内容及盘点后信息记录。</div>
+        <div id="checkModalInfo" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 18px;margin-bottom:6px"></div>
+        <div style="margin:16px 0 8px;font-weight:600;font-size:13px;color:var(--ink-2)">盘点明细 · 需要盘点的项目内容</div>
+        <div style="overflow-x:auto;border:1px solid var(--line);border-radius:12px">
+          <table class="safe-table" style="font-size:12px">
+            <thead><tr><th>物资名称</th><th>分类</th><th class="num">系统库存</th><th class="num">实盘数量</th><th class="num">差异</th><th>状态</th></tr></thead>
+            <tbody id="checkModalBody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:center;margin-top:18px">
+          <button class="btn btn-primary" id="checkExportXlsx" style="min-width:220px;justify-content:center">⬇ 导出 Excel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ---- Navigation ----
+  const titles={dashboard:['工作台','首页 / 工作台'],inventory:['库存管理','运营管理 / 库存管理'],inbound:['入库管理','运营管理 / 入库管理'],outbound:['出库领用','运营管理 / 出库领用'],check:['盘点管理','运营管理 / 盘点管理'],import:['数据导入','运营管理 / 数据导入'],data:['数据管理','数据 / 数据管理'],reports:['统计报表','分析 / 统计报表'],settings:['系统设置','系统 / 系统设置']};
+  const navItems=document.querySelectorAll('.nav-item');
+  const views=document.querySelectorAll('.view');
+  let charts={};
+  navItems.forEach(it=>it.addEventListener('click',()=>{
+    const v=it.dataset.view;
+    navItems.forEach(n=>n.classList.remove('active'));
+    it.classList.add('active');
+    views.forEach(s=>s.classList.remove('active'));
+    document.getElementById('view-'+v).classList.add('active');
+    document.getElementById('pageTitle').textContent=titles[v][0];
+    document.getElementById('pageCrumb').textContent=titles[v][1];
+    if(v==='data') renderDataTables();
+    if(v==='dashboard') runDashboardCounts();
+    if(v==='settings') renderSafe();
+    if(!charts[v]) initCharts(v);
+    if(charts[v]) setTimeout(()=>Object.values(charts[v]).forEach(c=>c.resize()),60);
+  }));
+
+  // ---- Inventory data ----
+  const items=[
+    {c:'office',n:'A4 复印纸 70g',s:'500张/包',u:'箱',q:18,safe:25},
+    {c:'office',n:'中性签字笔',s:'0.5mm 黑',u:'支',q:640,safe:200},
+    {c:'office',n:'文件夹（双夹）',s:'A4',u:'个',q:120,safe:50},
+    {c:'office',n:'订书机',s:'中型',u:'个',q:36,safe:15},
+    {c:'office',n:'打印墨盒',s:'HP 26A',u:'个',q:22,safe:10,warranty:24,inDate:'2026-03-10'},
+    {c:'tobacco',n:'中华（软）香烟',s:'硬盒',u:'条',q:12,safe:30,warranty:12,inDate:'2025-09-01'},
+    {c:'tobacco',n:'飞天茅台',s:'500ml',u:'瓶',q:48,safe:20,warranty:60,inDate:'2024-01-01'},
+    {c:'tobacco',n:'五粮液',s:'500ml',u:'瓶',q:36,safe:15,warranty:12,inDate:'2025-06-01'},
+    {c:'tobacco',n:'西湖龙井',s:'250g',u:'盒',q:60,safe:25,warranty:12,inDate:'2025-09-15'},
+    {c:'tobacco',n:'普洱礼盒茶',s:'357g',u:'盒',q:14,safe:15,warranty:24,inDate:'2024-08-01'},
+    {c:'gift',n:'商务保温杯',s:'500ml',u:'个',q:9,safe:20,warranty:12,inDate:'2025-07-20'},
+    {c:'gift',n:'定制雨伞',s:'折叠',u:'把',q:45,safe:20},
+    {c:'gift',n:'商务公文包',s:'牛皮',u:'个',q:28,safe:12,warranty:12,inDate:'2025-10-01'},
+    {c:'gift',n:'新春礼盒',s:'组合装',u:'盒',q:52,safe:30,warranty:6,inDate:'2026-02-01'},
+  ];
+  items.forEach(i=>{ if(i.warranty) i.expire=addMonths(i.inDate,i.warranty); });
+  const catMeta={office:{t:'办公用品',cls:'office',col:'var(--c-office)'},tobacco:{t:'烟酒茶',cls:'tobacco',col:'var(--c-tobacco)'},gift:{t:'礼品',cls:'gift',col:'var(--c-gift)'}};
+  function statusOf(q,safe){if(q<=0)return['out','缺货'];if(q<safe)return['low','偏低'];return['ok','充足'];}
+  // ---- 质保期 / 到期日 工具 ----
+  function addMonths(dateStr,m){ const d=new Date(dateStr+'T00:00:00'); d.setMonth(d.getMonth()+m); const y=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); return `${y}-${mm}-${dd}`; }
+  function daysLeft(expireStr){ if(!expireStr) return null; return Math.round((new Date(expireStr+'T00:00:00')-new Date())/86400000); }
+  function wStatus(dl){ if(dl===null) return {cls:'',txt:'—'}; if(dl<0) return {cls:'out',txt:'已过期'}; if(dl<=90) return {cls:'low',txt:'临期 '+dl+'天'}; return {cls:'ok',txt:'正常'}; }
+  function warrantyCell(it){ if(!it.warranty) return '<td>—</td>'; const exp=it.expire||addMonths(it.inDate||'2026-01-01',it.warranty); const dl=daysLeft(exp); const st=wStatus(dl); const col=st.cls==='out'?'var(--danger)':st.cls==='low'?'var(--accent)':'var(--ink-3)'; return `<td><span style="color:${col};font-weight:600">${exp}</span></td>`; }
+  function warrantyMonthsCell(it){ return `<td>${it.warranty? it.warranty+' 个月':'—'}</td>`; }
+  function renderInv(cat){
+    const body=document.getElementById('invBody');
+    const list=cat==='all'?items:items.filter(i=>i.c===cat);
+    body.innerHTML=list.map((i,idx)=>{
+      const oi=items.indexOf(i);
+      const m=catMeta[i.c];const[st,txt]=statusOf(i.q,i.safe);
+      const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
+      return `<tr data-row-inv="${oi}">
+        <td class="code">${code}-${String(idx+1).padStart(3,'0')}</td>
+        <td>${i.n}</td>
+        <td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td>
+        <td>${i.s}</td><td>${i.u}</td>
+        <td class="num">${i.q} ${i.u}</td><td class="num">${i.safe} ${i.u}</td>
+        ${warrantyMonthsCell(i)}
+        ${warrantyCell(i)}
+        <td><span class="status ${st}">${txt}</span></td>
+        <td><span class="row-act">详情</span></td>
+      </tr>`;
+    }).join('');
+  }
+  renderInv('all');
+  document.querySelectorAll('#invChips .chip').forEach(ch=>ch.addEventListener('click',()=>{
+    document.querySelectorAll('#invChips .chip').forEach(c=>c.classList.remove('active'));
+    ch.classList.add('active');renderInv(ch.dataset.cat);
+  }));
+
+  // ---- 盘点管理 ----
+  const checkItems=[
+    {n:'A4 复印纸 70g',c:'office',u:'箱',sys:18},
+    {n:'中华（软）香烟',c:'tobacco',u:'条',sys:12},
+    {n:'商务保温杯',c:'gift',u:'个',sys:9},
+    {n:'飞天茅台',c:'tobacco',u:'瓶',sys:48},
+    {n:'中性签字笔',c:'office',u:'支',sys:640},
+  ];
+  function renderCheck(){
+    const body=document.getElementById('checkBody');
+    body.innerHTML=checkItems.map((i,idx)=>{
+      const m=catMeta[i.c];
+      return `<tr>
+        <td>${i.n}</td>
+        <td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td>
+        <td class="num">${i.sys} ${i.u}</td>
+        <td><input class="real-input" type="number" value="${i.sys}" data-sys="${i.sys}" data-idx="${idx}" /></td>
+        <td class="num"><span class="diff zero" id="diff-${idx}">0</span></td>
+        <td><span class="row-act">复核</span></td>
+      </tr>`;
+    }).join('');
+    body.querySelectorAll('.real-input').forEach(inp=>{
+      inp.addEventListener('input',()=>{
+        const sys=+inp.dataset.sys, real=+inp.value||0, d=real-sys;
+        const el=document.getElementById('diff-'+inp.dataset.idx);
+        el.textContent=(d>0?'+':'')+d;
+        el.className='diff '+(d===0?'zero':d>0?'up':'down');
+      });
+    });
+  }
+  renderCheck();
+  document.querySelectorAll('#checkTabs .tab').forEach(t=>t.addEventListener('click',()=>{
+    document.querySelectorAll('#checkTabs .tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelectorAll('.tabpane').forEach(p=>p.classList.remove('active'));
+    document.getElementById('pane-'+t.dataset.tab).classList.add('active');
+  }));
+
+  // ---- 盘点记录下载窗口 ----
+  let checkExportData=null;
+  function openCheckModal(){
+    const card=document.getElementById('view-check');
+    const sel=card.querySelectorAll('.form-grid select');
+    const inp=card.querySelectorAll('.form-grid input');
+    const info=[['盘点类型',sel[0]?sel[0].value:'—'],['盘点范围',sel[1]?sel[1].value:'—'],['牵头人（仓库）',inp[0]?inp[0].value:'—'],['监盘人（财务）',inp[1]?inp[1].value:'—'],['计划盘点日期',inp[2]?inp[2].value:'—'],['备注',inp[3]?inp[3].value:'—']];
+    document.getElementById('checkModalInfo').innerHTML=info.map(r=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--ink-3)">${r[0]}</span><span>${r[1]||'—'}</span></div>`).join('');
+    const realInputs=document.querySelectorAll('#checkBody .real-input');
+    let rows='';
+    const items=[];
+    checkItems.forEach((it,idx)=>{
+      const sys=it.sys;
+      const real=realInputs[idx]?(+realInputs[idx].value||0):sys;
+      const d=real-sys;
+      const st=d===0?'ok':(d>0?'up':'down');
+      const txt=d===0?'账实相符':(d>0?'盘盈 +'+d:'盘亏 '+d);
+      const m=catMeta[it.c];
+      rows+=`<tr><td>${it.n}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="num">${sys} ${it.u}</td><td class="num">${real} ${it.u}</td><td class="num"><span class="diff ${st}">${(d>0?'+':'')+d}</span></td><td><span class="status ${st}">${txt}</span></td></tr>`;
+      items.push({n:it.n,c:m.t,u:it.u,sys,real,d,st:txt});
+    });
+    document.getElementById('checkModalBody').innerHTML=rows;
+    checkExportData={info,items};
+    document.getElementById('checkModal').classList.add('show');
+  }
+  function checkExportXlsx(){
+    if(!checkExportData){ toast('暂无数据','warn','请先打开盘点记录'); return; }
+    const aoa=[['盘点记录导出明细']];
+    checkExportData.info.forEach(r=>aoa.push([r[0],r[1]||'—']));
+    aoa.push([]);
+    aoa.push(['物资名称','分类','单位','系统库存','实盘数量','差异','状态']);
+    checkExportData.items.forEach(it=>aoa.push([it.n,it.c,it.u,it.sys,it.real,it.d,it.st]));
+    const headerAt=checkExportData.info.length+2;
+    exportXLSX(aoa,'盘点记录_'+checkExportData.info[0][1]+'.xlsx',{headerAt,titleMerge:true});
+    toast('已导出 Excel','ok','盘点记录已生成 .xlsx');
+  }
+  const dcBtn=document.getElementById('downloadCheck');
+  if(dcBtn) dcBtn.addEventListener('click',openCheckModal);
+  document.getElementById('checkModalClose').addEventListener('click',()=>document.getElementById('checkModal').classList.remove('show'));
+  document.getElementById('checkModal').addEventListener('click',e=>{ if(e.target.id==='checkModal') document.getElementById('checkModal').classList.remove('show'); });
+  document.getElementById('checkExportXlsx').addEventListener('click',checkExportXlsx);
+
+  // ---- XLSX 批量数据录入 ----
+  const FIELDS={
+    name:['物资名称','品名','名称','物品','物资','货物','name'],
+    category:['分类','类别','类型','品类','category'],
+    spec:['规格','型号','标准','spec'],
+    unit:['单位','计量单位','unit'],
+    stock:['库存','库存数量','现存','现存量','数量','结存','stock','qty'],
+    safe:['安全库存','安全量','预警','下限','safe']
+  };
+  const FIELD_LABEL={name:'物资名称',category:'分类',spec:'规格',unit:'单位',stock:'库存数量',safe:'安全库存','':'(未识别 / 忽略)'};
+  let importState=null;
+  function normCat(v){
+    if(v==null) return '';
+    const s=String(v);
+    if(/办公/.test(s)) return 'office';
+    if(/烟酒/.test(s)) return 'tobacco';
+    if(/礼/.test(s)) return 'gift';
+    return '';
+  }
+  function matchField(header){
+    const h=String(header).trim().toLowerCase();
+    for(const f in FIELDS){ if(FIELDS[f].some(k=>h.includes(k.toLowerCase()))) return f; }
+    return '';
+  }
+  function handleFile(file){
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+        const sheetName=wb.SheetNames[0];
+        const ws=wb.Sheets[sheetName];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,blankrows:false});
+        buildImport(rows,sheetName);
+      }catch(err){ alert('解析失败：'+err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  function buildImport(rows,sheetName){
+    let hdrIdx=0;
+    for(let i=0;i<Math.min(rows.length,12);i++){
+      const r=rows[i]||[];
+      const hit=r.filter(c=>c!=null&&matchField(c)).length;
+      if(hit>=2){ hdrIdx=i; break; }
+    }
+    const headers=(rows[hdrIdx]||[]).map(h=>h==null?'':String(h));
+    const mapping=headers.map(h=>({orig:h,field:matchField(h)}));
+    const dataRows=rows.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&String(c).trim()!==''));
+    importState={headers,mapping,dataRows,sheetName};
+    renderMapping();renderPreview();
+    document.getElementById('importResult').style.display='block';
+    document.getElementById('sheetInfo').textContent=`工作表：${sheetName} · 表头位于第 ${hdrIdx+1} 行 · 共 ${dataRows.length} 行数据`;
+    document.getElementById('importMsg').textContent='';
+  }
+  function renderMapping(){
+    const body=document.getElementById('mapBody');
+    body.innerHTML=importState.headers.map((h,i)=>{
+      const f=importState.mapping[i].field;
+      const opts=Object.keys(FIELD_LABEL).map(k=>`<option value="${k}" ${k===f?'selected':''}>${FIELD_LABEL[k]}</option>`).join('');
+      return `<tr><td>${h||'(空)'}</td><td><select class="real-input" data-i="${i}">${opts}</select></td></tr>`;
+    }).join('');
+    body.querySelectorAll('select').forEach(s=>s.addEventListener('change',()=>{
+      importState.mapping[+s.dataset.i].field=s.value; renderPreview();
+    }));
+  }
+  function renderPreview(){
+    const body=document.getElementById('prevBody');
+    const get=(row,f)=>{ const i=importState.mapping.findIndex(m=>m.field===f); return i>=0?row[i]:null; };
+    const rows=importState.dataRows.slice(0,50);
+    let valid=0;
+    body.innerHTML=rows.map(r=>{
+      const name=get(r,'name'),catRaw=get(r,'category'),spec=get(r,'spec'),unit=get(r,'unit'),stock=get(r,'stock'),safe=get(r,'safe');
+      const cat=normCat(catRaw); const stockNum=parseFloat(stock);
+      const ok=name&&cat&&!isNaN(stockNum); if(ok) valid++;
+      const m=cat?catMeta[cat]:null;
+      return `<tr>
+        <td>${name||'—'}</td>
+        <td>${m?`<span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span>`:`<span class="status out">未识别</span>`}</td>
+        <td>${spec??'—'}</td><td>${unit??'—'}</td>
+        <td class="num">${stock??'—'}</td><td class="num">${safe??'—'}</td>
+        <td>${ok?'<span class="status ok">可导入</span>':'<span class="status low">待修正</span>'}</td>
+      </tr>`;
+    }).join('');
+    const total=importState.dataRows.length;
+    document.getElementById('prevInfo').textContent=`预览前 ${rows.length} 行（共 ${total} 行），其中 ${valid} 行校验通过`;
+    document.getElementById('importCount').textContent=valid;
+  }
+  document.getElementById('confirmImport').addEventListener('click',()=>{
+    const get=(row,f)=>{ const i=importState.mapping.findIndex(m=>m.field===f); return i>=0?row[i]:null; };
+    let added=0;
+    importState.dataRows.forEach(r=>{
+      const name=get(r,'name'),catRaw=get(r,'category'),spec=get(r,'spec'),unit=get(r,'unit'),stock=get(r,'stock'),safe=get(r,'safe');
+      const cat=normCat(catRaw); const stockNum=parseFloat(stock);
+      if(name&&cat&&!isNaN(stockNum)){
+        items.push({c:cat,n:String(name),s:spec?String(spec):'—',u:unit?String(unit):'件',q:stockNum,
+          safe:(safe!=null&&!isNaN(parseFloat(safe)))?parseFloat(safe):Math.ceil(stockNum*0.3)});
+        added++;
+      }
+    });
+    document.querySelectorAll('#invChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.cat==='all'));
+    renderInv('all');
+    document.getElementById('importMsg').textContent=`✓ 已成功导入 ${added} 条物资，已并入「库存管理」。`;
+    toast('批量导入完成','ok',`已成功并入库存 ${added} 条物资`);
+    document.querySelector('.nav-item[data-view="inventory"]').click();
+  });
+  const dropzone=document.getElementById('dropzone'), fileInput=document.getElementById('fileInput');
+  dropzone.addEventListener('click',()=>fileInput.click());
+  fileInput.addEventListener('change',()=>{ if(fileInput.files[0]) handleFile(fileInput.files[0]); });
+  ['dragover','dragenter'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.add('drag');}));
+  ['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.remove('drag');}));
+  dropzone.addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) handleFile(f); });
+  document.getElementById('resetImport').addEventListener('click',()=>{ document.getElementById('importResult').style.display='none'; fileInput.value=''; });
+
+  // ---- Charts ----
+  const C={office:'#5b8cff',tobacco:'#ff8a4c',gift:'#c08bff',ink:'#aeb9d4',grid:'rgba(255,255,255,.08)'};
+  Chart.defaults.font.family="'HarmonyOS Sans','PingFang SC','Microsoft YaHei',sans-serif";
+  Chart.defaults.color=C.ink;
+  function syncChartTheme(){
+    const light=document.documentElement.getAttribute('data-theme')==='light';
+    C.ink= light ? '#5b6577' : '#aeb9d4';
+    C.grid= light ? 'rgba(20,30,60,.08)' : 'rgba(255,255,255,.08)';
+    Chart.defaults.color=C.ink;
+  }
+  function refreshCharts(){
+    syncChartTheme();
+    Object.keys(charts).forEach(v=>{
+      Object.values(charts[v]).forEach(c=>{ try{ c.destroy(); }catch(e){} });
+      delete charts[v];
+    });
+    const active=document.querySelector('.view.active');
+    if(active){ const id=active.id.replace('view-',''); initCharts(id); }
+  }
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    try{ localStorage.setItem('wms_theme', t); }catch(e){}
+    const icon=(t==='light') ? '☀️' : '🌙';
+    const t1=document.getElementById('themeIcon'); if(t1) t1.textContent=icon;
+    const tip=(t==='light') ? '切换到深色模式' : '切换到浅色模式';
+    const b1=document.getElementById('themeToggle'); if(b1) b1.title=tip;
+  }
+  function toggleTheme(){
+    const cur=document.documentElement.getAttribute('data-theme')==='light' ? 'light' : 'dark';
+    applyTheme(cur==='light' ? 'dark' : 'light');
+    try{ refreshCharts(); }catch(e){}
+  }
+  (function initTheme(){
+    let saved='dark';
+    try{ saved=localStorage.getItem('wms_theme')||'dark'; }catch(e){}
+    applyTheme(saved);
+  })();
+  document.getElementById('themeToggle').addEventListener('click',toggleTheme);
+
+  // ============ 全屏切换 ============
+  const FS_ENTER='M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z';
+  const FS_EXIT='M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z';
+  function syncFsIcon(){
+    const on=!!document.fullscreenElement;
+    const p=document.getElementById('fsPath'); if(p) p.setAttribute('d', on?FS_EXIT:FS_ENTER);
+    const b=document.getElementById('fullscreenBtn'); if(b) b.title=on?'退出全屏':'全屏显示';
+  }
+  function toggleFullscreen(){
+    try{
+      if(!document.fullscreenElement){ (document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen||function(){}).call(document.documentElement); }
+      else{ (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); }
+    }catch(e){ toast('全屏不可用','warn','当前环境不支持全屏'); }
+  }
+  const fsBtn=document.getElementById('fullscreenBtn');
+  if(fsBtn) fsBtn.addEventListener('click',toggleFullscreen);
+  document.addEventListener('fullscreenchange',syncFsIcon);
+  document.addEventListener('webkitfullscreenchange',syncFsIcon);
+  syncFsIcon();
+  function initCharts(v){
+    if(v==='dashboard'){
+      charts.dashboard={};
+      charts.dashboard.trend=new Chart(document.getElementById('trendChart'),{
+        type:'line',
+        data:{labels:['3月','4月','5月','6月','7月','8月'],
+          datasets:[
+            {label:'入库',data:[980,1120,1040,1180,1260,1260],borderColor:C.office,background:'rgba(91,140,255,.16)',fill:true,tension:.4,pointRadius:3},
+            {label:'出库领用',data:[1020,1080,990,1010,1012,982],borderColor:C.tobacco,background:'rgba(255,138,76,.10)',fill:true,tension:.4,pointRadius:3}
+          ]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,boxWidth:8}}},scales:{y:{grid:{color:C.grid},border:{display:false}},x:{grid:{display:false},border:{display:false}}}}
+      });
+      charts.dashboard.cat=new Chart(document.getElementById('catChart'),{
+        type:'doughnut',
+        data:{labels:['办公用品','烟酒茶','礼品'],datasets:[{data:[6540,3180,2760],backgroundColor:[C.office,C.tobacco,C.gift],borderWidth:0,hoverOffset:6}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false}}}
+      });
+    }
+    if(v==='reports'){
+      charts.reports={};
+      charts.reports.dept=new Chart(document.getElementById('deptChart'),{
+        type:'bar',
+        data:{labels:['办公室','销售部','财务部','海外事业部','采购部'],datasets:[{data:[320,260,180,140,82],backgroundColor:C.office,borderRadius:8}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:C.grid},border:{display:false}},x:{grid:{display:false},border:{display:false}}}}
+      });
+      charts.reports.value=new Chart(document.getElementById('valueChart'),{
+        type:'bar',
+        data:{labels:['办公用品','烟酒茶','礼品'],datasets:[{label:'金额(万元)',data:[12.4,28.6,7.2],backgroundColor:[C.office,C.tobacco,C.gift],borderRadius:8}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:C.grid},border:{display:false}},x:{grid:{display:false},border:{display:false}}}}
+      });
+      charts.reports.rank=new Chart(document.getElementById('rankChart'),{
+        type:'line',
+        data:{labels:['3月','4月','5月','6月','7月','8月'],
+          datasets:[
+            {label:'办公用品',data:[520,560,540,580,600,620],borderColor:C.office,tension:.4,pointRadius:3,fill:false},
+            {label:'烟酒茶',data:[210,240,220,260,300,310],borderColor:C.tobacco,tension:.4,pointRadius:3,fill:false},
+            {label:'礼品',data:[120,140,130,150,160,52],borderColor:C.gift,tension:.4,pointRadius:3,fill:false}
+          ]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,boxWidth:8}}},scales:{y:{grid:{color:C.grid},border:{display:false}},x:{grid:{display:false},border:{display:false}}}}
+      });
+    }
+  }
+  // init default view charts
+  syncChartTheme();
+  initCharts('dashboard');
+
+  // ---- 数据管理（入库 / 出库后台记录）----
+  const inCols=[
+    {k:'id',t:'单号'},{k:'date',t:'日期'},{k:'name',t:'物资名称'},{k:'category',t:'分类',tag:true},
+    {k:'spec',t:'规格'},{k:'unit',t:'单位'},{k:'qty',t:'数量'},{k:'price',t:'单价(元)'},
+    {k:'amount',t:'金额(元)'},{k:'supplier',t:'供应商'},{k:'handler',t:'经手人'},{k:'warehouse',t:'仓库'},
+    {k:'warranty',t:'质保期(月)'},{k:'expire',t:'到期日'},{k:'status',t:'状态'}
+  ];
+  const outCols=[
+    {k:'id',t:'单号'},{k:'date',t:'日期'},{k:'applicant',t:'领用人'},{k:'dept',t:'部门'},{k:'name',t:'物资名称'},
+    {k:'category',t:'分类',tag:true},{k:'qty',t:'数量'},{k:'unit',t:'单位'},{k:'purpose',t:'用途'},
+    {k:'approver',t:'审批人'},{k:'status',t:'状态'}
+  ];
+  const inboundRecords=[
+    {id:'RK-20260612-001',date:'2026-06-12',name:'飞天茅台',category:'tobacco',spec:'500ml',unit:'瓶',qty:6,price:1499,amount:8994,supplier:'华兴商贸',handler:'李娜',warehouse:'烟酒专用柜 B',status:'已入库',warranty:60},
+    {id:'RK-20260610-002',date:'2026-06-10',name:'A4 复印纸 70g',category:'office',spec:'500张/包',unit:'箱',qty:20,price:185,amount:3700,supplier:'得力办公',handler:'李娜',warehouse:'行政库房 A',status:'已入库'},
+    {id:'RK-20260608-003',date:'2026-06-08',name:'商务礼盒',category:'gift',spec:'组合装',unit:'盒',qty:30,price:268,amount:8040,supplier:'锦上添礼',handler:'王芳',warehouse:'礼品仓储 C',status:'已入库',warranty:12},
+    {id:'RK-20260605-004',date:'2026-06-05',name:'西湖龙井',category:'tobacco',spec:'250g',unit:'盒',qty:15,price:320,amount:4800,supplier:'西湖茶业',handler:'李娜',warehouse:'烟酒专用柜 B',status:'已入库',warranty:2},
+    {id:'RK-20260603-005',date:'2026-06-03',name:'中性签字笔',category:'office',spec:'0.5mm 黑',unit:'支',qty:200,price:1.8,amount:360,supplier:'晨光文具',handler:'李娜',warehouse:'行政库房 A',status:'已入库'},
+    {id:'RK-20260528-006',date:'2026-05-28',name:'五粮液',category:'tobacco',spec:'500ml',unit:'瓶',qty:12,price:899,amount:10788,supplier:'华兴商贸',handler:'李娜',warehouse:'烟酒专用柜 B',status:'已入库',warranty:1},
+    {id:'RK-20260520-007',date:'2026-05-20',name:'商务保温杯',category:'gift',spec:'500ml',unit:'个',qty:25,price:129,amount:3225,supplier:'礼意坊',handler:'王芳',warehouse:'礼品仓储 C',status:'已入库',warranty:1},
+    {id:'RK-20260515-008',date:'2026-05-15',name:'新春礼盒',category:'gift',spec:'组合装',unit:'盒',qty:40,price:198,amount:7920,supplier:'锦上添礼',handler:'王芳',warehouse:'礼品仓储 C',status:'已入库',warranty:3},
+    {id:'RK-20260510-009',date:'2026-05-10',name:'打印墨盒 HP 26A',category:'office',spec:'原装',unit:'个',qty:10,price:320,amount:3200,supplier:'得力办公',handler:'李娜',warehouse:'行政库房 A',status:'待入库',warranty:24}
+  ];
+  inboundRecords.forEach(r=>{ if(r.warranty) r.expire=addMonths(r.date,r.warranty); });
+  const outboundRecords=[
+    {id:'CK-20260612-001',date:'2026-06-12',applicant:'张伟',dept:'办公室',name:'中性签字笔',category:'office',qty:5,unit:'支',purpose:'部门日常办公',approver:'admin',status:'已出库'},
+    {id:'CK-20260611-002',date:'2026-06-11',applicant:'王芳',dept:'销售部',name:'商务礼盒',category:'gift',qty:3,unit:'盒',purpose:'客户拜访礼品',approver:'admin',status:'已出库'},
+    {id:'CK-20260610-003',date:'2026-06-10',applicant:'刘强',dept:'财务部',name:'文件夹（双夹）',category:'office',qty:10,unit:'个',purpose:'档案整理',approver:'admin',status:'已出库'},
+    {id:'CK-20260609-004',date:'2026-06-09',applicant:'陈静',dept:'海外事业部',name:'飞天茅台',category:'tobacco',qty:2,unit:'瓶',purpose:'重要客户接待',approver:'admin',status:'已出库'},
+    {id:'CK-20260608-005',date:'2026-06-08',applicant:'李娜',dept:'办公室',name:'A4 复印纸 70g',category:'office',qty:4,unit:'箱',purpose:'日常打印耗材',approver:'admin',status:'已出库'},
+    {id:'CK-20260607-006',date:'2026-06-07',applicant:'赵敏',dept:'人力资源部',name:'定制雨伞',category:'gift',qty:6,unit:'把',purpose:'员工关怀福利',approver:'admin',status:'待审批'},
+    {id:'CK-20260606-007',date:'2026-06-06',applicant:'周磊',dept:'法务/董办',name:'商务公文包',category:'gift',qty:2,unit:'个',purpose:'商务活动赠礼',approver:'admin',status:'已驳回'},
+    {id:'CK-20260605-008',date:'2026-06-05',applicant:'孙莉',dept:'采购部',name:'西湖龙井',category:'tobacco',qty:8,unit:'盒',purpose:'接待用茶',approver:'admin',status:'已出库'}
+  ];
+  function catTag(c){const m=catMeta[c];return `<span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span>`;}
+  function statusCls(s){ if(s.indexOf('待')>=0)return 'low'; if(s.indexOf('驳')>=0||s.indexOf('取')>=0)return 'out'; return 'ok'; }
+  let activeDataTab='in';
+  function renderData(type,filter){
+    const cols=type==='in'?inCols:outCols;
+    const body=type==='in'?document.getElementById('inBody'):document.getElementById('outBody');
+    const all=type==='in'?inboundRecords:outboundRecords;
+    const f=(filter||'').trim().toLowerCase();
+    const list=all.map((r,i)=>({r,i})).filter(o=>!f || Object.values(o.r).join(' ').toLowerCase().includes(f));
+    body.innerHTML=list.map(({r,i})=>{
+      const cells=cols.slice(1).map(c=>{
+        if(c.k==='category') return `<td>${catTag(r.category)}</td>`;
+        if(c.k==='qty') return `<td class="num">${r.qty}</td>`;
+        if(c.k==='price'||c.k==='amount') return `<td class="num">${r[c.k]}</td>`;
+        if(c.k==='status') return `<td><span class="status ${statusCls(r.status)}">${r.status}</span></td>`;
+        if(c.k==='warranty') return warrantyMonthsCell(r);
+        if(c.k==='expire') return warrantyCell(r);
+        return `<td>${r[c.k]}</td>`;
+      }).join('');
+      return `<tr data-row-rec="${type}:${i}"><td class="code">${r.id}</td>${cells}<td><span class="lnk">查看</span><span class="lnk dl" data-dl-rec="${type}:${i}">下载</span></td></tr>`;
+    }).join('');
+    return list.length;
+  }
+  function renderDataTables(){
+    const f=document.getElementById('dataSearch').value;
+    const nIn=renderData('in',f);
+    const nOut=renderData('out',f);
+    const cnt=activeDataTab==='in'?nIn:nOut;
+    document.getElementById('dataCount').textContent=(activeDataTab==='in'?'入库':'出库')+'共 '+cnt+' 条';
+  }
+  function exportXLSX(rows,filename,opts){
+    try{
+      opts=opts||{};
+      const headerAt=(typeof opts.headerAt==='number')?opts.headerAt:0;
+      const titleMerge=!!opts.titleMerge;
+      if(typeof XLSX==='undefined'){ alert('表格组件未加载，请联网后重试'); return; }
+      const ws=XLSX.utils.aoa_to_sheet(rows);
+      const colCount=rows.reduce((m,r)=>Math.max(m,Array.isArray(r)?r.length:0),0);
+      const rowCount=rows.length;
+      // 列宽：按每列最长内容估算（中文按 2 个字符计）
+      const widths=[];
+      for(let c=0;c<colCount;c++){
+        let max=8;
+        for(let r=0;r<rows.length;r++){
+          const cell=rows[r]&&rows[r][c];
+          if(cell==null) continue;
+          let len=0; const s=String(cell);
+          for(const ch of s) len+=(ch.charCodeAt(0)>255?2:1);
+          if(len>max) max=len;
+        }
+        widths.push({wch:Math.min(Math.max(max+2,10),42)});
+      }
+      ws['!cols']=widths;
+      // 统一行高
+      ws['!rows']=Array.from({length:rowCount},()=>({hpt:22}));
+      // 样式常量
+      const thin={style:'thin',color:{rgb:'BFBFBF'}};
+      const border={top:thin,bottom:thin,left:thin,right:thin};
+      const defaultStyle={
+        font:{name:'Microsoft YaHei',sz:10,color:{rgb:'333333'}},
+        alignment:{horizontal:'left',vertical:'center',wrapText:true},
+        border
+      };
+      const headerStyle={
+        font:{name:'Microsoft YaHei',sz:10,bold:true,color:{rgb:'FFFFFF'}},
+        fill:{patternType:'solid',fgColor:{rgb:'5BC0DE'}},
+        alignment:{horizontal:'center',vertical:'center',wrapText:true},
+        border
+      };
+      const titleStyle={
+        font:{name:'Microsoft YaHei',sz:12,bold:true,color:{rgb:'FFFFFF'}},
+        fill:{patternType:'solid',fgColor:{rgb:'5BC0DE'}},
+        alignment:{horizontal:'center',vertical:'center'},
+        border
+      };
+      // 应用默认样式
+      const range=XLSX.utils.decode_range(ws['!ref']);
+      for(let r=range.s.r;r<=range.e.r;r++){
+        for(let c=range.s.c;c<=range.e.c;c++){
+          const ref=XLSX.utils.encode_cell({r,c});
+          if(!ws[ref]) ws[ref]={v:''};
+          ws[ref].s=Object.assign({},ws[ref].s||{},defaultStyle);
+        }
+      }
+      // 标题行合并居中（仅盘点记录等报告式导出）
+      if(titleMerge && colCount>1){
+        ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:colCount-1}}];
+        for(let c=0;c<colCount;c++){
+          const ref=XLSX.utils.encode_cell({r:0,c});
+          ws[ref].s=Object.assign({},ws[ref].s,titleStyle);
+        }
+      }
+      // 表头行样式
+      if(headerAt>=0 && headerAt<rowCount){
+        const hrow=rows[headerAt];
+        for(let c=0;c<hrow.length;c++){
+          const ref=XLSX.utils.encode_cell({r:headerAt,c});
+          if(!ws[ref]) continue;
+          ws[ref].s=Object.assign({},ws[ref].s,headerStyle);
+        }
+        ws['!freeze']={xSplit:0,ySplit:headerAt+1};
+      }
+      // 数据区对齐策略：根据表头语义智能判断居中/居左/居右
+      // 居右：金额/数值类
+      const rightKeys=['单价','金额','系统库存','实盘数量','差异'];
+      // 居中：单号/编号、日期、到期日、状态、单位、仓库、分类、部门、审批人、用途、数量、质保期、经手人、领用人等文本类
+      const centerKeys=['单号','编号','日期','到期日','状态','单位','仓库','分类','部门','审批人','用途','数量','质保期','经手人','领用人'];
+      // 居左：物资名称、规格、供应商
+      const leftKeys=['物资名称','规格','供应商'];
+      const alignOf=h=>{
+        const s=String(h||'');
+        if(rightKeys.some(k=>s.includes(k))) return 'right';
+        if(centerKeys.some(k=>s.includes(k))) return 'center';
+        if(leftKeys.some(k=>s.includes(k))) return 'left';
+        return 'left';
+      };
+      // 报告式信息区（盘点记录等）：标签居左、值居右
+      if(headerAt>0 && titleMerge){
+        for(let r=1;r<headerAt;r++){
+          const row=rows[r];
+          if(!row || row.length<2) continue;
+          const labelRef=XLSX.utils.encode_cell({r,c:0});
+          const valRef=XLSX.utils.encode_cell({r,c:1});
+          if(ws[labelRef]) ws[labelRef].s=Object.assign({},ws[labelRef].s,{alignment:{horizontal:'left',vertical:'center',wrapText:true},border});
+          if(ws[valRef]) ws[valRef].s=Object.assign({},ws[valRef].s,{alignment:{horizontal:'right',vertical:'center',wrapText:true},border});
+        }
+      }
+      // 表格数据区
+      if(headerAt>=0 && headerAt<rowCount){
+        const hrow=rows[headerAt];
+        for(let c=0;c<colCount;c++){
+          const align=alignOf(hrow[c]);
+          for(let r=headerAt+1;r<rowCount;r++){
+            const ref=XLSX.utils.encode_cell({r,c});
+            if(!ws[ref]) continue;
+            ws[ref].s=Object.assign({},ws[ref].s,{alignment:{horizontal:align,vertical:'center',wrapText:true},border});
+          }
+        }
+      }
+      const wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,'记录');
+      XLSX.writeFile(wb,filename,{cellStyles:true});
+    }catch(e){ alert('导出失败：'+e.message); }
+  }
+  function recToRows(type,rec){
+    const cols=type==='in'?inCols:outCols;
+    const header=cols.map(c=>c.t);
+    const body=cols.map(c=> c.k==='category'? catMeta[rec.category].t : (c.k==='qty'? rec.qty : rec[c.k]));
+    return [header,body];
+  }
+  function downloadRec(type,idx){
+    const rec=(type==='in'?inboundRecords:outboundRecords)[idx];
+    if(!rec) return;
+    exportXLSX(recToRows(type,rec), (type==='in'?'入库记录_':'出库记录_')+rec.id+'.xlsx');
+    toast('正在下载记录','ok','已开始导出该条记录');
+  }
+  function downloadAll(){
+    const type=activeDataTab;
+    const all=type==='in'?inboundRecords:outboundRecords;
+    const cols=type==='in'?inCols:outCols;
+    const header=cols.map(c=>c.t);
+    const body=all.map(r=>cols.map(c=> c.k==='category'? catMeta[r.category].t : (c.k==='qty'? r.qty+' '+(r.unit||'') : r[c.k])));
+    exportXLSX([header].concat(body), (type==='in'?'入库记录':'出库记录')+'_全部.xlsx');
+    toast('正在下载记录','ok','已导出当前筛选的全部记录');
+  }
+  let currentRec=null;
+  function openRec(type,idx){
+    const rec=(type==='in'?inboundRecords:outboundRecords)[idx];
+    if(!rec) return;
+    currentRec={type,idx};
+    const cols=type==='in'?inCols:outCols;
+    document.getElementById('recModalTitle').textContent=(type==='in'?'入库记录详情':'出库记录详情')+' · '+rec.id;
+    document.getElementById('recModalBody').innerHTML=cols.map(c=>{
+      let v;
+      if(c.k==='category') v=catTag(rec.category);
+      else if(c.k==='qty') v=rec.qty;
+      else v=rec[c.k];
+      return `<dt>${c.t}</dt><dd>${v}</dd>`;
+    }).join('');
+    document.getElementById('recModal').classList.add('show');
+  }
+
+  // ---- 质保期预警 ----
+  function warList(){
+    return items.filter(i=>i.warranty).map(i=>({i,dl:daysLeft(i.expire)}))
+      .filter(o=>o.dl!==null && o.dl<=90)
+      .sort((a,b)=>a.dl-b.dl);
+  }
+  function warRow(o){
+    const m=catMeta[o.i.c]; const st=wStatus(o.dl);
+    return `<tr><td>${o.i.n}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="code">${o.i.expire}</td><td class="num">${o.dl}</td><td><span class="status ${st.cls}">${st.txt}</span></td></tr>`;
+  }
+  function renderWarranty(){
+    const list=warList();
+    const wb=document.getElementById('warBody');
+    if(wb) wb.innerHTML = list.length? list.map(warRow).join('') : '<tr><td colspan="5" class="empty">暂无临期 / 已过保物资 🎉</td></tr>';
+    const all=items.filter(i=>i.warranty);
+    const ok=all.filter(i=>daysLeft(i.expire)>90).length;
+    const near=all.filter(i=>{const d=daysLeft(i.expire);return d!==null&&d<=90&&d>=0;}).length;
+    const exp=all.filter(i=>{const d=daysLeft(i.expire);return d!==null&&d<0;}).length;
+    const lg=document.getElementById('warLegend');
+    if(lg) lg.innerHTML=[
+      ['正常 (＞90天)', ok, 'var(--success)'],
+      ['临期 (≤90天)', near, 'var(--accent)'],
+      ['已过期', exp, 'var(--danger)']
+    ].map(([t,n,c])=>`<div class="li"><span class="sw" style="background:${c}"></span><span class="ln">${t}</span><span class="lq">${n} 项</span><span class="pct">${n?Math.round(n/all.length*100):0}%</span></div>`).join('');
+    return list.length;
+  }
+  function openWarModal(){
+    const list=warList();
+    const mb=document.getElementById('warModalBody');
+    mb.innerHTML = list.length? list.map(warRow).join('') : '<tr><td colspan="5" class="empty">暂无临期 / 已过保物资 🎉</td></tr>';
+    const exp=list.filter(o=>o.dl<0).length, near=list.filter(o=>o.dl>=0).length;
+    document.getElementById('warModalNote').innerHTML = list.length
+      ? `当前共有 <b style="color:var(--danger)">${exp}</b> 项已过期、<b style="color:var(--accent)">${near}</b> 项临期（剩余 ≤ 90 天），请尽快安排复检、退换或处置。`
+      : '所有带质保期的物资均在有效期内，无需处理。';
+    document.getElementById('warModal').classList.add('show');
+  }
+  document.getElementById('openWarBtn').addEventListener('click',openWarModal);
+  document.getElementById('warModalClose').addEventListener('click',()=>document.getElementById('warModal').classList.remove('show'));
+  document.getElementById('warModalCloseBtn').addEventListener('click',()=>document.getElementById('warModal').classList.remove('show'));
+  document.getElementById('warModal').addEventListener('click',e=>{ if(e.target.id==='warModal') document.getElementById('warModal').classList.remove('show'); });
+  renderWarranty();
+  function openInv(idx){
+    const i=items[idx]; if(!i) return;
+    const m=catMeta[i.c]; const[st,txt]=statusOf(i.q,i.safe);
+    const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
+    const rows=[
+      ['编号', code+'-'+String(idx+1).padStart(3,'0')],
+      ['物资名称', i.n],
+      ['分类', catTag(i.c)],
+      ['规格', i.s],
+      ['单位', i.u],
+      ['库存数量', i.q+' '+i.u],
+      ['安全库存', i.safe+' '+i.u],
+      ['库存状态', `<span class="status ${st}">${txt}</span>`],
+      ['质保期(月)', i.warranty? i.warranty+' 个月':'无'],
+      ['入库日期', i.inDate||'—'],
+      ['到期日', i.expire||'—'],
+      ['剩余天数', i.expire? (()=>{const dl=daysLeft(i.expire); return `<span class="status ${wStatus(dl).cls}">${wStatus(dl).txt}</span>`;})():'—'],
+      ['库存金额(估算)', '—']
+    ];
+    document.getElementById('invModalTitle').textContent='库存物资详情 · '+i.n;
+    document.getElementById('invModalBody').innerHTML=rows.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('');
+    document.getElementById('invModal').classList.add('show');
+  }
+  document.querySelectorAll('#dataTabs .tab').forEach(t=>t.addEventListener('click',()=>{
+    document.querySelectorAll('#dataTabs .tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelectorAll('#view-data .tabpane').forEach(p=>p.classList.remove('active'));
+    document.getElementById('pane-data-'+t.dataset.tab).classList.add('active');
+    activeDataTab=t.dataset.tab;
+    renderDataTables();
+  }));
+  document.getElementById('dataSearch').addEventListener('input',renderDataTables);
+  document.getElementById('downloadAll').addEventListener('click',downloadAll);
+  document.getElementById('recModalClose').addEventListener('click',()=>document.getElementById('recModal').classList.remove('show'));
+  document.getElementById('recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') document.getElementById('recModal').classList.remove('show'); });
+  document.getElementById('recModalDownload').addEventListener('click',()=>{ if(currentRec) downloadRec(currentRec.type,currentRec.idx); });
+  document.getElementById('invModalClose').addEventListener('click',()=>document.getElementById('invModal').classList.remove('show'));
+  document.getElementById('invModalCloseBtn').addEventListener('click',()=>document.getElementById('invModal').classList.remove('show'));
+  document.getElementById('invModal').addEventListener('click',e=>{ if(e.target.id==='invModal') document.getElementById('invModal').classList.remove('show'); });
+  document.addEventListener('click',e=>{
+    const d=e.target.closest('[data-dl-rec]');
+    if(d){ const p=d.dataset.dlRec.split(':'); downloadRec(p[0],+p[1]); return; }
+    const r=e.target.closest('[data-row-rec]');
+    if(r){ const p=r.dataset.rowRec.split(':'); openRec(p[0],+p[1]); return; }
+    const iv=e.target.closest('[data-row-inv]');
+    if(iv){ openInv(+iv.dataset.rowInv); return; }
+  });
+  renderDataTables();
+
+  // ============ 动画反馈增强 ============
+  // --- 全局 Toast 轻提示 ---
+  function toast(msg,type,sub){
+    type=type||'info';
+    let wrap=document.querySelector('.toast-wrap');
+    if(!wrap){ wrap=document.createElement('div'); wrap.className='toast-wrap'; document.body.appendChild(wrap); }
+    const icons={ok:'✓',warn:'!',err:'✕',info:'i'};
+    const el=document.createElement('div');
+    el.className='toast '+type;
+    el.innerHTML='<span class="ti">'+(icons[type]||'i')+'</span><div class="tx"><b>'+msg+'</b>'+(sub?'<span class="ts">'+sub+'</span>':'')+'</div>';
+    wrap.appendChild(el);
+    requestAnimationFrame(()=>el.classList.add('show'));
+    setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),360); }, type==='err'?3800:2600);
+  }
+
+  // --- KPI 数字滚动 ---
+  function countUp(el){
+    const target=+el.dataset.count; if(!target) return;
+    const dur=950, start=performance.now();
+    const fmt=n=>Math.round(n).toLocaleString('en-US');
+    (function step(t){
+      const p=Math.min(1,(t-start)/dur);
+      const val=target*(1-Math.pow(1-p,3));
+      el.textContent=fmt(val);
+      if(p<1) requestAnimationFrame(step);
+      else { el.textContent=fmt(target); el.classList.add('bump'); setTimeout(()=>el.classList.remove('bump'),560); }
+    })(start);
+  }
+  function runDashboardCounts(){
+    document.querySelectorAll('#view-dashboard .val[data-count]').forEach(el=>{
+      el.textContent='0'; countUp(el);
+    });
+  }
+
+  // --- 按钮涟漪反馈 ---
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('.btn');
+    if(b && b.getBoundingClientRect().width){
+      const r=document.createElement('span'); r.className='ripple';
+      const rect=b.getBoundingClientRect();
+      const size=Math.max(rect.width,rect.height);
+      r.style.width=r.style.height=size+'px';
+      r.style.left=(e.clientX-rect.left-size/2)+'px';
+      r.style.top=(e.clientY-rect.top-size/2)+'px';
+      b.appendChild(r); setTimeout(()=>r.remove(),620);
+    }
+  },true);
+
+  // --- 通用「更多」操作反馈 ---
+  document.addEventListener('click',e=>{
+    const more=e.target.closest('.more');
+    if(more && more.id!=='openWarBtn'){ toast(more.textContent.trim(),'info','演示数据 · 正式版可交互'); }
+  });
+
+  // 演示账号一键登录的反馈 toast 已在 initAuth 内动态绑定（避免渲染时序问题）
+
+  // ============ 安全库存阈值（分类默认 + 单品单独预警） ============
+  const SAFE_KEY='wms_safe';
+  let catDefault={office:25,tobacco:15,gift:20};
+  let safeOverrides={};
+  let safeCat='office';
+  function loadSafe(){
+    try{
+      const raw=localStorage.getItem(SAFE_KEY);
+      if(raw){
+        const o=JSON.parse(raw);
+        if(o && o.defs) catDefault=Object.assign(catDefault,o.defs);
+        if(o && o.overrides) safeOverrides=o.overrides||{};
+      }
+    }catch(e){}
+    items.forEach((it,idx)=>{ it.safe=effSafe(it,idx); });
+  }
+  function effSafe(it,idx){
+    const ov=safeOverrides[idx];
+    return (ov!==undefined && ov!=='' && !isNaN(+ov)) ? (+ov) : (catDefault[it.c]||0);
+  }
+  function isOverridden(idx){
+    const ov=safeOverrides[idx];
+    return (ov!==undefined && ov!=='' && !isNaN(+ov));
+  }
+  function renderSafe(){
+    document.getElementById('def-office').value=catDefault.office;
+    document.getElementById('def-tobacco').value=catDefault.tobacco;
+    document.getElementById('def-gift').value=catDefault.gift;
+    const body=document.getElementById('safeBody');
+    if(!body) return;
+    const list=items.filter(i=>i.c===safeCat);
+    body.innerHTML=list.map(i=>{
+      const idx=items.indexOf(i);
+      const def=catDefault[i.c];
+      const eff=i.safe;
+      const[st,txt]=statusOf(i.q,eff);
+      const overridden=isOverridden(idx);
+      return `<tr data-idx="${idx}">
+        <td title="${i.n}">${i.n}</td>
+        <td class="num">${i.q}${i.u}</td>
+        <td class="num">${def}${i.u}</td>
+        <td><input class="real-input safe-input" type="number" min="0" value="${overridden?safeOverrides[idx]:''}" placeholder="${def}" data-idx="${idx}" /></td>
+        <td><span class="status ${st}">${txt}</span>${overridden?'<span class="ov-tag">单独</span>':''}</td>
+      </tr>`;
+    }).join('');
+    body.querySelectorAll('.safe-input').forEach(inp=>{
+      inp.addEventListener('input',()=>{
+        const idx=+inp.dataset.idx;
+        const it=items[idx];
+        const def=catDefault[it.c];
+        const v=inp.value.trim();
+        safeOverrides[idx]=(v==='')?'':v;
+        const eff=effSafe(it,idx);
+        const[st,txt]=statusOf(it.q,eff);
+        const td=inp.closest('tr').lastElementChild;
+        td.innerHTML=`<span class="status ${st}">${txt}</span>`+(v!==''?'<span class="ov-tag">单独</span>':'');
+      });
+    });
+  }
+  document.querySelectorAll('#safeTabs .chip').forEach(t=>t.addEventListener('click',()=>{
+    document.querySelectorAll('#safeTabs .chip').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active'); safeCat=t.dataset.cat; renderSafe();
+  }));
+  const saveSettings=document.getElementById('saveSettings');
+  if(saveSettings){
+    saveSettings.addEventListener('click',()=>{
+      catDefault.office=Math.max(0,+document.getElementById('def-office').value||0);
+      catDefault.tobacco=Math.max(0,+document.getElementById('def-tobacco').value||0);
+      catDefault.gift=Math.max(0,+document.getElementById('def-gift').value||0);
+      items.forEach((it,idx)=>{ it.safe=effSafe(it,idx); });
+      try{ localStorage.setItem(SAFE_KEY,JSON.stringify({defs:catDefault,overrides:safeOverrides})); }catch(e){}
+      const activeChip=document.querySelector('#invChips .chip.active');
+      renderInv(activeChip ? activeChip.dataset.cat : 'all');
+      renderSafe();
+      const m=document.getElementById('safeMsg'); if(m){ m.textContent='已保存 · 共 '+items.length+' 项物资阈值已更新'; }
+      toast('设置已保存','ok','安全库存阈值已更新');
+    });
+  }
+  const addCat=document.getElementById('addCat');
+  if(addCat) addCat.addEventListener('click',()=>toast('新增分类','info','请在正式版中填写分类信息'));
+  const newCheck=document.getElementById('newCheck');
+  if(newCheck) newCheck.addEventListener('click',()=>toast('新建盘点单','info','请填写盘点计划后提交'));
+  loadSafe();
+  const _ac=document.querySelector('#invChips .chip.active');
+  renderInv(_ac?_ac.dataset.cat:'all');
+  renderSafe();
+
+  // ============ 动画反馈增强 END ============
+
+  // ---- 登录与权限 ----
+  const DEFAULT_ACCOUNTS={
+    sysadmin:{role:'sysadmin',roleName:'系统管理员',user:'sysadmin',name:'系统管理员',pass:'Sys@2026'},
+    admin:{role:'admin',roleName:'管理员',user:'admin',name:'管理员',pass:'Admin@2026'},
+    warehouse:{role:'warehouse',roleName:'仓库管理员',user:'warehouse',name:'仓库管理员',pass:'Wh@2026'},
+    finance:{role:'finance',roleName:'财务人员',user:'finance',name:'财务人员',pass:'Fin@2026'}
+  };
+  const ROLE_ORDER=['sysadmin','admin','warehouse','finance'];
+  const ROLE_PERM={
+    sysadmin:'全部权限：数据录入 / 更改 / 删除、用户管理',
+    admin:'普通权限：数据录入 / 更改 / 删除',
+    warehouse:'普通权限：数据录入 / 更改 / 删除（侧重库存）',
+    finance:'仅浏览 + 盘点管理等对应权限'
+  };
+  const ROLE_MODULES={
+    sysadmin:['dashboard','inventory','inbound','outbound','check','import','data','reports','settings'],
+    admin:['dashboard','inventory','inbound','outbound','check','import','data','reports','settings'],
+    warehouse:['dashboard','inventory','inbound','outbound','check','import','data','reports','settings'],
+    finance:['dashboard','inventory','check','reports']
+  };
+  let currentUser=null;
+  function loadAccounts(){ try{return JSON.parse(localStorage.getItem('wms_accounts'))||JSON.parse(JSON.stringify(DEFAULT_ACCOUNTS));}catch(e){return JSON.parse(JSON.stringify(DEFAULT_ACCOUNTS));} }
+  function saveAccounts(a){ try{localStorage.setItem('wms_accounts',JSON.stringify(a));}catch(e){} }
+  function doLogin(user,pass){
+    const a=loadAccounts();
+    for(const k of ROLE_ORDER){ if(a[k].user===user && a[k].pass===pass){ currentUser={role:a[k].role,name:a[k].name,roleName:a[k].roleName}; try{localStorage.setItem('wms_current',JSON.stringify(currentUser));}catch(e){} hideLogin(); applyPermissions(); if(warList().length) setTimeout(openWarModal,400); return true; } }
+    return false;
+  }
+  function hideLogin(){ document.getElementById('loginScreen').style.display='none'; document.body.style.overflow=''; document.documentElement.style.overflow=''; var app=document.querySelector('.app'); if(app) app.classList.add('ready'); refreshUserUI(); runDashboardCounts(); }
+  function showLogin(){ document.getElementById('loginScreen').style.display='flex'; document.body.style.overflow='hidden'; document.documentElement.style.overflow='hidden'; var app=document.querySelector('.app'); if(app) app.classList.remove('ready'); }
+  function logout(){ try{localStorage.removeItem('wms_current');}catch(e){} currentUser=null; showLogin(); toast('已退出登录','info','您可以随时重新登录'); }
+  function refreshUserUI(){
+    if(!currentUser) return;
+    document.getElementById('tuName').textContent=currentUser.name;
+    document.getElementById('tuRole').textContent=currentUser.roleName;
+    const sf=document.querySelector('.side-foot .nm'); if(sf) sf.textContent=currentUser.name+' · '+currentUser.roleName;
+  }
+  function applyPermissions(){
+    if(!currentUser) return;
+    const mods=ROLE_MODULES[currentUser.role]||[];
+    document.querySelectorAll('.nav-item').forEach(n=>{ n.style.display=mods.includes(n.dataset.view)?'':'none'; });
+    const finance=currentUser.role==='finance';
+    document.querySelectorAll('[data-perm="data"]').forEach(el=>{ el.style.display=finance?'none':''; });
+    const loginCard=document.querySelector('[data-perm="login"]');
+    if(loginCard){
+      if(currentUser.role==='sysadmin'){ loginCard.classList.remove('locked'); setLoginEditable(true); }
+      else { loginCard.classList.add('locked'); setLoginEditable(false); }
+    }
+  }
+  function setLoginEditable(on){
+    document.querySelectorAll('#loginMgmtBody input').forEach(i=>i.disabled=!on);
+    const b=document.getElementById('saveLogin'); if(b) b.style.display=on?'':'none';
+    const sub=document.getElementById('loginMgmtSub'); if(sub) sub.textContent=on?'配置 4 类角色的登录账号与密码，仅系统管理员可修改':'当前账号无权限修改登录设置（仅系统管理员可修改）';
+  }
+  function renderLoginMgmt(){
+    const a=loadAccounts();
+    document.getElementById('loginMgmtBody').innerHTML=ROLE_ORDER.map(k=>{
+      const x=a[k];
+      return `<div style="display:grid;grid-template-columns:170px 1fr 1fr;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px 14px">
+        <div><div style="font-weight:700;font-size:14px">${x.roleName}</div><div class="plan-meta">${ROLE_PERM[k]}</div></div>
+        <div class="field" style="margin:0"><label>登录账号</label><input data-k="${k}" data-f="user" value="${x.user}" /></div>
+        <div class="field" style="margin:0"><label>密码</label><input data-k="${k}" data-f="pass" type="password" value="${x.pass}" /></div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('saveLogin').addEventListener('click',()=>{
+    const a=loadAccounts();
+    document.querySelectorAll('#loginMgmtBody input').forEach(i=>{ a[i.dataset.k][i.dataset.f]=i.value; });
+    saveAccounts(a);
+    document.getElementById('loginMsg').textContent='✓ 登录设置已保存';
+    toast('登录设置已保存','ok','4 类角色账号密码已更新');
+  });
+  function submitLogin(){
+    const u=document.getElementById('loginUser').value.trim();
+    const p=document.getElementById('loginPass').value;
+    if(doLogin(u,p)){ document.getElementById('loginErr').textContent=''; }
+    else {
+      document.getElementById('loginErr').textContent='账号或密码错误，请重试';
+      const lc=document.querySelector('.login-card');
+      lc.classList.remove('shake'); void lc.offsetWidth; lc.classList.add('shake');
+      toast('登录失败','err','账号或密码错误，请重试');
+    }
+  }
+  document.getElementById('loginBtn').addEventListener('click',submitLogin);
+  document.getElementById('loginPass').addEventListener('keydown',e=>{ if(e.key==='Enter') submitLogin(); });
+  document.getElementById('logoutBtn').addEventListener('click',logout);
+  (function initAuth(){
+    renderLoginMgmt();
+    // 每次打开网址都先回到登录页（不自动登录，关闭/刷新后需重新登录）
+    try{ localStorage.removeItem('wms_current'); }catch(e){}
+    currentUser=null;
+    showLogin();
+    // 预加载登录背景图：图片就位后再淡入登录层与卡片（先背景后窗口，消除闪黑）
+    (function preloadLoginBg(){
+      var ls=document.getElementById('loginScreen'); if(!ls) return;
+      var done=false;
+      var show=function(){ if(done) return; done=true; ls.classList.add('bg-ready'); };
+      var img=new Image(); img.onload=show; img.onerror=show; img.src='login-bg.png';
+      setTimeout(show,1500);
+    })();
+    applyPermissions();
+  })();
+</script>
+</body>
+</html>
