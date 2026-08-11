@@ -297,6 +297,8 @@
   .pill.join{background:rgba(47,230,160,.15);color:#6ff0bf}
   .real-input{width:72px;height:34px;border:1.5px solid var(--line);border-radius:8px;text-align:center;font-family:var(--font);font-size:14px;color:var(--ink);outline:none;background:rgba(255,255,255,.04);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .real-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.2)}
+  @keyframes cardPulse{0%{box-shadow:0 0 0 0 rgba(91,140,255,.55)}70%{box-shadow:0 0 0 10px rgba(91,140,255,0)}100%{box-shadow:0 0 0 0 rgba(91,140,255,0)}}
+  .pulse{animation:cardPulse .85s ease 2;border-color:rgba(91,140,255,.55)!important}
   .plan-meta{font-size:12px;color:var(--ink-3);margin-top:2px}
   .dropzone{border:2px dashed var(--line);border-radius:16px;padding:38px;text-align:center;background:rgba(255,255,255,.025);cursor:pointer;transition:all .18s;margin-top:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   .dropzone:hover{border-color:var(--primary);background:rgba(91,140,255,.1)}
@@ -383,24 +385,28 @@
   .lnk.dl{color:#ffb088}
   .lnk+.lnk{margin-left:10px}
   /* 数据管理/库存表格：表头加大、单元格居中、字号统一、比例协调 */
-  .data-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;line-height:1.4}
-  .data-table th,.data-table td{white-space:nowrap;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;text-align:center}
+  .table-scroll{overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+  .table-scroll::-webkit-scrollbar{height:8px}
+  .table-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:8px}
+  [data-theme="light"] .table-scroll::-webkit-scrollbar-thumb{background:rgba(20,30,60,.18)}
+  .data-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:12px;line-height:1.35}
+  .data-table th,.data-table td{white-space:normal;word-break:break-word;vertical-align:middle;overflow:visible;text-align:center}
   .data-table thead th{
-    padding:8px 8px;font-size:14px;font-weight:700;color:var(--ink-3);
+    padding:7px 6px;font-size:13px;font-weight:700;color:var(--ink-3);
     background:rgba(255,255,255,.04);
     border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-    letter-spacing:.6px;
+    letter-spacing:.3px;
   }
   .data-table thead th:first-child{border-top-left-radius:10px}
   .data-table thead th:last-child{border-top-right-radius:10px}
-  .data-table tbody td{padding:6px 8px;font-size:13px;color:var(--ink);border-bottom:1px solid var(--line-2)}
+  .data-table tbody td{padding:6px 6px;font-size:12px;color:var(--ink);border-bottom:1px solid var(--line-2)}
   .data-table tbody tr{cursor:pointer;transition:background .15s}
   .data-table tbody tr:hover{background:rgba(255,255,255,.06)}
   .data-table tbody tr:active{background:rgba(255,255,255,.1)}
   .data-table .status,.data-table .tag{font-size:12px;padding:3px 9px;display:inline-block;vertical-align:middle}
-  .data-table .lnk,.data-table .row-act{font-size:13px}
-  .cell-act{display:inline-flex;gap:6px;justify-content:center;flex-wrap:nowrap}
-  .cell-act button{font:inherit;cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink-2);padding:3px 9px;border-radius:7px;font-size:12px;transition:all .15s;white-space:nowrap}
+  .data-table .lnk,.data-table .row-act{font-size:12px}
+  .cell-act{display:inline-flex;gap:5px;justify-content:center;flex-wrap:wrap}
+  .cell-act button{font:inherit;cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink-2);padding:2px 7px;border-radius:7px;font-size:11px;transition:all .15s;white-space:nowrap}
   .cell-act button:hover{background:rgba(91,140,255,.16);border-color:rgba(91,140,255,.4);color:#cdd9ff}
   .cell-act button.del:hover{background:rgba(255,90,90,.16);border-color:rgba(255,90,90,.45);color:#ffb3b3}
   [data-theme="light"] .cell-act button{color:#33405c;background:rgba(20,30,60,.04)}
@@ -895,8 +901,8 @@
             </div>
           </div>
           <div class="card">
-            <div class="panel-head"><div><h3>待审批领用</h3><div class="sub"><span id="pendingOutCount">0</span> 条待处理</div></div><span class="more" id="approveAll">全部审批</span></div>
-            <div class="rec-list" id="pendingOutList"></div>
+            <div class="panel-head"><div><h3>最近出库记录</h3><div class="sub">最新 <span id="recentOutCount">0</span> 条领用</div></div><span class="more" id="viewAllOut">查看全部</span></div>
+            <div class="rec-list" id="recentOutList"></div>
           </div>
         </div>
       </section>
@@ -964,8 +970,8 @@
           </div>
 
           <div class="card">
-            <div class="panel-head"><div><h3>最近盘点记录</h3><div class="sub">盘点任务流水</div></div><span class="more">全部记录</span></div>
-            <div class="timeline">
+            <div class="panel-head"><div><h3>最近盘点记录</h3><div class="sub">盘点任务流水</div></div><span class="more" id="allCheckRecords">全部记录</span></div>
+            <div class="timeline" id="checkTimeline">
               <div class="tl-item"><div class="tl-dot in">🧮</div><div class="tl-body"><div class="t1">2026 Q1 季度盘点完成</div><div class="t2">李娜 · 全盘 36 项 · 无差异</div></div><div class="tl-time">03-31</div></div>
               <div class="tl-item"><div class="tl-dot warn">⚠️</div><div class="tl-body"><div class="t1">Q2 季度盘点进行中</div><div class="t2">李娜 · 已盘 28/36 项</div></div><div class="tl-time">进行中</div></div>
               <div class="tl-item"><div class="tl-dot out">🤝</div><div class="tl-body"><div class="t1">年中全面盘点待启动</div><div class="t2">牵头：李娜 · 监盘：赵敏（财务）</div></div><div class="tl-time">06-30</div></div>
@@ -976,7 +982,7 @@
         </div>
 
         <!-- 盘点单录入 -->
-        <div class="card mt">
+        <div class="card mt" id="checkEntryCard">
           <div class="panel-head"><div><h3>盘点单录入 · 实盘核对</h3><div class="sub">录入实盘数量，系统自动计算账实差异</div></div></div>
           <div class="form-grid" style="padding:16px 20px 4px">
             <div class="field"><label>盘点类型</label><select><option>季度盘点（自盘）</option><option>年度盘点（联合）</option></select></div>
@@ -1392,6 +1398,17 @@
     });
   }
   renderCheck();
+  const checkRecords=[
+    {title:'2026 Q1 季度盘点完成',sub:'李娜 · 全盘 36 项 · 无差异',date:'03-31',dot:'in'},
+    {title:'Q2 季度盘点进行中',sub:'李娜 · 已盘 28/36 项',date:'进行中',dot:'warn'},
+    {title:'年中全面盘点待启动',sub:'牵头：李娜 · 监盘：赵敏（财务）',date:'06-30',dot:'out'},
+    {title:'2025 年末全面盘点归档',sub:'联合盘点 · 盘亏 ¥1,240 已报批',date:'2025-12-31',dot:'in'}
+  ];
+  function renderCheckTimeline(){
+    const el=document.getElementById('checkTimeline'); if(!el) return;
+    el.innerHTML=checkRecords.map(r=>`<div class="tl-item"><div class="tl-dot ${r.dot}">${r.dot==='in'?'🧮':r.dot==='warn'?'⚠️':'🤝'}</div><div class="tl-body"><div class="t1">${r.title}</div><div class="t2">${r.sub}</div></div><div class="tl-time">${r.date}</div></div>`).join('');
+  }
+  renderCheckTimeline();
   document.querySelectorAll('#checkTabs .tab').forEach(t=>t.addEventListener('click',()=>{
     document.querySelectorAll('#checkTabs .tab').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
@@ -1433,7 +1450,12 @@
     checkExportData.items.forEach(it=>aoa.push([it.n,it.c,it.u,it.sys,it.real,it.d,it.st]));
     const headerAt=checkExportData.info.length+2;
     exportXLSX(aoa,'盘点记录_'+checkExportData.info[0][1]+'.xlsx',{headerAt,titleMerge:true});
-    toast('已导出 Excel','ok','盘点记录已生成 .xlsx');
+    // 归档到「最近盘点记录」时间线
+    const info=checkExportData.info;
+    const diffCount=checkExportData.items.filter(i=>i.d!==0).length;
+    checkRecords.unshift({title:(info[0][1]||'盘点')+' 完成',sub:(info[1][1]||'—')+' · '+checkExportData.items.length+' 项 · '+(diffCount?('差异 '+diffCount+' 项'):'无差异'),date:info[4][1]||new Date().toISOString().slice(0,10),dot:diffCount?'warn':'in'});
+    renderCheckTimeline();
+    toast('已导出 Excel 并归档','ok','盘点记录已生成 .xlsx 并已归入最近记录');
   }
   const dcBtn=document.getElementById('downloadCheck');
   if(dcBtn) dcBtn.addEventListener('click',openCheckModal);
@@ -2032,8 +2054,7 @@
     if(!applicant||!cat||!name||isNaN(qty)||qty<=0){ toast('请完整填写领用人/分类/名称/数量','warn','以上为必填项'); return; }
     const rec={id:genId('CK'),date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit:'件',purpose,approver,status:'待审批'};
     outboundRecords.unshift(rec);
-    const pl=document.querySelector('#view-outbound .rec-list');
-    if(pl){ pl.insertAdjacentHTML('afterbegin', `<div class="rec"><div class="ri">${ICON[cat]}</div><div><div class="rt">${applicant} 申请 ${name} ×${qty}</div><div class="rs">${dept} · ${purpose||'—'}</div></div><div class="rq out">−${qty}</div></div>`); }
+    renderRecentOut(); renderOutBadge();
     renderDataTables();
     resetOutbound();
     toast('申请已提交','ok',`${applicant} 的 ${name} ×${qty} 领用申请已提交，待审批`);
@@ -2151,7 +2172,7 @@
     recEditFields[recEditType].forEach(f=>{ const el=document.getElementById('recF_'+f.k); if(el) rec[f.k]=(f.ty==='number')?(parseFloat(el.value)||0):el.value; });
     if(recEditType==='in'){ rec.amount=+(rec.qty*(rec.price||0)).toFixed(2); if(rec.warranty) rec.expire=addMonths(rec.date,rec.warranty); else rec.expire=undefined; }
     closeRecEdit();
-    renderDataTables(); renderInv('all'); renderPendingOut();
+    renderDataTables(); renderInv('all'); renderRecentOut(); renderOutBadge();
     toast('记录已更新','ok','修改后的记录已保存');
   }
   function closeRecEdit(){ document.getElementById('recEditModal').classList.remove('show'); }
@@ -2160,19 +2181,26 @@
     if(!confirm('确定删除该记录「'+rec.id+'」吗？此操作不可撤销。')) return;
     if(type==='in'){ inboundRecords.splice(idx,1); if(rec.status==='已入库'){ const it=items.find(i=>i.n===rec.name&&i.c===rec.category); if(it) it.q=Math.max(0,it.q-rec.qty); } }
     else { outboundRecords.splice(idx,1); }
-    renderDataTables(); renderInv('all'); renderPendingOut();
+    renderDataTables(); renderInv('all'); renderRecentOut(); renderOutBadge();
     toast('记录已删除','ok','已移除该条记录');
   }
 
-  // ============ 出库领用：待审批列表动态渲染 ============
-  function renderPendingOut(){
-    const list=outboundRecords.filter(r=>r.status==='待审批');
-    const el=document.getElementById('pendingOutList'); if(!el) return;
-    el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${r.applicant} 申请 ${r.name} ×${r.qty}</div><div class="rs">${r.dept} · ${r.purpose||'—'}</div></div><div class="rq out">−${r.qty}</div></div>`).join('')
-      : '<div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无待审批的领用申请 🎉</div>';
-    const n=list.length;
-    const cnt=document.getElementById('pendingOutCount'); if(cnt) cnt.textContent=n;
-    const badge=document.getElementById('outPendingBadge'); if(badge){ badge.textContent=n; badge.style.display=n?'':'none'; }
+  // ============ 出库领用：最近出库记录 ============
+  function renderOutBadge(){
+    const n=outboundRecords.filter(r=>r.status==='待审批').length;
+    const badge=document.getElementById('outPendingBadge');
+    if(badge){ badge.textContent=n; badge.style.display=n?'':'none'; }
+  }
+  function renderRecentOut(){
+    const list=outboundRecords.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
+    const el=document.getElementById('recentOutList'); if(!el) return;
+    el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${r.applicant} 领用 ${r.name} ×${r.qty}</div><div class="rs">${r.dept} · ${r.purpose||'—'} · ${r.date}</div></div><div class="rq out">−${r.qty}</div></div>`).join('')
+      : '<div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无出库记录</div>';
+    const cnt=document.getElementById('recentOutCount'); if(cnt) cnt.textContent=list.length;
+  }
+  function viewAllOut(){
+    const nav=document.querySelector('.nav-item[data-view="data"]'); if(nav) nav.click();
+    setTimeout(()=>{ const t=document.querySelector('#dataTabs .tab[data-tab="out"]'); if(t) t.click(); },40);
   }
 
   // ============ 按钮接线 ============
@@ -2186,13 +2214,8 @@
   document.getElementById('recEditClose').addEventListener('click',closeRecEdit);
   document.getElementById('recEditCancel').addEventListener('click',closeRecEdit);
   document.getElementById('recEditModal').addEventListener('click',e=>{ if(e.target.id==='recEditModal') closeRecEdit(); });
-  document.getElementById('approveAll').addEventListener('click',()=>{
-    const list=outboundRecords.filter(r=>r.status==='待审批');
-    if(!list.length){ toast('没有待审批的领用','info'); return; }
-    list.forEach(r=>r.status='已出库');
-    renderPendingOut(); renderDataTables(); toast('已全部审批','ok','待审批领用已通过');
-  });
-  renderPendingOut();
+  document.getElementById('viewAllOut').addEventListener('click',viewAllOut);
+  renderRecentOut(); renderOutBadge();
 
   // ============ 动画反馈增强 ============
   // --- 全局 Toast 轻提示 ---
@@ -2245,7 +2268,7 @@
   // --- 通用「更多」操作反馈 ---
   document.addEventListener('click',e=>{
     const more=e.target.closest('.more');
-    if(more && more.id!=='openWarBtn' && more.id!=='approveAll'){ toast(more.textContent.trim(),'info',''); }
+    if(more && more.id!=='openWarBtn' && more.id!=='viewAllOut' && more.id!=='allCheckRecords'){ toast(more.textContent.trim(),'info',''); }
   });
 
   // 演示账号一键登录的反馈 toast 已在 initAuth 内动态绑定（避免渲染时序问题）
@@ -2331,7 +2354,14 @@
   const addCat=document.getElementById('addCat');
   if(addCat) addCat.addEventListener('click',()=>toast('新增分类','info','请在正式版中填写分类信息'));
   const newCheck=document.getElementById('newCheck');
-  if(newCheck) newCheck.addEventListener('click',()=>toast('新建盘点单','info','请填写盘点计划后提交'));
+  if(newCheck) newCheck.addEventListener('click',()=>{
+    const card=document.getElementById('checkEntryCard');
+    if(card){ card.scrollIntoView({behavior:'smooth',block:'center'}); card.classList.add('pulse'); setTimeout(()=>card.classList.remove('pulse'),1800); }
+    const sel=card?card.querySelector('select'):null; if(sel) setTimeout(()=>sel.focus(),450);
+    toast('新建盘点单','info','请在下方录入实盘数量，完成后点击「下载盘点记录」即可归档');
+  });
+  const allCheck=document.getElementById('allCheckRecords');
+  if(allCheck) allCheck.addEventListener('click',()=>{ renderCheckTimeline(); const tl=document.getElementById('checkTimeline'); if(tl) tl.scrollIntoView({behavior:'smooth',block:'center'}); toast('全部记录','info','共 '+checkRecords.length+' 条盘点记录'); });
   loadSafe();
   const _ac=document.querySelector('#invChips .chip.active');
   renderInv(_ac?_ac.dataset.cat:'all');
