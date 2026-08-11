@@ -11,8 +11,8 @@
   @font-face{font-family:'HarmonyOS Sans';font-weight:500;font-style:normal;font-display:swap;src:url('https://cdn.jsdelivr.net/npm/@fontpkg/harmony-os-sans@1.0.3/HarmonyOS_Sans_Medium.ttf') format('truetype');}
   @font-face{font-family:'HarmonyOS Sans';font-weight:700;font-style:normal;font-display:swap;src:url('https://cdn.jsdelivr.net/npm/@fontpkg/harmony-os-sans@1.0.3/HarmonyOS_Sans_Bold.ttf') format('truetype');}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="./chart.umd.min.js"></script>
+<script src="./xlsx.bundle.js"></script>
 <style>
   :root{
     --primary:#5b8cff;
@@ -836,21 +836,21 @@
             <div class="section-title">入库登记</div>
             <div class="section-sub">登记新到货物资，系统自动更新库存</div>
             <div class="form-grid">
-              <div class="field"><label>物资分类</label><select><option>办公用品</option><option>烟酒茶</option><option>礼品</option></select></div>
-              <div class="field"><label>物资名称</label><input placeholder="如：A4 复印纸 70g" /></div>
-              <div class="field"><label>入库数量</label><input placeholder="0" type="number" /></div>
+              <div class="field"><label>物资分类</label><select id="inCat"><option>办公用品</option><option>烟酒茶</option><option>礼品</option></select></div>
+              <div class="field"><label>物资名称</label><input id="inName" placeholder="如：A4 复印纸 70g" /></div>
+              <div class="field"><label>入库数量</label><input id="inQty" placeholder="0" type="number" /></div>
               <div class="field"><label>单位</label><input id="inUnit" list="unitOptions" placeholder="可选预设或输入自定义单位" autocomplete="off" /><datalist id="unitOptions"><option value="箱"></option><option value="个"></option><option value="条"></option><option value="瓶"></option><option value="盒"></option><option value="支"></option><option value="把"></option><option value="件"></option><option value="袋"></option><option value="包"></option><option value="套"></option><option value="台"></option><option value="本"></option><option value="卷"></option><option value="千克"></option><option value="公斤"></option><option value="克"></option><option value="升"></option><option value="毫升"></option><option value="米"></option></datalist></div>
-              <div class="field"><label>单价（元）</label><input placeholder="0.00" type="number" /></div>
-              <div class="field"><label>供应商</label><input placeholder="如：得力办公" /></div>
-              <div class="field"><label>经手人</label><input placeholder="李娜" /></div>
-              <div class="field"><label>入库仓库</label><select><option>行政库房 A</option><option>烟酒专用柜 B</option><option>礼品仓储 C</option></select></div>
+              <div class="field"><label>单价（元）</label><input id="inPrice" placeholder="0.00" type="number" /></div>
+              <div class="field"><label>供应商</label><input id="inSupplier" placeholder="如：得力办公" /></div>
+              <div class="field"><label>经手人</label><input id="inHandler" placeholder="李娜" /></div>
+              <div class="field"><label>入库仓库</label><select id="inWarehouse"><option>行政库房 A</option><option>烟酒专用柜 B</option><option>礼品仓储 C</option></select></div>
               <div class="field"><label>入库日期</label><input type="date" id="inDate" value="2026-08-06" /></div>
               <div class="field"><label>质保期(月) <span style="color:var(--ink-3);font-weight:400">选填</span></label><input type="number" id="inWarranty" placeholder="如：12（烟酒茶/礼品类必填）" min="0" /></div>
-              <div class="field full"><label>备注</label><textarea placeholder="选填：批次、发票号、验收情况…"></textarea></div>
+              <div class="field full"><label>备注</label><textarea id="inNote" placeholder="选填：批次、发票号、验收情况…"></textarea></div>
             </div>
             <div style="display:flex;gap:12px;margin-top:18px">
-              <button class="btn btn-primary" style="flex:1;justify-content:center" data-perm="data">✓ 确认入库</button>
-              <button class="btn btn-ghost" data-perm="data">重置</button>
+              <button id="confirmInbound" class="btn btn-primary" style="flex:1;justify-content:center" data-perm="data">✓ 确认入库</button>
+              <button id="resetInbound" class="btn btn-ghost" data-perm="data">重置</button>
             </div>
           </div>
           <div class="card">
@@ -873,17 +873,17 @@
             <div class="section-title">领用申请</div>
             <div class="section-sub">员工发起领用，管理员审批后出库</div>
             <div class="form-grid">
-              <div class="field"><label>领用人</label><input placeholder="如：张伟" /></div>
-              <div class="field"><label>所属部门</label><select><option>总经理</option><option>财务总监</option><option>项目经理</option><option>办公室</option><option>财务部</option><option>海外事业部</option><option>销售部</option><option>采购部</option><option>人力资源部</option><option>法务/董办</option></select></div>
-              <div class="field"><label>物资分类</label><select><option>办公用品</option><option>烟酒茶</option><option>礼品</option></select></div>
-              <div class="field"><label>物资名称</label><input placeholder="如：签字笔" /></div>
-              <div class="field"><label>领用数量</label><input placeholder="0" type="number" /></div>
-              <div class="field"><label>审批人</label><input placeholder="admin" /></div>
-              <div class="field full"><label>用途说明</label><textarea placeholder="如：部门日常办公 / 客户拜访礼品…"></textarea></div>
+              <div class="field"><label>领用人</label><input id="outApplicant" placeholder="如：张伟" /></div>
+              <div class="field"><label>所属部门</label><select id="outDept"><option>总经理</option><option>财务总监</option><option>项目经理</option><option>办公室</option><option>财务部</option><option>海外事业部</option><option>销售部</option><option>采购部</option><option>人力资源部</option><option>法务/董办</option></select></div>
+              <div class="field"><label>物资分类</label><select id="outCat"><option>办公用品</option><option>烟酒茶</option><option>礼品</option></select></div>
+              <div class="field"><label>物资名称</label><input id="outName" placeholder="如：签字笔" /></div>
+              <div class="field"><label>领用数量</label><input id="outQty" placeholder="0" type="number" /></div>
+              <div class="field"><label>审批人</label><input id="outApprover" placeholder="admin" /></div>
+              <div class="field full"><label>用途说明</label><textarea id="outPurpose" placeholder="如：部门日常办公 / 客户拜访礼品…"></textarea></div>
             </div>
             <div style="display:flex;gap:12px;margin-top:18px">
-              <button class="btn btn-primary" style="flex:1;justify-content:center" data-perm="data">📨 提交申请</button>
-              <button class="btn btn-ghost" data-perm="data">存草稿</button>
+              <button id="submitOutbound" class="btn btn-primary" style="flex:1;justify-content:center" data-perm="data">📨 提交申请</button>
+              <button id="draftOutbound" class="btn btn-ghost" data-perm="data">存草稿</button>
             </div>
           </div>
           <div class="card">
@@ -1420,6 +1420,7 @@
     return '';
   }
   function handleFile(file){
+    if(typeof XLSX==='undefined'){ alert('表格组件未加载，请检查网络后重试'); return; }
     const reader=new FileReader();
     reader.onload=e=>{
       try{
@@ -1509,15 +1510,20 @@
 
   // ---- Charts ----
   const C={office:'#5b8cff',tobacco:'#ff8a4c',gift:'#c08bff',ink:'#aeb9d4',grid:'rgba(255,255,255,.08)'};
-  Chart.defaults.font.family="'HarmonyOS Sans','PingFang SC','Microsoft YaHei',sans-serif";
-  Chart.defaults.color=C.ink;
+  // 防御：本地 chart 库若因任何原因未加载，也不影响登录/导航/主题等核心功能
+  const CHART_OK = (typeof window.Chart !== 'undefined');
+  if(CHART_OK){
+    Chart.defaults.font.family="'HarmonyOS Sans','PingFang SC','Microsoft YaHei',sans-serif";
+    Chart.defaults.color=C.ink;
+  }
   function syncChartTheme(){
     const light=document.documentElement.getAttribute('data-theme')==='light';
     C.ink= light ? '#5b6577' : '#aeb9d4';
     C.grid= light ? 'rgba(20,30,60,.08)' : 'rgba(255,255,255,.08)';
-    Chart.defaults.color=C.ink;
+    if(CHART_OK) Chart.defaults.color=C.ink;
   }
   function refreshCharts(){
+    if(!CHART_OK) return;
     syncChartTheme();
     Object.keys(charts).forEach(v=>{
       Object.values(charts[v]).forEach(c=>{ try{ c.destroy(); }catch(e){} });
@@ -1566,6 +1572,7 @@
   document.addEventListener('webkitfullscreenchange',syncFsIcon);
   syncFsIcon();
   function initCharts(v){
+    if(!CHART_OK) return;
     if(v==='dashboard'){
       charts.dashboard={};
       charts.dashboard.trend=new Chart(document.getElementById('trendChart'),{
@@ -1608,8 +1615,7 @@
     }
   }
   // init default view charts
-  syncChartTheme();
-  initCharts('dashboard');
+  if(CHART_OK){ syncChartTheme(); initCharts('dashboard'); }
 
   // ---- 数据管理（入库 / 出库后台记录）----
   const inCols=[
@@ -1916,6 +1922,66 @@
     if(iv){ openInv(+iv.dataset.rowInv); return; }
   });
   renderDataTables();
+
+  // ============ 入库 / 出库 真实写入逻辑 ============
+  function genId(prefix){
+    const d=new Date(), p=n=>String(n).padStart(2,'0');
+    const ymd=''+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate());
+    const rnd=String(Math.floor(Math.random()*900)+100);
+    return prefix+'-'+ymd+'-'+rnd;
+  }
+  const ICON={office:'📄',tobacco:'🍶',gift:'🎁'};
+  function resetInbound(){
+    ['inName','inQty','inPrice','inSupplier','inHandler','inNote'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
+    const w=document.getElementById('inWarranty'); if(w) w.value='';
+  }
+  document.getElementById('confirmInbound').addEventListener('click',()=>{
+    const name=document.getElementById('inName').value.trim();
+    const cat=normCat(document.getElementById('inCat').value);
+    const qty=parseFloat(document.getElementById('inQty').value);
+    const unit=document.getElementById('inUnit').value.trim()||'件';
+    const price=parseFloat(document.getElementById('inPrice').value)||0;
+    if(!name||!cat||isNaN(qty)||qty<=0){ toast('请完整填写名称/分类/数量','warn','物资分类、名称与有效数量为必填项'); return; }
+    const supplier=document.getElementById('inSupplier').value.trim();
+    const handler=document.getElementById('inHandler').value.trim()||'—';
+    const warehouse=document.getElementById('inWarehouse').value;
+    const date=document.getElementById('inDate').value||new Date().toISOString().slice(0,10);
+    const warranty=parseInt(document.getElementById('inWarranty').value)||0;
+    const amount=+(qty*price).toFixed(2);
+    const rec={id:genId('RK'),date,name,category:cat,spec:'—',unit,qty,price,amount,supplier,handler,warehouse,status:'已入库',warranty};
+    if(warranty) rec.expire=addMonths(date,warranty);
+    inboundRecords.unshift(rec);
+    const exist=items.find(i=>i.n===name && i.c===cat);
+    if(exist){ exist.q+=qty; if(warranty&&!exist.warranty){exist.warranty=warranty; exist.inDate=date; exist.expire=addMonths(date,warranty);} }
+    else { const ni={c:cat,n:name,s:'—',u:unit,q:qty,safe:catDefault[cat]||10,warranty:warranty||undefined,inDate:date}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
+    const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all');
+    renderDataTables(); renderWarranty();
+    const rl=document.querySelector('#view-inbound .rec-list');
+    if(rl){ rl.insertAdjacentHTML('afterbegin', `<div class="rec"><div class="ri">${ICON[cat]}</div><div><div class="rt">${name} ×${qty} ${unit}</div><div class="rs">${catMeta[cat].t} · ${supplier||'—'} · ${handler}</div></div><div class="rq in">+${qty}</div></div>`); }
+    resetInbound();
+    toast('入库成功','ok',`${name} ×${qty}${unit} 已登记并入库存`);
+  });
+  document.getElementById('resetInbound').addEventListener('click',resetInbound);
+
+  function resetOutbound(){ ['outApplicant','outName','outQty','outApprover','outPurpose'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';}); }
+  document.getElementById('submitOutbound').addEventListener('click',()=>{
+    const applicant=document.getElementById('outApplicant').value.trim();
+    const dept=document.getElementById('outDept').value;
+    const cat=normCat(document.getElementById('outCat').value);
+    const name=document.getElementById('outName').value.trim();
+    const qty=parseFloat(document.getElementById('outQty').value);
+    const approver=document.getElementById('outApprover').value.trim()||'admin';
+    const purpose=document.getElementById('outPurpose').value.trim();
+    if(!applicant||!cat||!name||isNaN(qty)||qty<=0){ toast('请完整填写领用人/分类/名称/数量','warn','以上为必填项'); return; }
+    const rec={id:genId('CK'),date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit:'件',purpose,approver,status:'待审批'};
+    outboundRecords.unshift(rec);
+    const pl=document.querySelector('#view-outbound .rec-list');
+    if(pl){ pl.insertAdjacentHTML('afterbegin', `<div class="rec"><div class="ri">${ICON[cat]}</div><div><div class="rt">${applicant} 申请 ${name} ×${qty}</div><div class="rs">${dept} · ${purpose||'—'}</div></div><div class="rq out">−${qty}</div></div>`); }
+    renderDataTables();
+    resetOutbound();
+    toast('申请已提交','ok',`${applicant} 的 ${name} ×${qty} 领用申请已提交，待审批`);
+  });
+  document.getElementById('draftOutbound').addEventListener('click',()=>{ toast('草稿已暂存','info','演示环境：草稿仅本地暂存'); resetOutbound(); });
 
   // ============ 动画反馈增强 ============
   // --- 全局 Toast 轻提示 ---
