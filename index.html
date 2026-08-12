@@ -944,23 +944,23 @@
         <div class="grid kpi-row">
           <div class="card kpi">
             <div class="top"><div class="lbl">年度盘点计划</div><div class="ic">🗓️</div></div>
-            <div class="val">6 次</div>
-            <div class="plan-meta">季度盘点 4 次 + 年度盘点 2 次</div>
+            <div class="val" id="kpiPlanTotal">6 次</div>
+            <div class="plan-meta">季度盘点 + 年度盘点（实时统计）</div>
           </div>
           <div class="card kpi">
             <div class="top"><div class="lbl">已完成盘点</div><div class="ic">✅</div></div>
-            <div class="val">1 / 6</div>
-            <div class="trend up">▲ 2026 Q1 已归档</div>
+            <div class="val" id="kpiPlanDone">0 / 0</div>
+            <div class="trend up" id="kpiDoneTrend">▲ 暂无已归档盘点</div>
           </div>
           <div class="card kpi">
             <div class="top"><div class="lbl">盘点差异项</div><div class="ic">⚠️</div></div>
-            <div class="val">3 项</div>
-            <div class="plan-meta">待复核确认</div>
+            <div class="val" id="kpiDiffCount">0 项</div>
+            <div class="plan-meta">实时账实差异（录入后更新）</div>
           </div>
           <div class="card kpi">
             <div class="top"><div class="lbl">盘亏 / 盘盈</div><div class="ic">⚖️</div></div>
-            <div class="val">¥ 1,240</div>
-            <div class="trend down">盘亏净额（需处理）</div>
+            <div class="val" id="kpiNetQty">0 项</div>
+            <div class="trend" id="kpiNetTrend">账实相符</div>
           </div>
         </div>
 
@@ -1001,12 +1001,7 @@
 
           <div class="card">
             <div class="panel-head"><div><h3>最近盘点记录</h3><div class="sub">盘点任务流水</div></div><span class="more" id="allCheckRecords">全部记录</span></div>
-            <div class="timeline" id="checkTimeline">
-              <div class="tl-item"><div class="tl-dot in">🧮</div><div class="tl-body"><div class="t1">2026 Q1 季度盘点完成</div><div class="t2">李娜 · 全盘 36 项 · 无差异</div></div><div class="tl-time">03-31</div></div>
-              <div class="tl-item"><div class="tl-dot warn">⚠️</div><div class="tl-body"><div class="t1">Q2 季度盘点进行中</div><div class="t2">李娜 · 已盘 28/36 项</div></div><div class="tl-time">进行中</div></div>
-              <div class="tl-item"><div class="tl-dot out">🤝</div><div class="tl-body"><div class="t1">年中全面盘点待启动</div><div class="t2">牵头：李娜 · 监盘：赵敏（财务）</div></div><div class="tl-time">06-30</div></div>
-              <div class="tl-item"><div class="tl-dot in">🧮</div><div class="tl-body"><div class="t1">2025 年末全面盘点归档</div><div class="t2">联合盘点 · 盘亏 ¥1,240 已报批</div></div><div class="tl-time">2025-12-31</div></div>
-            </div>
+            <div class="timeline" id="checkTimeline"></div>
             <div style="padding:6px 20px 20px"></div>
           </div>
         </div>
@@ -1015,12 +1010,12 @@
         <div class="card mt" id="checkEntryCard">
           <div class="panel-head"><div><h3>盘点单录入 · 实盘核对</h3><div class="sub">录入实盘数量，系统自动计算账实差异</div></div><button class="btn btn-primary" id="newCheck" style="height:34px;padding:0 14px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:4px">＋ 新建盘点单</button></div>
           <div class="form-grid" style="padding:16px 20px 4px">
-            <div class="field"><label>盘点类型</label><select><option>季度盘点（自盘）</option><option>年度盘点（联合）</option></select></div>
-            <div class="field"><label>盘点范围</label><select><option>全面盘点</option><option>抽盘（按分类）</option></select></div>
-            <div class="field"><label>牵头人（仓库管理员）</label><input value="李娜" /></div>
-            <div class="field"><label>监盘人（财务）</label><input value="赵敏" placeholder="联合盘点必填" /></div>
-            <div class="field"><label>计划盘点日期</label><input value="2026-06-30" type="date" /></div>
-            <div class="field"><label>备注</label><input placeholder="选填：盘点说明、特殊情况…" /></div>
+            <div class="field"><label>盘点类型</label><select id="chkType"><option>季度盘点（自盘）</option><option>年度盘点（联合）</option></select></div>
+            <div class="field"><label>盘点范围</label><select id="chkScope"><option>全面盘点</option><option>抽盘（按分类）</option></select></div>
+            <div class="field"><label>牵头人（仓库管理员）</label><input id="chkLead" value="李娜" /></div>
+            <div class="field"><label>监盘人（财务）</label><input id="chkWatch" value="赵敏" placeholder="联合盘点必填" /></div>
+            <div class="field"><label>计划盘点日期</label><input id="chkDate" value="2026-06-30" type="date" /></div>
+            <div class="field"><label>备注</label><input id="chkNote" placeholder="选填：盘点说明、特殊情况…" /></div>
           </div>
           <div class="table-scroll" style="margin-top:8px">
             <table class="plan-table">
@@ -1493,21 +1488,24 @@
     const body=document.getElementById('checkBody');
     body.innerHTML=checkItems.map((i,idx)=>{
       const m=catMeta[i.c];
+      const real=(i.real!==undefined?i.real:i.sys);
       return `<tr>
         <td>${i.n}</td>
         <td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td>
         <td class="num">${i.sys} ${i.u}</td>
-        <td><input class="real-input" type="number" value="${i.sys}" data-sys="${i.sys}" data-idx="${idx}" /></td>
-        <td class="num"><span class="diff zero" id="diff-${idx}">0</span></td>
+        <td><input class="real-input" type="number" value="${real}" data-sys="${i.sys}" data-idx="${idx}" /></td>
+        <td class="num"><span class="diff ${(real-i.sys)===0?'zero':(real-i.sys)>0?'up':'down'}" id="diff-${idx}">${(real-i.sys)>0?'+':''}${real-i.sys}</span></td>
         <td><span class="cell-act"><button type="button" class="btn-mini edit" data-edit-check-item="${idx}">编辑</button><button type="button" class="btn-mini del" data-del-check-item="${idx}">删除</button></span></td>
       </tr>`;
     }).join('');
     body.querySelectorAll('.real-input').forEach(inp=>{
       inp.addEventListener('input',()=>{
         const sys=+inp.dataset.sys, real=+inp.value||0, d=real-sys;
+        checkItems[+inp.dataset.idx].real=real;
         const el=document.getElementById('diff-'+inp.dataset.idx);
         el.textContent=(d>0?'+':'')+d;
         el.className='diff '+(d===0?'zero':d>0?'up':'down');
+        renderCheckKpi();
       });
     });
   }
@@ -1560,7 +1558,23 @@
       <td><span class="cell-act"><button type="button" class="btn-mini edit" data-edit-plan-y="${i}">编辑</button><button type="button" class="btn-mini del" data-del-plan-y="${i}">删除</button></span></td>
     </tr>`).join('');
   }
-  renderPlanQuarter(); renderPlanYear(); checkTableOverflow();
+  function renderCheckKpi(){
+    const total=checkPlansQuarter.length+checkPlansYear.length;
+    const done=checkPlansQuarter.concat(checkPlansYear).filter(p=>p.status==='ok').length;
+    const diffCount=checkItems.filter(i=>((i.real!==undefined?i.real:i.sys)-i.sys)!==0).length;
+    const net=checkItems.reduce((s,i)=>s+((i.real!==undefined?i.real:i.sys)-i.sys),0);
+    const t1=document.getElementById('kpiPlanTotal'); if(t1) t1.textContent=total+' 次';
+    const t2=document.getElementById('kpiPlanDone'); if(t2) t2.textContent=done+' / '+total;
+    const t3=document.getElementById('kpiDiffCount'); if(t3) t3.textContent=diffCount+' 项';
+    const t4=document.getElementById('kpiNetQty'); if(t4) t4.textContent=(net>0?'+':'')+net+' 项';
+    const nt=document.getElementById('kpiNetTrend'); if(nt){
+      if(net<0){ nt.className='trend down'; nt.textContent='盘亏 '+(-net)+' 项（需处理）'; }
+      else if(net>0){ nt.className='trend up'; nt.textContent='盘盈 '+net+' 项'; }
+      else { nt.className='trend'; nt.textContent='账实相符'; }
+    }
+    const dt=document.getElementById('kpiDoneTrend'); if(dt){ dt.textContent= done? ('▲ 已归档 '+done+' 次') : '▲ 暂无已归档盘点'; }
+  }
+  renderPlanQuarter(); renderPlanYear(); checkTableOverflow(); renderCheckKpi();
   let planEditCtx=null;
   function openPlanEdit(type,idx){
     planEditCtx={type,idx};
@@ -1594,7 +1608,7 @@
     if(!planEditCtx) return;
     const p=(planEditCtx.type==='q'?checkPlansQuarter:checkPlansYear)[planEditCtx.idx]; if(!p) return;
     ['period','time','person','status','diff','name','lead','watch'].forEach(k=>{ const el=document.getElementById('planF_'+k); if(el) p[k]=el.value; });
-    closePlanEdit(); renderPlanQuarter(); renderPlanYear();
+    closePlanEdit(); renderPlanQuarter(); renderPlanYear(); renderCheckKpi();
     toast('计划已更新','ok','修改后的盘点计划已保存');
   }
   function closePlanEdit(){ document.getElementById('planEditModal').classList.remove('show'); }
@@ -1603,7 +1617,7 @@
     const p=arr[idx]; if(!p) return;
     const label=type==='q'?(p.period||'该计划'):(p.name||'该计划');
     if(!confirm('确定删除盘点计划「'+label+'」吗？此操作不可撤销。')) return;
-    arr.splice(idx,1); renderPlanQuarter(); renderPlanYear();
+    arr.splice(idx,1); renderPlanQuarter(); renderPlanYear(); renderCheckKpi();
     toast('计划已删除','ok','已移除该条盘点计划');
   }
 
@@ -1660,14 +1674,14 @@
     if(checkItemEditIdx<0) return;
     const it=checkItems[checkItemEditIdx]; if(!it) return;
     ['n','c','sys','u'].forEach(k=>{ const el=document.getElementById('ciF_'+k); if(el) it[k]=(k==='sys')?(parseFloat(el.value)||0):el.value; });
-    closeCheckItemEdit(); renderCheck();
+    closeCheckItemEdit(); renderCheck(); renderCheckKpi();
     toast('盘点项已更新','ok','修改后的盘点项已保存');
   }
   function closeCheckItemEdit(){ document.getElementById('checkItemEditModal').classList.remove('show'); }
   function deleteCheckItem(idx){
     const it=checkItems[idx]; if(!it) return;
     if(!confirm('确定删除盘点项「'+it.n+'」吗？此操作不可撤销。')) return;
-    checkItems.splice(idx,1); renderCheck();
+    checkItems.splice(idx,1); renderCheck(); renderCheckKpi();
     toast('盘点项已删除','ok','已移除该项');
   }
 
@@ -1705,29 +1719,49 @@
     checkTableOverflow();
   }));
 
-  // ---- 盘点记录下载窗口 ----
+  // ---- 盘点记录：快照 + 归档（保存/下载共用，防止重复归档） ----
   let checkExportData=null;
-  function openCheckModal(){
-    const card=document.getElementById('view-check');
-    const sel=card.querySelectorAll('.form-grid select');
-    const inp=card.querySelectorAll('.form-grid input');
-    const info=[['盘点类型',sel[0]?sel[0].value:'—'],['盘点范围',sel[1]?sel[1].value:'—'],['牵头人（仓库）',inp[0]?inp[0].value:'—'],['监盘人（财务）',inp[1]?inp[1].value:'—'],['计划盘点日期',inp[2]?inp[2].value:'—'],['备注',inp[3]?inp[3].value:'—']];
-    document.getElementById('checkModalInfo').innerHTML=info.map(r=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--ink-3)">${r[0]}</span><span>${r[1]||'—'}</span></div>`).join('');
+  let checkArchived=false;
+  function buildCheckSnapshot(){
+    const g=id=>document.getElementById(id);
+    const type=g('chkType').value, scope=g('chkScope').value, lead=g('chkLead').value, watch=g('chkWatch').value, date=g('chkDate').value, note=g('chkNote').value;
+    const info=[['盘点类型',type],['盘点范围',scope],['牵头人（仓库）',lead],['监盘人（财务）',watch],['计划盘点日期',date],['备注',note]];
     const realInputs=document.querySelectorAll('#checkBody .real-input');
-    let rows='';
-    const items=[];
+    let rows='', items=[];
     checkItems.forEach((it,idx)=>{
-      const sys=it.sys;
-      const real=realInputs[idx]?(+realInputs[idx].value||0):sys;
-      const d=real-sys;
-      const st=d===0?'ok':(d>0?'up':'down');
+      const sys=it.sys; const real=realInputs[idx]?(+realInputs[idx].value||0):(it.real!==undefined?it.real:sys);
+      const d=real-sys; const st=d===0?'ok':d>0?'up':'down';
       const txt=d===0?'账实相符':(d>0?'盘盈 +'+d:'盘亏 '+d);
       const m=catMeta[it.c];
       rows+=`<tr><td>${it.n}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="num">${sys} ${it.u}</td><td class="num">${real} ${it.u}</td><td class="num"><span class="diff ${st}">${(d>0?'+':'')+d}</span></td><td><span class="status ${st}">${txt}</span></td></tr>`;
       items.push({n:it.n,c:m.t,u:it.u,sys,real,d,st:txt});
     });
-    document.getElementById('checkModalBody').innerHTML=rows;
-    checkExportData={info,items};
+    return {info,rows,items,type,scope,date,diffCount:items.filter(i=>i.d!==0).length};
+  }
+  function markSaved(){
+    const b=document.getElementById('saveCheck');
+    if(b){ b.textContent='✅ 已保存至最近记录'; b.disabled=true; b.style.opacity=.7; }
+  }
+  function archiveCheckToTimeline(snap){
+    if(checkArchived) return false;
+    checkRecords.unshift({title:(snap.type||'盘点')+' 完成', sub:(snap.scope||'—')+' · '+snap.items.length+' 项 · '+(snap.diffCount?('差异 '+snap.diffCount+' 项'):'无差异'), date:snap.date||new Date().toISOString().slice(0,10), dot:snap.diffCount?'warn':'in'});
+    renderCheckTimeline(); checkArchived=true; markSaved(); return true;
+  }
+  function resetCheckForm(){
+    const g=id=>document.getElementById(id);
+    if(g('chkType')) g('chkType').selectedIndex=0;
+    if(g('chkScope')) g('chkScope').selectedIndex=0;
+    ['chkLead','chkWatch','chkDate','chkNote'].forEach(id=>{ const e=g(id); if(e) e.value= id==='chkLead'?'李娜':id==='chkWatch'?'赵敏':id==='chkDate'?new Date().toISOString().slice(0,10):''; });
+    checkItems.forEach(i=>{ i.real=i.sys; });
+    renderCheck(); checkArchived=false; renderCheckKpi();
+    const b=document.getElementById('saveCheck'); if(b){ b.textContent='💾 保存盘点单'; b.disabled=false; b.style.opacity=1; }
+    const m=document.getElementById('checkDownMsg'); if(m) m.textContent='';
+  }
+  function openCheckModal(){
+    const snap=buildCheckSnapshot();
+    document.getElementById('checkModalInfo').innerHTML=snap.info.map(r=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--ink-3)">${r[0]}</span><span>${r[1]||'—'}</span></div>`).join('');
+    document.getElementById('checkModalBody').innerHTML=snap.rows;
+    checkExportData={info:snap.info,items:snap.items};
     document.getElementById('checkModal').classList.add('show');
   }
   function checkExportXlsx(){
@@ -1739,12 +1773,10 @@
     checkExportData.items.forEach(it=>aoa.push([it.n,it.c,it.u,it.sys,it.real,it.d,it.st]));
     const headerAt=checkExportData.info.length+2;
     exportXLSX(aoa,'盘点记录_'+checkExportData.info[0][1]+'.xlsx',{headerAt,titleMerge:true});
-    // 归档到「最近盘点记录」时间线
-    const info=checkExportData.info;
-    const diffCount=checkExportData.items.filter(i=>i.d!==0).length;
-    checkRecords.unshift({title:(info[0][1]||'盘点')+' 完成',sub:(info[1][1]||'—')+' · '+checkExportData.items.length+' 项 · '+(diffCount?('差异 '+diffCount+' 项'):'无差异'),date:info[4][1]||new Date().toISOString().slice(0,10),dot:diffCount?'warn':'in'});
-    renderCheckTimeline();
-    toast('已导出 Excel 并归档','ok','盘点记录已生成 .xlsx 并已归入最近记录');
+    const snap={type:checkExportData.info[0][1],scope:checkExportData.info[1][1],date:checkExportData.info[4][1],items:checkExportData.items,diffCount:checkExportData.items.filter(i=>i.d!==0).length};
+    const archived=archiveCheckToTimeline(snap);
+    renderCheckKpi();
+    toast(archived?'已导出 Excel 并归档':'已导出 Excel','ok', archived?'盘点记录已生成 .xlsx 并已归入最近记录':'本单此前已保存，Excel 已重新导出');
   }
   const dcBtn=document.getElementById('downloadCheck');
   if(dcBtn) dcBtn.addEventListener('click',openCheckModal);
@@ -1754,39 +1786,18 @@
 
   // ---- 保存盘点单窗口 ----
   function openSaveCheckModal(){
-    const card=document.getElementById('view-check');
-    const sel=card.querySelectorAll('.form-grid select');
-    const inp=card.querySelectorAll('.form-grid input');
-    const info=[['盘点类型',sel[0]?sel[0].value:'—'],['盘点范围',sel[1]?sel[1].value:'—'],['牵头人（仓库）',inp[0]?inp[0].value:'—'],['监盘人（财务）',inp[1]?inp[1].value:'—'],['计划盘点日期',inp[2]?inp[2].value:'—'],['备注',inp[3]?inp[3].value:'—']];
-    document.getElementById('saveCheckInfo').innerHTML=info.map(r=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--ink-3)">${r[0]}</span><span>${r[1]||'—'}</span></div>`).join('');
-    const realInputs=document.querySelectorAll('#checkBody .real-input');
-    let rows='';
-    checkItems.forEach((it,idx)=>{
-      const sys=it.sys;
-      const real=realInputs[idx]?(+realInputs[idx].value||0):sys;
-      const d=real-sys;
-      const st=d===0?'ok':(d>0?'up':'down');
-      const txt=d===0?'账实相符':(d>0?'盘盈 +'+d:'盘亏 '+d);
-      const m=catMeta[it.c];
-      rows+=`<tr><td>${it.n}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="num">${sys} ${it.u}</td><td class="num">${real} ${it.u}</td><td class="num"><span class="diff ${st}">${(d>0?'+':'')+d}</span></td><td><span class="status ${st}">${txt}</span></td></tr>`;
-    });
-    document.getElementById('saveCheckBody').innerHTML=rows;
+    const snap=buildCheckSnapshot();
+    document.getElementById('saveCheckInfo').innerHTML=snap.info.map(r=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--ink-3)">${r[0]}</span><span>${r[1]||'—'}</span></div>`).join('');
+    document.getElementById('saveCheckBody').innerHTML=snap.rows;
     document.getElementById('saveCheckModal').classList.add('show');
   }
   function saveCheckConfirm(){
-    const card=document.getElementById('view-check');
-    const sel=card.querySelectorAll('.form-grid select');
-    const inp=card.querySelectorAll('.form-grid input');
-    const type=sel[0]?sel[0].value:'盘点';
-    const scope=sel[1]?sel[1].value:'—';
-    const date=inp[2]?inp[2].value:new Date().toISOString().slice(0,10);
-    const realInputs=document.querySelectorAll('#checkBody .real-input');
-    const diffCount=checkItems.filter((it,idx)=>{const ri=realInputs[idx];const real=ri?(+ri.value||0):it.sys;return real-it.sys!==0;}).length;
-    checkRecords.unshift({title:(type||'盘点')+' 已保存',sub:(scope||'—')+' · '+checkItems.length+' 项 · '+(diffCount?('差异 '+diffCount+' 项'):'无差异'),date:date,dot:diffCount?'warn':'in'});
-    renderCheckTimeline();
+    const snap=buildCheckSnapshot();
+    const archived=archiveCheckToTimeline(snap);
     document.getElementById('saveCheckModal').classList.remove('show');
-    const msg=document.getElementById('checkDownMsg'); if(msg) msg.textContent='已保存至最近盘点记录';
-    toast('盘点单已保存','ok','已归入「最近盘点记录」，可继续导出 Excel');
+    const msg=document.getElementById('checkDownMsg'); if(msg) msg.textContent= archived?'已保存至最近盘点记录':'本单此前已保存';
+    renderCheckKpi();
+    toast('盘点单已保存','ok', archived?'已归入「最近盘点记录」，可继续导出 Excel':'该盘点单此前已归档，未重复添加');
   }
   const svBtn=document.getElementById('saveCheck');
   if(svBtn) svBtn.addEventListener('click',openSaveCheckModal);
@@ -2688,10 +2699,11 @@
   if(addCat) addCat.addEventListener('click',()=>toast('新增分类','info','请在正式版中填写分类信息'));
   const newCheck=document.getElementById('newCheck');
   if(newCheck) newCheck.addEventListener('click',()=>{
+    resetCheckForm();
     const card=document.getElementById('checkEntryCard');
     if(card){ card.scrollIntoView({behavior:'smooth',block:'center'}); card.classList.add('pulse'); setTimeout(()=>card.classList.remove('pulse'),1800); }
-    const sel=card?card.querySelector('select'):null; if(sel) setTimeout(()=>sel.focus(),450);
-    toast('新建盘点单','info','请在下方录入实盘数量，完成后点击「下载盘点记录」即可归档');
+    const lead=document.getElementById('chkLead'); if(lead) setTimeout(()=>lead.focus(),450);
+    toast('新建盘点单','info','已清空实盘数量与表单，请重新录入并核对');
   });
   const allCheck=document.getElementById('allCheckRecords');
   if(allCheck) allCheck.addEventListener('click',()=>{ renderCheckTimeline(); const tl=document.getElementById('checkTimeline'); if(tl) tl.scrollIntoView({behavior:'smooth',block:'center'}); toast('全部记录','info','共 '+checkRecords.length+' 条盘点记录'); });
