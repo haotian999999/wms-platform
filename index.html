@@ -2844,9 +2844,17 @@
 </script>
 <script>
   // 注册 Service Worker：同源静态资源（HTML/JS/CSS/字体）进入浏览器缓存，二次打开秒开、可离线使用
+  // 注册 URL 带 ?v=3 版本号：让浏览器把它当作“新的 SW 脚本”强制重新拉取，绕开旧版 SW 缓存，
+  // 已被旧缓存卡住的用户也能借此拿到最新 SW 并自我更新。部署新版本时同步把 ?v=N 递增。
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('./sw.js').catch(function () {});
+      navigator.serviceWorker.register('./sw.js?v=3').then(function () {
+        // 新版本 SW 接管页面时自动刷新一次，加载最新 HTML/JS（避免停留在旧缓存）
+        var reloaded = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (!reloaded) { reloaded = true; location.reload(); }
+        });
+      }).catch(function () {});
     });
   }
 </script>
