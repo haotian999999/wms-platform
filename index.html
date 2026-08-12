@@ -245,6 +245,9 @@
   .status.ok{background:rgba(47,230,160,.15);color:#6ff0bf}
   .status.low{background:rgba(255,194,75,.16);color:#ffd486}
   .status.out{background:rgba(255,93,108,.16);color:#ff97a1}
+  .status.done{background:rgba(60,180,120,.18);color:#39c08a;border:1px solid rgba(60,180,120,.4)}
+  .row-done td{opacity:.45}
+  .more.done{opacity:.55;cursor:default}
   .num{font-variant-numeric:tabular-nums}
   .row-act{color:#9db4ff;font-weight:400;cursor:pointer;font-size:13px}
   .row-act:hover{text-shadow:0 0 10px rgba(91,140,255,.6)}
@@ -680,6 +683,7 @@
   [data-theme="light"] .status.ok{color:#0f9d6a}
   [data-theme="light"] .status.low{color:#b5790f}
   [data-theme="light"] .status.out{color:#d23b46}
+  [data-theme="light"] .status.done{color:#1f9e6e}
   [data-theme="light"] .row-act{color:#3a5bf0}
   [data-theme="light"] .row-act:hover{text-shadow:0 0 10px rgba(58,91,240,.4)}
   [data-theme="light"] .tl-body .t1{color:#1d2433}
@@ -805,7 +809,7 @@
 
         <div class="grid row-2 mt">
           <div class="card">
-            <div class="panel-head"><div><h3>近 6 个月出入库趋势</h3><div class="sub">单位：件</div></div><span class="more">导出报表</span></div>
+            <div class="panel-head"><div><h3>近 6 个月出入库趋势</h3><div class="sub">单位：件</div></div><span class="more" id="exportTrendBtn" role="button" tabindex="0">导出报表</span></div>
             <div class="chart-box"><canvas id="trendChart"></canvas></div>
           </div>
           <div class="card">
@@ -821,15 +825,10 @@
 
         <div class="grid row-2 mt">
           <div class="card">
-            <div class="panel-head"><div><h3>库存预警</h3><div class="sub">低于安全库存的物资</div></div><span class="more">全部处理</span></div>
+            <div class="panel-head"><div><h3>库存预警</h3><div class="sub">低于安全库存的物资</div></div><span class="more" id="processAllAlertBtn" role="button" tabindex="0">全部处理</span></div>
             <table>
               <thead><tr><th>物资名称</th><th>分类</th><th>当前库存</th><th>安全库存</th><th>状态</th></tr></thead>
-              <tbody>
-                <tr><td>中华（软）香烟</td><td><span class="tag tobacco"><span class="d" style="background:var(--c-tobacco)"></span>烟酒茶</span></td><td class="num">12 条</td><td class="num">30 条</td><td><span class="status out">缺货</span></td></tr>
-                <tr><td>A4 复印纸 70g</td><td><span class="tag office"><span class="d" style="background:var(--c-office)"></span>办公用品</span></td><td class="num">18 箱</td><td class="num">25 箱</td><td><span class="status low">偏低</span></td></tr>
-                <tr><td>商务保温杯</td><td><span class="tag gift"><span class="d" style="background:var(--c-gift)"></span>礼品</span></td><td class="num">9 个</td><td class="num">20 个</td><td><span class="status low">偏低</span></td></tr>
-                <tr><td>普洱礼盒茶</td><td><span class="tag tobacco"><span class="d" style="background:var(--c-tobacco)"></span>烟酒茶</span></td><td class="num">14 盒</td><td class="num">15 盒</td><td><span class="status low">偏低</span></td></tr>
-              </tbody>
+              <tbody id="alertBody"></tbody>
             </table>
           </div>
           <div class="card">
@@ -1264,6 +1263,27 @@
         </table>
         <div style="margin-top:18px;display:flex;gap:12px">
           <button class="btn btn-primary" id="warModalCloseBtn" style="flex:1;justify-content:center">我知道了</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 库存预警处理 · 补货建议单 -->
+  <div class="modal-mask" id="alertProcessModal">
+    <div class="modal" style="max-width:640px">
+      <div class="modal-head">
+        <h3>📦 库存预警处理 · 补货建议单</h3>
+        <button class="modal-close" id="alertProcessClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="note" id="alertProcessNote" style="margin-bottom:12px"></div>
+        <table>
+          <thead><tr><th>物资名称</th><th>分类</th><th>当前库存</th><th>安全库存</th><th>建议补货</th><th>状态</th></tr></thead>
+          <tbody id="alertProcessBody"></tbody>
+        </table>
+        <div style="margin-top:16px;display:flex;gap:12px">
+          <button class="btn btn-ghost" id="alertProcessExport" style="flex:1;justify-content:center">⬇ 导出补货单</button>
+          <button class="btn btn-primary" id="alertProcessConfirm" style="flex:1;justify-content:center">✓ 确认处理</button>
         </div>
       </div>
     </div>
@@ -2633,7 +2653,7 @@
   // --- 通用「更多」操作反馈 ---
   document.addEventListener('click',e=>{
     const more=e.target.closest('.more');
-    if(more && more.id!=='openWarBtn' && more.id!=='viewAllOut' && more.id!=='allCheckRecords'){ toast(more.textContent.trim(),'info',''); }
+    if(more && more.id!=='openWarBtn' && more.id!=='viewAllOut' && more.id!=='allCheckRecords' && more.id!=='exportTrendBtn' && more.id!=='processAllAlertBtn'){ toast(more.textContent.trim(),'info',''); }
   });
 
   // 演示账号一键登录的反馈 toast 已在 initAuth 内动态绑定（避免渲染时序问题）
@@ -2841,6 +2861,111 @@
     })();
     applyPermissions();
   })();
+
+  // ============ 工作台功能：趋势报表导出 / 库存预警处理 ============
+  const trendLabels=['3月','4月','5月','6月','7月','8月'];
+  const trendInbound=[980,1120,1040,1180,1260,1260];
+  const trendOutbound=[1020,1080,990,1010,1012,982];
+
+  function exportTrendReport(){
+    const now=new Date();
+    const p=n=>String(n).padStart(2,'0');
+    const ts=now.getFullYear()+'-'+p(now.getMonth()+1)+'-'+p(now.getDate())+' '+p(now.getHours())+':'+p(now.getMinutes());
+    const totalIn=trendInbound.reduce((a,b)=>a+b,0);
+    const totalOut=trendOutbound.reduce((a,b)=>a+b,0);
+    const netTotal=totalIn-totalOut;
+    const rows=[
+      ['近 6 个月出入库趋势报表'],
+      ['统计周期', trendLabels[0]+' 至 '+trendLabels[trendLabels.length-1]],
+      ['生成时间', ts],
+      ['计量单位', '件'],
+      ['月份','入库(件)','出库领用(件)','净变化(件)']
+    ];
+    trendLabels.forEach((m,i)=>{
+      const net=trendInbound[i]-trendOutbound[i];
+      rows.push([m, trendInbound[i], trendOutbound[i], (net>=0?'+':'')+net]);
+    });
+    rows.push(['合计', totalIn, totalOut, (netTotal>=0?'+':'')+netTotal]);
+    rows.push([]);
+    rows.push(['报表说明', '入库为各月物资入库总量，出库领用为领用总量；净变化 = 入库 − 出库领用。数据来源于工作台“近 6 个月出入库趋势”图。']);
+    exportXLSX(rows, '近6个月出入库趋势报表.xlsx', {titleMerge:true, headerAt:4});
+    toast('已导出报表','ok','近6个月出入库趋势报表.xlsx 已生成');
+  }
+
+  const alertItems=[
+    {name:'中华（软）香烟', cat:'tobacco', catName:'烟酒茶', cur:12, safe:30, unit:'条', status:'out', processed:false},
+    {name:'A4 复印纸 70g', cat:'office', catName:'办公用品', cur:18, safe:25, unit:'箱', status:'low', processed:false},
+    {name:'商务保温杯', cat:'gift', catName:'礼品', cur:9, safe:20, unit:'个', status:'low', processed:false},
+    {name:'普洱礼盒茶', cat:'tobacco', catName:'烟酒茶', cur:14, safe:15, unit:'盒', status:'low', processed:false}
+  ];
+  function alertStatusBadge(it){
+    if(it.processed) return '<span class="status done">已处理</span>';
+    return it.status==='out' ? '<span class="status out">缺货</span>' : '<span class="status low">偏低</span>';
+  }
+  function renderAlerts(){
+    const body=document.getElementById('alertBody'); if(!body) return;
+    body.innerHTML=alertItems.map((it,idx)=>{
+      return '<tr class="'+(it.processed?'row-done':'')+'" data-alert="'+idx+'">'
+        +'<td>'+it.name+'</td>'
+        +'<td><span class="tag '+it.cat+'"><span class="d" style="background:var(--c-'+it.cat+')"></span>'+it.catName+'</span></td>'
+        +'<td class="num">'+it.cur+' '+it.unit+'</td>'
+        +'<td class="num">'+it.safe+' '+it.unit+'</td>'
+        +'<td>'+alertStatusBadge(it)+'</td>'
+        +'</tr>';
+    }).join('');
+    const btn=document.getElementById('processAllAlertBtn');
+    if(btn){
+      const remaining=alertItems.filter(i=>!i.processed).length;
+      if(remaining===0){ btn.textContent='已全部处理 ✓'; btn.classList.add('done'); }
+      else { btn.textContent='全部处理'; btn.classList.remove('done'); }
+    }
+  }
+  function openAlertProcess(){
+    const remaining=alertItems.filter(i=>!i.processed);
+    if(remaining.length===0){ toast('所有预警均已处理','info','无需重复处理'); return; }
+    const body=document.getElementById('alertProcessBody');
+    let totalQty=0;
+    body.innerHTML=remaining.map(it=>{
+      const sug=Math.max(0, it.safe-it.cur); totalQty+=sug;
+      const st=it.status==='out'?'<span class="status out">缺货</span>':'<span class="status low">偏低</span>';
+      return '<tr>'
+        +'<td>'+it.name+'</td>'
+        +'<td><span class="tag '+it.cat+'"><span class="d" style="background:var(--c-'+it.cat+')"></span>'+it.catName+'</span></td>'
+        +'<td class="num">'+it.cur+' '+it.unit+'</td>'
+        +'<td class="num">'+it.safe+' '+it.unit+'</td>'
+        +'<td class="num"><b style="color:var(--accent)">'+sug+' '+it.unit+'</b></td>'
+        +'<td>'+st+'</td>'
+        +'</tr>';
+    }).join('');
+    document.getElementById('alertProcessNote').innerHTML='共 <b>'+remaining.length+'</b> 项物资低于安全库存，建议补货合计 <b style="color:var(--accent)">'+totalQty+'</b> 件；确认后将生成补货建议单并标记预警为已处理。';
+    document.getElementById('alertProcessModal').classList.add('show');
+  }
+  function confirmAlertProcess(){
+    alertItems.forEach(it=>{ it.processed=true; });
+    renderAlerts();
+    document.getElementById('alertProcessModal').classList.remove('show');
+    toast('已处理全部预警','ok','已生成补货建议单（'+alertItems.length+' 项），预警标记完成');
+  }
+  function exportReplenishOrder(){
+    const now=new Date();
+    const p=n=>String(n).padStart(2,'0');
+    const ts=now.getFullYear()+'-'+p(now.getMonth()+1)+'-'+p(now.getDate());
+    const rows=[['库存预警 · 补货建议单'],['生成日期', ts],['状态','待采购'],['物资名称','分类','当前库存','安全库存','建议补货','单位']];
+    let total=0;
+    alertItems.forEach(it=>{ const sug=Math.max(0,it.safe-it.cur); total+=sug; rows.push([it.name,it.catName,it.cur,it.safe,sug,it.unit]); });
+    rows.push(['合计','','','',''+total,'件']);
+    exportXLSX(rows,'补货建议单_'+ts+'.xlsx',{titleMerge:true,headerAt:3});
+    toast('已导出补货单','ok','补货建议单.xlsx 已生成');
+  }
+
+  const _et=document.getElementById('exportTrendBtn'); if(_et) _et.addEventListener('click',exportTrendReport);
+  const _pa=document.getElementById('processAllAlertBtn'); if(_pa) _pa.addEventListener('click',openAlertProcess);
+  const _apc=document.getElementById('alertProcessClose'); if(_apc) _apc.addEventListener('click',()=>document.getElementById('alertProcessModal').classList.remove('show'));
+  const _apcon=document.getElementById('alertProcessConfirm'); if(_apcon) _apcon.addEventListener('click',confirmAlertProcess);
+  const _ape=document.getElementById('alertProcessExport'); if(_ape) _ape.addEventListener('click',exportReplenishOrder);
+  const _apm=document.getElementById('alertProcessModal'); if(_apm) _apm.addEventListener('click',e=>{ if(e.target.id==='alertProcessModal') _apm.classList.remove('show'); });
+  renderAlerts();
+
 </script>
 <script>
   // 注册 Service Worker：同源静态资源（HTML/JS/CSS/字体）进入浏览器缓存，二次打开秒开、可离线使用
