@@ -699,7 +699,7 @@
       <div class="nav-item active" data-view="dashboard"><span class="ico">🏠</span>工作台</div>
       <div class="nav-item" data-view="inventory"><span class="ico">🗃️</span>库存管理</div>
       <div class="nav-item" data-view="inbound"><span class="ico">⬇️</span>入库管理</div>
-      <div class="nav-item" data-view="outbound"><span class="ico">⬆️</span>出库领用<span class="badge" id="outPendingBadge">0</span></div>
+      <div class="nav-item" data-view="outbound"><span class="ico">⬆️</span>出库领用</div>
       <div class="nav-item" data-view="check"><span class="ico">🧮</span>盘点管理</div>
       <div class="nav-item" data-view="import"><span class="ico">📥</span>数据导入</div>
       <div class="nav-item" data-view="data"><span class="ico">🗄️</span>数据管理</div>
@@ -2053,7 +2053,7 @@
     if(!applicant||!cat||!name||isNaN(qty)||qty<=0){ toast('请完整填写领用人/分类/名称/数量','warn','以上为必填项'); return; }
     const rec={id:genId('CK'),date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit:'件',purpose,handler:approver,status:'待审批'};
     outboundRecords.unshift(rec);
-    renderRecentOut(); renderOutBadge();
+    renderRecentOut();
     renderDataTables();
     resetOutbound();
     toast('申请已提交','ok',`${applicant} 的 ${name} ×${qty} 领用申请已提交，待审批`);
@@ -2171,7 +2171,7 @@
     recEditFields[recEditType].forEach(f=>{ const el=document.getElementById('recF_'+f.k); if(el) rec[f.k]=(f.ty==='number')?(parseFloat(el.value)||0):el.value; });
     if(recEditType==='in'){ rec.amount=+(rec.qty*(rec.price||0)).toFixed(2); if(rec.warranty) rec.expire=addMonths(rec.date,rec.warranty); else rec.expire=undefined; }
     closeRecEdit();
-    renderDataTables(); renderInv('all'); renderRecentOut(); renderOutBadge();
+    renderDataTables(); renderInv('all'); renderRecentOut();
     toast('记录已更新','ok','修改后的记录已保存');
   }
   function closeRecEdit(){ document.getElementById('recEditModal').classList.remove('show'); }
@@ -2180,16 +2180,11 @@
     if(!confirm('确定删除该记录「'+rec.id+'」吗？此操作不可撤销。')) return;
     if(type==='in'){ inboundRecords.splice(idx,1); if(rec.status==='已入库'){ const it=items.find(i=>i.n===rec.name&&i.c===rec.category); if(it) it.q=Math.max(0,it.q-rec.qty); } }
     else { outboundRecords.splice(idx,1); }
-    renderDataTables(); renderInv('all'); renderRecentOut(); renderOutBadge();
+    renderDataTables(); renderInv('all'); renderRecentOut();
     toast('记录已删除','ok','已移除该条记录');
   }
 
   // ============ 出库领用：最近出库记录 ============
-  function renderOutBadge(){
-    const n=outboundRecords.filter(r=>r.status==='待审批').length;
-    const badge=document.getElementById('outPendingBadge');
-    if(badge){ badge.textContent=n; badge.style.display=n?'':'none'; }
-  }
   function renderRecentOut(){
     const list=outboundRecords.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
     const el=document.getElementById('recentOutList'); if(!el) return;
@@ -2214,7 +2209,7 @@
   document.getElementById('recEditCancel').addEventListener('click',closeRecEdit);
   document.getElementById('recEditModal').addEventListener('click',e=>{ if(e.target.id==='recEditModal') closeRecEdit(); });
   document.getElementById('viewAllOut').addEventListener('click',viewAllOut);
-  renderRecentOut(); renderOutBadge();
+  renderRecentOut();
 
   // ============ 动画反馈增强 ============
   // --- 全局 Toast 轻提示 ---
