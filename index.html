@@ -399,6 +399,16 @@
   .scroll-hint{font-size:11px;color:var(--ink-3);text-align:center;padding:8px 0 0;display:none}
   .scroll-hint.show{display:block}
   .table-scroll.has-overflow + .scroll-hint{display:block}
+  /* 盘点计划 / 实盘核对表格：紧凑、单行、斑马纹、悬停高亮 */
+  #view-check .plan-table{width:100%;border-collapse:separate;border-spacing:0;font-size:10.5px;line-height:1.3}
+  #view-check .plan-table th,#view-check .plan-table td{white-space:nowrap;text-align:center;vertical-align:middle;padding:6px 9px;border-bottom:1px solid var(--line-2)}
+  #view-check .plan-table thead th{position:sticky;top:0;z-index:2;padding:7px 9px;font-size:11px;font-weight:700;color:#cdd6ed;background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.05));border-top:1px solid var(--line);border-bottom:1px solid var(--line);letter-spacing:.3px;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+  #view-check .plan-table thead th:first-child{border-top-left-radius:10px}
+  #view-check .plan-table thead th:last-child{border-top-right-radius:10px}
+  #view-check .plan-table tbody td{font-size:11px;color:var(--ink)}
+  #view-check .plan-table tbody tr:nth-child(even){background:rgba(255,255,255,.025)}
+  #view-check .plan-table tbody tr:hover{background:rgba(91,140,255,.10)}
+  #view-check .plan-table td:last-child{min-width:104px}
   .data-table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px;line-height:1.35}
   .data-table th,.data-table td{white-space:nowrap;vertical-align:middle;overflow:visible;text-align:center;padding:5px 6px}
   .data-table thead th{
@@ -967,19 +977,25 @@
             <!-- 季度盘点 -->
             <div class="tabpane active" id="pane-quarter">
               <div class="plan-meta" style="padding:0 20px 6px">每季度末由仓库管理员自行盘点，每年 4 次（全盘）。</div>
-              <table>
-                <thead><tr><th>盘点周期</th><th>计划时间</th><th>盘点人</th><th>方式</th><th>状态</th><th>差异</th></tr></thead>
-              <tbody id="planQuarterBody"></tbody>
-              </table>
+              <div class="table-scroll">
+                <table class="plan-table">
+                  <thead><tr><th>盘点周期</th><th>计划时间</th><th>盘点人</th><th>方式</th><th>状态</th><th>差异</th><th>操作</th></tr></thead>
+                  <tbody id="planQuarterBody"></tbody>
+                </table>
+              </div>
+              <div class="scroll-hint">← 左右滑动查看完整信息 →</div>
             </div>
 
             <!-- 年度盘点 -->
             <div class="tabpane" id="pane-year">
               <div class="plan-meta" style="padding:0 20px 6px">每半年与年末开展联合盘点，仓库管理员牵头、财务监盘人员共同参与，全面盘点，每年 2 次。</div>
-              <table>
-                <thead><tr><th>盘点名称</th><th>计划时间</th><th>牵头（仓库）</th><th>监盘（财务）</th><th>范围</th><th>状态</th></tr></thead>
-              <tbody id="planYearBody"></tbody>
-              </table>
+              <div class="table-scroll">
+                <table class="plan-table">
+                  <thead><tr><th>盘点名称</th><th>计划时间</th><th>牵头（仓库）</th><th>监盘（财务）</th><th>范围</th><th>状态</th><th>操作</th></tr></thead>
+                  <tbody id="planYearBody"></tbody>
+                </table>
+              </div>
+              <div class="scroll-hint">← 左右滑动查看完整信息 →</div>
             </div>
           </div>
 
@@ -991,13 +1007,13 @@
               <div class="tl-item"><div class="tl-dot out">🤝</div><div class="tl-body"><div class="t1">年中全面盘点待启动</div><div class="t2">牵头：李娜 · 监盘：赵敏（财务）</div></div><div class="tl-time">06-30</div></div>
               <div class="tl-item"><div class="tl-dot in">🧮</div><div class="tl-body"><div class="t1">2025 年末全面盘点归档</div><div class="t2">联合盘点 · 盘亏 ¥1,240 已报批</div></div><div class="tl-time">2025-12-31</div></div>
             </div>
-            <div style="padding:0 20px 20px"><button class="btn btn-primary" id="newCheck" style="width:100%;justify-content:center">＋ 新建盘点单</button></div>
+            <div style="padding:6px 20px 20px"></div>
           </div>
         </div>
 
         <!-- 盘点单录入 -->
         <div class="card mt" id="checkEntryCard">
-          <div class="panel-head"><div><h3>盘点单录入 · 实盘核对</h3><div class="sub">录入实盘数量，系统自动计算账实差异</div></div></div>
+          <div class="panel-head"><div><h3>盘点单录入 · 实盘核对</h3><div class="sub">录入实盘数量，系统自动计算账实差异</div></div><button class="btn btn-primary" id="newCheck" style="height:34px;padding:0 14px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:4px">＋ 新建盘点单</button></div>
           <div class="form-grid" style="padding:16px 20px 4px">
             <div class="field"><label>盘点类型</label><select><option>季度盘点（自盘）</option><option>年度盘点（联合）</option></select></div>
             <div class="field"><label>盘点范围</label><select><option>全面盘点</option><option>抽盘（按分类）</option></select></div>
@@ -1006,12 +1022,16 @@
             <div class="field"><label>计划盘点日期</label><input value="2026-06-30" type="date" /></div>
             <div class="field"><label>备注</label><input placeholder="选填：盘点说明、特殊情况…" /></div>
           </div>
-          <table style="margin-top:8px">
-            <thead><tr><th>物资名称</th><th>分类</th><th>系统库存</th><th>实盘数量</th><th>差异（实盘-系统）</th><th>处理</th></tr></thead>
-            <tbody id="checkBody"></tbody>
-          </table>
+          <div class="table-scroll" style="margin-top:8px">
+            <table class="plan-table">
+              <thead><tr><th>物资名称</th><th>分类</th><th>系统库存</th><th>实盘数量</th><th>差异（实盘-系统）</th><th>处理</th></tr></thead>
+              <tbody id="checkBody"></tbody>
+            </table>
+          </div>
+          <div class="scroll-hint">← 左右滑动查看完整信息 →</div>
           <div class="note">差异为负 = 盘亏（实物少于账面），为正 = 盘盈（实物多于账面）；0 表示账实相符。差异项需仓库管理员与财务共同复核后调整账面。</div>
           <div style="display:flex;gap:12px;align-items:center;padding:0 20px 20px;flex-wrap:wrap">
+            <button class="btn btn-primary" id="saveCheck" style="justify-content:center">💾 保存盘点单</button>
             <button class="btn btn-primary" id="downloadCheck" style="justify-content:center">⬇ 下载盘点记录</button>
             <span class="plan-meta" id="checkDownMsg"></span>
           </div>
@@ -1285,6 +1305,31 @@
     </div>
   </div>
 
+  <!-- 保存盘点单窗口 -->
+  <div class="modal-mask" id="saveCheckModal">
+    <div class="modal" style="max-width:720px">
+      <div class="modal-head">
+        <h3>💾 保存盘点单</h3>
+        <button class="modal-close" id="saveCheckClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="section-sub" style="margin-bottom:12px">核对完成后可先将本次盘点单保存至「最近盘点记录」，便于后续追踪与财务复核。下方为本次盘点单的完整信息。</div>
+        <div id="saveCheckInfo" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 18px;margin-bottom:6px"></div>
+        <div style="margin:16px 0 8px;font-weight:600;font-size:13px;color:var(--ink-2)">盘点明细 · 物资实盘核对内容</div>
+        <div style="overflow-x:auto;border:1px solid var(--line);border-radius:12px">
+          <table class="safe-table" style="font-size:12px">
+            <thead><tr><th>物资名称</th><th>分类</th><th class="num">系统库存</th><th class="num">实盘数量</th><th class="num">差异</th><th>状态</th></tr></thead>
+            <tbody id="saveCheckBody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:center;gap:12px;margin-top:18px">
+          <button class="btn btn-ghost" id="saveCheckCancel">取消</button>
+          <button class="btn btn-primary" id="saveCheckConfirm" style="min-width:220px;justify-content:center">✔ 确认保存至最近盘点记录</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 盘点记录下载窗口 -->
   <div class="modal-mask" id="checkModal">
     <div class="modal" style="max-width:720px">
@@ -1371,6 +1416,7 @@
     if(v==='data') renderDataTables();
     if(v==='dashboard') runDashboardCounts();
     if(v==='settings') renderSafe();
+    if(v==='check') setTimeout(()=>checkTableOverflow(),60);
     if(!charts[v]) initCharts(v);
     if(charts[v]) setTimeout(()=>Object.values(charts[v]).forEach(c=>c.resize()),60);
   }));
@@ -1465,7 +1511,7 @@
       });
     });
   }
-  renderCheck();
+  renderCheck(); checkTableOverflow();
   const checkRecords=[
     {title:'2026 Q1 季度盘点完成',sub:'李娜 · 全盘 36 项 · 无差异',date:'03-31',dot:'in'},
     {title:'Q2 季度盘点进行中',sub:'李娜 · 已盘 28/36 项',date:'进行中',dot:'warn'},
@@ -1514,7 +1560,7 @@
       <td><span class="cell-act"><button type="button" class="btn-mini edit" data-edit-plan-y="${i}">编辑</button><button type="button" class="btn-mini del" data-del-plan-y="${i}">删除</button></span></td>
     </tr>`).join('');
   }
-  renderPlanQuarter(); renderPlanYear();
+  renderPlanQuarter(); renderPlanYear(); checkTableOverflow();
   let planEditCtx=null;
   function openPlanEdit(type,idx){
     planEditCtx={type,idx};
@@ -1656,6 +1702,7 @@
     t.classList.add('active');
     document.querySelectorAll('.tabpane').forEach(p=>p.classList.remove('active'));
     document.getElementById('pane-'+t.dataset.tab).classList.add('active');
+    checkTableOverflow();
   }));
 
   // ---- 盘点记录下载窗口 ----
@@ -1704,6 +1751,49 @@
   document.getElementById('checkModalClose').addEventListener('click',()=>document.getElementById('checkModal').classList.remove('show'));
   document.getElementById('checkModal').addEventListener('click',e=>{ if(e.target.id==='checkModal') document.getElementById('checkModal').classList.remove('show'); });
   document.getElementById('checkExportXlsx').addEventListener('click',checkExportXlsx);
+
+  // ---- 保存盘点单窗口 ----
+  function openSaveCheckModal(){
+    const card=document.getElementById('view-check');
+    const sel=card.querySelectorAll('.form-grid select');
+    const inp=card.querySelectorAll('.form-grid input');
+    const info=[['盘点类型',sel[0]?sel[0].value:'—'],['盘点范围',sel[1]?sel[1].value:'—'],['牵头人（仓库）',inp[0]?inp[0].value:'—'],['监盘人（财务）',inp[1]?inp[1].value:'—'],['计划盘点日期',inp[2]?inp[2].value:'—'],['备注',inp[3]?inp[3].value:'—']];
+    document.getElementById('saveCheckInfo').innerHTML=info.map(r=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--ink-3)">${r[0]}</span><span>${r[1]||'—'}</span></div>`).join('');
+    const realInputs=document.querySelectorAll('#checkBody .real-input');
+    let rows='';
+    checkItems.forEach((it,idx)=>{
+      const sys=it.sys;
+      const real=realInputs[idx]?(+realInputs[idx].value||0):sys;
+      const d=real-sys;
+      const st=d===0?'ok':(d>0?'up':'down');
+      const txt=d===0?'账实相符':(d>0?'盘盈 +'+d:'盘亏 '+d);
+      const m=catMeta[it.c];
+      rows+=`<tr><td>${it.n}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="num">${sys} ${it.u}</td><td class="num">${real} ${it.u}</td><td class="num"><span class="diff ${st}">${(d>0?'+':'')+d}</span></td><td><span class="status ${st}">${txt}</span></td></tr>`;
+    });
+    document.getElementById('saveCheckBody').innerHTML=rows;
+    document.getElementById('saveCheckModal').classList.add('show');
+  }
+  function saveCheckConfirm(){
+    const card=document.getElementById('view-check');
+    const sel=card.querySelectorAll('.form-grid select');
+    const inp=card.querySelectorAll('.form-grid input');
+    const type=sel[0]?sel[0].value:'盘点';
+    const scope=sel[1]?sel[1].value:'—';
+    const date=inp[2]?inp[2].value:new Date().toISOString().slice(0,10);
+    const realInputs=document.querySelectorAll('#checkBody .real-input');
+    const diffCount=checkItems.filter((it,idx)=>{const ri=realInputs[idx];const real=ri?(+ri.value||0):it.sys;return real-it.sys!==0;}).length;
+    checkRecords.unshift({title:(type||'盘点')+' 已保存',sub:(scope||'—')+' · '+checkItems.length+' 项 · '+(diffCount?('差异 '+diffCount+' 项'):'无差异'),date:date,dot:diffCount?'warn':'in'});
+    renderCheckTimeline();
+    document.getElementById('saveCheckModal').classList.remove('show');
+    const msg=document.getElementById('checkDownMsg'); if(msg) msg.textContent='已保存至最近盘点记录';
+    toast('盘点单已保存','ok','已归入「最近盘点记录」，可继续导出 Excel');
+  }
+  const svBtn=document.getElementById('saveCheck');
+  if(svBtn) svBtn.addEventListener('click',openSaveCheckModal);
+  document.getElementById('saveCheckClose').addEventListener('click',()=>document.getElementById('saveCheckModal').classList.remove('show'));
+  document.getElementById('saveCheckCancel').addEventListener('click',()=>document.getElementById('saveCheckModal').classList.remove('show'));
+  document.getElementById('saveCheckModal').addEventListener('click',e=>{ if(e.target.id==='saveCheckModal') document.getElementById('saveCheckModal').classList.remove('show'); });
+  document.getElementById('saveCheckConfirm').addEventListener('click',saveCheckConfirm);
 
   // ---- XLSX 批量数据录入 ----
   const FIELDS={
