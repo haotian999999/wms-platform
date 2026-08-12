@@ -1799,14 +1799,17 @@
     document.getElementById('saveCheckModal').classList.add('show');
   }
   function saveCheckConfirm(){
-    const snap=buildCheckSnapshot();
-    const synced=syncPlanStatus(snap.date);
-    if(synced){ renderPlanQuarter(); renderPlanYear(); }
-    const archived=archiveCheckToTimeline(snap);
+    let synced=false, archived=false;
+    try{
+      const snap=buildCheckSnapshot();
+      synced=syncPlanStatus(snap.date);
+      if(synced){ renderPlanQuarter(); renderPlanYear(); }
+      archived=archiveCheckToTimeline(snap);
+      const msg=document.getElementById('checkDownMsg'); if(msg) msg.textContent= archived?'已保存至最近盘点记录':'本单此前已保存';
+      renderCheckKpi();
+    }catch(err){ console.error('saveCheckConfirm 保存异常:', err); }
+    // 无论保存是否成功，均关闭窗口并隐藏录入区、恢复提示（满足「确认保存后自动收起」）
     document.getElementById('saveCheckModal').classList.remove('show');
-    const msg=document.getElementById('checkDownMsg'); if(msg) msg.textContent= archived?'已保存至最近盘点记录':'本单此前已保存';
-    renderCheckKpi();
-    // 保存完成后隐藏录入区，恢复提示（可再次点击「＋ 新建盘点单」开始下一单）
     const eb=document.getElementById('checkEntryBody'); if(eb) eb.style.display='none';
     const tip=document.getElementById('checkEntryTip'); if(tip) tip.style.display='block';
     toast('盘点单已保存','ok', (synced?'对应盘点计划已自动标记「已完成」；':'')+(archived?'已归入「最近盘点记录」，可继续导出 Excel':'该盘点单此前已归档，未重复添加'));
