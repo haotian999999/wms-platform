@@ -183,10 +183,10 @@
   .trend{font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:3px}
   .trend.up{color:var(--success)} .trend.down{color:var(--danger)}
 
-  .panel-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 4px}
-  .panel-head h3{font-size:15px;font-weight:700;color:#fff}
-  .panel-head .sub{font-size:12px;color:var(--ink-3);margin-top:2px}
-  .more{font-size:12px;color:#9db4ff;font-weight:600;cursor:pointer}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 3px}
+  .panel-head h3{font-size:14.5px;font-weight:700;color:#fff}
+  .panel-head .sub{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+  .more{font-size:11.5px;color:#9db4ff;font-weight:600;cursor:pointer}
 
   .row-2{grid-template-columns:1.4fr 1fr}
   .row-3{grid-template-columns:repeat(3,1fr)}
@@ -200,8 +200,8 @@
   .legend .pct{font-size:12px;color:var(--ink-3);width:46px;text-align:right}
 
   /* Table */
-  .toolbar{display:flex;align-items:center;gap:12px;padding:16px 20px;flex-wrap:wrap}
-  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .toolbar{display:flex;align-items:center;gap:10px;padding:12px 18px;flex-wrap:wrap}
+  .chips{display:flex;gap:7px;flex-wrap:wrap}
   .chip{
     padding:7px 14px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;
     border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--ink-2);transition:all .18s;display:flex;align-items:center;gap:7px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
@@ -257,13 +257,13 @@
 
   /* Forms */
   .form-card{padding:22px;background:linear-gradient(155deg,rgba(255,255,255,.035),rgba(255,255,255,.015));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm),inset 0 1px 0 rgba(255,255,255,.07);backdrop-filter:blur(16px) saturate(150%)}
-  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .field{display:flex;flex-direction:column;gap:7px}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  .field{display:flex;flex-direction:column;gap:6px}
   .field.full{grid-column:1/-1}
-  .field label{font-size:13px;font-weight:600;color:var(--ink-2)}
+  .field label{font-size:12.5px;font-weight:600;color:var(--ink-2)}
   .field input,.field select,.field textarea{
-    height:44px;border:1.5px solid var(--line);border-radius:11px;padding:0 14px;
-    font-family:var(--font);font-size:14px;color:var(--ink);background:rgba(255,255,255,.04);outline:none;transition:border-color .18s,box-shadow .18s,background-color .35s var(--ease-soft);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    height:42px;border:1.5px solid var(--line);border-radius:11px;padding:0 14px;
+    font-family:var(--font);font-size:13.5px;color:var(--ink);background:rgba(255,255,255,.04);outline:none;transition:border-color .18s,box-shadow .18s,background-color .35s var(--ease-soft);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   }
   .field textarea{height:auto;padding:12px 14px;resize:vertical;min-height:84px}
   .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.2),0 0 14px rgba(91,140,255,.25)}
@@ -276,9 +276,9 @@
   .rec .rq{margin-left:auto;font-weight:700;font-size:14px}
   .rec .rq.in{color:var(--success)} .rec .rq.out{color:#9db4ff}
 
-  .section-title{font-size:16px;font-weight:700;margin:4px 2px 2px;color:#fff}
-  .section-sub{font-size:13px;color:var(--ink-3);margin:0 2px 14px}
-  .mt{margin-top:22px}
+  .section-title{font-size:15.5px;font-weight:700;margin:4px 2px 2px;color:#fff}
+  .section-sub{font-size:12.5px;color:var(--ink-3);margin:0 2px 11px}
+  .mt{margin-top:18px}
   .chart-box{position:relative;height:240px;padding:6px 16px 18px}
   .chart-box.sm{height:200px}
   .note{font-size:12px;color:var(--ink-3);padding:0 20px 16px}
@@ -389,22 +389,22 @@
   .table-scroll::-webkit-scrollbar{height:8px}
   .table-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:8px}
   [data-theme="light"] .table-scroll::-webkit-scrollbar-thumb{background:rgba(20,30,60,.18)}
-  .data-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:12px;line-height:1.4}
-  .data-table th,.data-table td{white-space:nowrap;vertical-align:middle;overflow:visible;text-align:center;padding:7px 10px}
+  .data-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:11.5px;line-height:1.35}
+  .data-table th,.data-table td{white-space:nowrap;vertical-align:middle;overflow:visible;text-align:center;padding:6px 9px}
   .data-table thead th{
-    padding:8px 10px;font-size:13px;font-weight:700;color:var(--ink-3);
+    padding:7px 9px;font-size:12px;font-weight:700;color:var(--ink-3);
     background:rgba(255,255,255,.04);
     border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-    letter-spacing:.3px;
+    letter-spacing:.2px;
   }
   .data-table thead th:first-child{border-top-left-radius:10px}
   .data-table thead th:last-child{border-top-right-radius:10px}
-  .data-table tbody td{padding:6px 10px;font-size:12px;color:var(--ink);border-bottom:1px solid var(--line-2)}
+  .data-table tbody td{padding:5px 9px;font-size:11.5px;color:var(--ink);border-bottom:1px solid var(--line-2)}
   .data-table tbody tr{cursor:pointer;transition:background .15s}
   .data-table tbody tr:hover{background:rgba(255,255,255,.06)}
   .data-table tbody tr:active{background:rgba(255,255,255,.1)}
-  .data-table .status,.data-table .tag{font-size:12px;padding:3px 9px;display:inline-block;vertical-align:middle}
-  .data-table .lnk,.data-table .row-act{font-size:12px}
+  .data-table .status,.data-table .tag{font-size:11px;padding:2px 8px;display:inline-block;vertical-align:middle}
+  .data-table .lnk,.data-table .row-act{font-size:11.5px}
   .cell-act{display:inline-flex;gap:4px;justify-content:center;flex-wrap:nowrap;white-space:nowrap}
   .cell-act button{font:inherit;cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink-2);padding:2px 9px;border-radius:7px;font-size:11px;transition:all .15s;white-space:nowrap}
   .cell-act button:hover{background:rgba(91,140,255,.16);border-color:rgba(91,140,255,.4);color:#cdd9ff}
@@ -468,11 +468,11 @@
   .modal-mask.show{opacity:1;visibility:visible;pointer-events:auto}
   .modal{background:linear-gradient(160deg,rgba(22,30,54,.76),rgba(14,20,38,.76));border:1px solid var(--line);border-radius:18px;width:min(560px,100%);max-height:86vh;overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);color:var(--ink);transform:translateY(14px) scale(.96);opacity:0;transition:transform .3s cubic-bezier(.2,.85,.25,1),opacity .3s ease}
   .modal-mask.show .modal{transform:translateY(0) scale(1);opacity:1}
-  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line)}
-  .modal-head h3{font-size:17px;font-weight:700;margin:0;color:#fff}
-  .modal-close{cursor:pointer;border:none;background:rgba(255,255,255,.06);width:32px;height:32px;border-radius:9px;font-size:16px;color:var(--ink-2);transition:all .15s}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line)}
+  .modal-head h3{font-size:16px;font-weight:700;margin:0;color:#fff}
+  .modal-close{cursor:pointer;border:none;background:rgba(255,255,255,.06);width:30px;height:30px;border-radius:9px;font-size:15px;color:var(--ink-2);transition:all .15s}
   .modal-close:hover{background:rgba(255,255,255,.14);color:#fff}
-  .modal-body{padding:6px 22px 22px}
+  .modal-body{padding:4px 18px 18px}
   .modal-mask.show .modal-body > *{animation:riseIn .42s var(--ease) backwards}
   .modal-mask.show .modal-body > *:nth-child(2){animation-delay:.04s}
   .modal-mask.show .modal-body > *:nth-child(3){animation-delay:.08s}
@@ -858,7 +858,7 @@
               <div class="field"><label>单位</label><input id="inUnit" list="unitOptions" placeholder="可选预设或输入自定义单位" autocomplete="off" /><datalist id="unitOptions"><option value="箱"></option><option value="个"></option><option value="条"></option><option value="瓶"></option><option value="盒"></option><option value="支"></option><option value="把"></option><option value="件"></option><option value="袋"></option><option value="包"></option><option value="套"></option><option value="台"></option><option value="本"></option><option value="卷"></option><option value="千克"></option><option value="公斤"></option><option value="克"></option><option value="升"></option><option value="毫升"></option><option value="米"></option></datalist></div>
               <div class="field"><label>单价（元）</label><input id="inPrice" placeholder="0.00" type="number" /></div>
               <div class="field"><label>供应商</label><input id="inSupplier" placeholder="如：得力办公" /></div>
-              <div class="field"><label>经手人</label><input id="inHandler" placeholder="李娜" /></div>
+              <div class="field"><label>经办人</label><input id="inHandler" placeholder="李娜" /></div>
               <div class="field"><label>入库仓库</label><select id="inWarehouse"><option>行政库房 A</option><option>烟酒专用柜 B</option><option>礼品仓储 C</option></select></div>
               <div class="field"><label>入库日期</label><input type="date" id="inDate" value="2026-08-06" /></div>
               <div class="field"><label>质保期(月) <span style="color:var(--ink-3);font-weight:400">选填</span></label><input type="number" id="inWarranty" placeholder="如：12（烟酒茶/礼品类必填）" min="0" /></div>
@@ -893,7 +893,7 @@
               <div class="field"><label>物资分类</label><select id="outCat"><option>办公用品</option><option>烟酒茶</option><option>礼品</option></select></div>
               <div class="field"><label>物资名称</label><input id="outName" placeholder="如：签字笔" /></div>
               <div class="field"><label>领用数量</label><input id="outQty" placeholder="0" type="number" /></div>
-              <div class="field"><label>经手人</label><input id="outHandler" placeholder="admin" /></div>
+              <div class="field"><label>经办人</label><input id="outHandler" placeholder="admin" /></div>
               <div class="field full"><label>用途说明</label><textarea id="outPurpose" placeholder="如：部门日常办公 / 客户拜访礼品…"></textarea></div>
             </div>
             <div style="display:flex;gap:12px;margin-top:18px">
@@ -1063,7 +1063,7 @@
           <div class="tabpane active" id="pane-data-in">
             <div class="table-scroll">
               <table class="data-table">
-                <thead><tr><th>单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>规格</th><th>单位</th><th>数量</th><th>单价(元)</th><th>金额(元)</th><th>供应商</th><th>经手人</th><th>仓库</th><th>质保期(月)</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
+                <thead><tr><th>单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>规格</th><th>单位</th><th>数量</th><th>单价(元)</th><th>金额(元)</th><th>供应商</th><th>经办人</th><th>仓库</th><th>质保期(月)</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
                 <tbody id="inBody"></tbody>
               </table>
             </div>
@@ -1073,7 +1073,7 @@
           <div class="tabpane" id="pane-data-out">
             <div class="table-scroll">
               <table class="data-table">
-                <thead><tr><th>单号</th><th>日期</th><th>领用人</th><th>部门</th><th>物资名称</th><th>分类</th><th>数量</th><th>单位</th><th>用途</th><th>经手人</th><th>状态</th><th>操作</th></tr></thead>
+                <thead><tr><th>单号</th><th>日期</th><th>领用人</th><th>部门</th><th>物资名称</th><th>分类</th><th>数量</th><th>单位</th><th>用途</th><th>经办人</th><th>状态</th><th>操作</th></tr></thead>
                 <tbody id="outBody"></tbody>
               </table>
             </div>
@@ -1124,7 +1124,7 @@
               <div class="field"><label>办公用品 · 默认预警线</label><input id="def-office" type="number" min="0" /></div>
               <div class="field"><label>烟酒茶 · 默认预警线</label><input id="def-tobacco" type="number" min="0" /></div>
               <div class="field"><label>礼品 · 默认预警线</label><input id="def-gift" type="number" min="0" /></div>
-              <div class="field"><label>默认经手人</label><input value="admin" /></div>
+              <div class="field"><label>默认经办人</label><input value="admin" /></div>
             </div>
             <div class="chips" id="safeTabs" style="margin-top:14px">
               <button class="chip c-office active" data-cat="office"><span class="d" style="background:var(--c-office)"></span>办公用品</button>
@@ -1690,13 +1690,13 @@
   const inCols=[
     {k:'id',t:'单号'},{k:'date',t:'日期'},{k:'name',t:'物资名称'},{k:'category',t:'分类',tag:true},
     {k:'spec',t:'规格'},{k:'unit',t:'单位'},{k:'qty',t:'数量'},{k:'price',t:'单价(元)'},
-    {k:'amount',t:'金额(元)'},{k:'supplier',t:'供应商'},{k:'handler',t:'经手人'},{k:'warehouse',t:'仓库'},
+    {k:'amount',t:'金额(元)'},{k:'supplier',t:'供应商'},{k:'handler',t:'经办人'},{k:'warehouse',t:'仓库'},
     {k:'warranty',t:'质保期(月)'},{k:'expire',t:'到期日'},{k:'status',t:'状态'}
   ];
   const outCols=[
     {k:'id',t:'单号'},{k:'date',t:'日期'},{k:'applicant',t:'领用人'},{k:'dept',t:'部门'},{k:'name',t:'物资名称'},
     {k:'category',t:'分类',tag:true},{k:'qty',t:'数量'},{k:'unit',t:'单位'},{k:'purpose',t:'用途'},
-    {k:'handler',t:'经手人'},{k:'status',t:'状态'}
+    {k:'handler',t:'经办人'},{k:'status',t:'状态'}
   ];
   const inboundRecords=[
     {id:'RK-20260612-001',date:'2026-06-12',name:'飞天茅台',category:'tobacco',spec:'500ml',unit:'瓶',qty:6,price:1499,amount:8994,supplier:'华兴商贸',handler:'李娜',warehouse:'烟酒专用柜 B',status:'已入库',warranty:60},
@@ -1828,8 +1828,8 @@
       // 数据区对齐策略：根据表头语义智能判断居中/居左/居右
       // 居右：金额/数值类
       const rightKeys=['单价','金额','系统库存','实盘数量','差异'];
-      // 居中：单号/编号、日期、到期日、状态、单位、仓库、分类、部门、经手人、用途、数量、质保期、领用人等文本类
-      const centerKeys=['单号','编号','日期','到期日','状态','单位','仓库','分类','部门','经手人','用途','数量','质保期','领用人'];
+      // 居中：单号/编号、日期、到期日、状态、单位、仓库、分类、部门、经办人、用途、数量、质保期、领用人等文本类
+      const centerKeys=['单号','编号','日期','到期日','状态','单位','仓库','分类','部门','经办人','用途','数量','质保期','领用人'];
       // 居左：物资名称、规格、供应商
       const leftKeys=['物资名称','规格','供应商'];
       const alignOf=h=>{
@@ -2136,7 +2136,7 @@
       {k:'qty',t:'数量',ty:'number'},
       {k:'price',t:'单价(元)',ty:'number'},
       {k:'supplier',t:'供应商',ty:'text'},
-      {k:'handler',t:'经手人',ty:'text'},
+      {k:'handler',t:'经办人',ty:'text'},
       {k:'warehouse',t:'仓库',ty:'text'},
       {k:'warranty',t:'质保期(月)',ty:'number'},
       {k:'status',t:'状态',ty:'select',opts:['已入库','待入库','已驳回']}
@@ -2149,7 +2149,7 @@
       {k:'qty',t:'数量',ty:'number'},
       {k:'unit',t:'单位',ty:'text'},
       {k:'purpose',t:'用途',ty:'text'},
-      {k:'handler',t:'经手人',ty:'text'},
+      {k:'handler',t:'经办人',ty:'text'},
       {k:'status',t:'状态',ty:'select',opts:['待审批','已出库','已驳回']}
     ]
   };
