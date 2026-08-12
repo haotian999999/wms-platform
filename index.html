@@ -1947,10 +1947,10 @@
     const light=document.documentElement.getAttribute('data-theme')==='light';
     C.ink= light ? '#5b6577' : '#aeb9d4';
     C.grid= light ? 'rgba(20,30,60,.08)' : 'rgba(255,255,255,.08)';
-    if(CHART_OK) Chart.defaults.color=C.ink;
+    if(typeof window.Chart !== 'undefined') Chart.defaults.color=C.ink;
   }
   function refreshCharts(){
-    if(!CHART_OK) return;
+    if(typeof window.Chart === 'undefined') return;
     syncChartTheme();
     Object.keys(charts).forEach(v=>{
       Object.values(charts[v]).forEach(c=>{ try{ c.destroy(); }catch(e){} });
@@ -1999,7 +1999,7 @@
   document.addEventListener('webkitfullscreenchange',syncFsIcon);
   syncFsIcon();
   function initCharts(v){
-    if(!CHART_OK) return;
+    if(typeof window.Chart === 'undefined') return;
     if(v==='dashboard'){
       charts.dashboard={};
       charts.dashboard.trend=new Chart(document.getElementById('trendChart'),{
@@ -2041,8 +2041,13 @@
       });
     }
   }
-  // init default view charts
-  if(CHART_OK){ syncChartTheme(); initCharts('dashboard'); }
+  // init default view charts after Chart.js (defer) is ready
+  function initDefaultCharts(){
+    if(typeof window.Chart === 'undefined'){ setTimeout(initDefaultCharts, 50); return; }
+    syncChartTheme();
+    initCharts('dashboard');
+  }
+  initDefaultCharts();
 
   // ---- 数据管理（入库 / 出库后台记录）----
   const inCols=[
