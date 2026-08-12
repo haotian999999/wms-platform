@@ -399,6 +399,8 @@
   .scroll-hint{font-size:11px;color:var(--ink-3);text-align:center;padding:8px 0 0;display:none}
   .scroll-hint.show{display:block}
   .table-scroll.has-overflow + .scroll-hint{display:block}
+  .check-entry-tip{margin:10px 20px 20px;padding:16px 18px;border:1px dashed var(--line);border-radius:12px;color:var(--ink-3);font-size:13px;line-height:1.6;background:rgba(255,255,255,.03)}
+  .check-entry-tip b{color:var(--accent)}
   /* 盘点计划 / 实盘核对表格：紧凑、单行、斑马纹、悬停高亮 */
   #view-check .plan-table{width:100%;border-collapse:separate;border-spacing:0;font-size:10.5px;line-height:1.3}
   #view-check .plan-table th,#view-check .plan-table td{white-space:nowrap;text-align:center;vertical-align:middle;padding:6px 9px;border-bottom:1px solid var(--line-2)}
@@ -1009,6 +1011,8 @@
         <!-- 盘点单录入 -->
         <div class="card mt" id="checkEntryCard">
           <div class="panel-head"><div><h3>盘点单录入 · 实盘核对</h3><div class="sub">录入实盘数量，系统自动计算账实差异</div></div><button class="btn btn-primary" id="newCheck" style="height:34px;padding:0 14px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:4px">＋ 新建盘点单</button></div>
+          <div class="check-entry-tip" id="checkEntryTip">点击右上角「<b>＋ 新建盘点单</b>」开始实盘录入，物资明细表将在此展开（涵盖全部 <b id="allMatCount">0</b> 项物资）。录入实盘数量后，可「保存盘点单」或「下载盘点记录」。</div>
+          <div id="checkEntryBody" style="display:none">
           <div class="form-grid" style="padding:16px 20px 4px">
             <div class="field"><label>盘点类型</label><select id="chkType"><option>季度盘点（自盘）</option><option>年度盘点（联合）</option></select></div>
             <div class="field"><label>盘点范围</label><select id="chkScope"><option>全面盘点</option><option>抽盘（按分类）</option></select></div>
@@ -1029,6 +1033,7 @@
             <button class="btn btn-primary" id="saveCheck" style="justify-content:center">💾 保存盘点单</button>
             <button class="btn btn-primary" id="downloadCheck" style="justify-content:center">⬇ 下载盘点记录</button>
             <span class="plan-meta" id="checkDownMsg"></span>
+          </div>
           </div>
         </div>
       </section>
@@ -1365,19 +1370,7 @@
   </div>
 
   <!-- 最近盘点记录编辑窗口 -->
-  <div class="modal-mask" id="recCheckEditModal">
-    <div class="modal" style="max-width:560px">
-      <div class="modal-head">
-        <h3 id="recCheckEditTitle">编辑盘点记录</h3>
-        <button class="modal-close" id="recCheckEditClose">✕</button>
-      </div>
-      <div class="modal-body"><div class="form-grid" id="recCheckEditBody"></div></div>
-      <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line)">
-        <button class="btn btn-ghost" id="recCheckEditCancel">取消</button>
-        <button class="btn btn-primary" id="recCheckEditSave">保存</button>
-      </div>
-    </div>
-  </div>
+  <div class="modal-mask" id="recCheckEditModal"></div>
 
   <!-- 盘点项编辑窗口 -->
   <div class="modal-mask" id="checkItemEditModal">
@@ -1477,13 +1470,7 @@
   }));
 
   // ---- 盘点管理 ----
-  const checkItems=[
-    {n:'A4 复印纸 70g',c:'office',u:'箱',sys:18},
-    {n:'中华（软）香烟',c:'tobacco',u:'条',sys:12},
-    {n:'商务保温杯',c:'gift',u:'个',sys:9},
-    {n:'飞天茅台',c:'tobacco',u:'瓶',sys:48},
-    {n:'中性签字笔',c:'office',u:'支',sys:640},
-  ];
+  const checkItems=items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
   function renderCheck(){
     const body=document.getElementById('checkBody');
     body.innerHTML=checkItems.map((i,idx)=>{
@@ -1518,7 +1505,7 @@
   ];
   function renderCheckTimeline(){
     const el=document.getElementById('checkTimeline'); if(!el) return;
-    el.innerHTML=checkRecords.map((r,i)=>`<div class="tl-item"><div class="tl-dot ${r.dot}">${r.dot==='in'?'🧮':r.dot==='warn'?'⚠️':'🤝'}</div><div class="tl-body"><div class="t1">${r.title}</div><div class="t2">${r.sub}</div></div><div class="tl-right"><div class="tl-time">${r.date}</div><div class="cell-act"><button type="button" class="btn-mini edit" data-edit-rec-check="${i}">编辑</button><button type="button" class="btn-mini del" data-del-rec-check="${i}">删除</button></div></div></div>`).join('');
+    el.innerHTML=checkRecords.map((r)=>`<div class="tl-item"><div class="tl-dot ${r.dot}">${r.dot==='in'?'🧮':r.dot==='warn'?'⚠️':'🤝'}</div><div class="tl-body"><div class="t1">${r.title}</div><div class="t2">${r.sub}</div></div><div class="tl-time">${r.date}</div></div>`).join('');
   }
   renderCheckTimeline();
 
@@ -1575,30 +1562,30 @@
     const dt=document.getElementById('kpiDoneTrend'); if(dt){ dt.textContent= done? ('▲ 已归档 '+done+' 次') : '▲ 暂无已归档盘点'; }
   }
   renderPlanQuarter(); renderPlanYear(); checkTableOverflow(); renderCheckKpi();
+  // 提交实盘（日期落在计划时间 ±5 天内）→ 对应盘点计划状态自动置「已完成」
+  function syncPlanStatus(dateStr){
+    if(!dateStr) return false;
+    const sub=new Date(dateStr+'T00:00:00');
+    if(isNaN(sub.getTime())) return false;
+    let changed=false;
+    const test=p=>{
+      const parts=String(p.time).split('-'); if(parts.length!==2) return;
+      const plan=new Date(sub.getFullYear(), (+parts[0])-1, +parts[1]);
+      const diff=Math.abs((sub-plan)/86400000);
+      if(diff<=5 && p.status!=='ok'){ p.status='ok'; changed=true; }
+    };
+    checkPlansQuarter.forEach(test); checkPlansYear.forEach(test);
+    return changed;
+  }
   let planEditCtx=null;
   function openPlanEdit(type,idx){
     planEditCtx={type,idx};
     const p=(type==='q'?checkPlansQuarter:checkPlansYear)[idx]; if(!p) return;
-    document.getElementById('planEditTitle').textContent=(type==='q'?'编辑季度盘点计划':'编辑年度盘点计划');
-    let fields;
-    if(type==='q'){
-      fields=[
-        {k:'period',t:'盘点周期',v:p.period,ty:'text'},
-        {k:'time',t:'计划时间',v:p.time,ty:'text'},
-        {k:'person',t:'盘点人',v:p.person,ty:'text'},
-        {k:'status',t:'状态',v:p.status,ty:'select',opts:[['ok','已完成'],['low','进行中'],['out','待开始']]},
-        {k:'diff',t:'差异',v:p.diff,ty:'text'},
-      ];
-    } else {
-      fields=[
-        {k:'name',t:'盘点名称',v:p.name,ty:'text'},
-        {k:'time',t:'计划时间',v:p.time,ty:'text'},
-        {k:'lead',t:'牵头（仓库）',v:p.lead,ty:'text'},
-        {k:'watch',t:'监盘（财务）',v:p.watch,ty:'text'},
-        {k:'status',t:'状态',v:p.status,ty:'select',opts:[['ok','已完成'],['low','进行中'],['out','待开始']]},
-      ];
-    }
-    document.getElementById('planEditBody').innerHTML=fields.map(f=>{
+    const label=type==='q'?(p.period+' · 计划 '+p.time):(p.name+' · 计划 '+p.time);
+    document.getElementById('planEditTitle').textContent=(type==='q'?'季度盘点计划 · 更新状态':'年度盘点计划 · 更新状态');
+    const summary=`<div class="plan-meta" style="padding:2px 0 10px">当前计划：<b style="color:var(--ink-1)">${label}</b></div>`;
+    const fields=[{k:'status',t:'状态',v:p.status,ty:'select',opts:[['ok','已完成'],['low','进行中'],['out','待开始']]}];
+    document.getElementById('planEditBody').innerHTML=summary+fields.map(f=>{
       if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="planF_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${f.v===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
       return `<div class="field"><label>${f.t}</label><input id="planF_${f.k}" type="text" value="${f.v}" /></div>`;
     }).join('');
@@ -1607,9 +1594,9 @@
   function savePlanEdit(){
     if(!planEditCtx) return;
     const p=(planEditCtx.type==='q'?checkPlansQuarter:checkPlansYear)[planEditCtx.idx]; if(!p) return;
-    ['period','time','person','status','diff','name','lead','watch'].forEach(k=>{ const el=document.getElementById('planF_'+k); if(el) p[k]=el.value; });
+    const el=document.getElementById('planF_status'); if(el) p.status=el.value;
     closePlanEdit(); renderPlanQuarter(); renderPlanYear(); renderCheckKpi();
-    toast('计划已更新','ok','修改后的盘点计划已保存');
+    toast('状态已更新','ok','盘点计划状态已保存');
   }
   function closePlanEdit(){ document.getElementById('planEditModal').classList.remove('show'); }
   function deletePlan(type,idx){
@@ -1621,37 +1608,7 @@
     toast('计划已删除','ok','已移除该条盘点计划');
   }
 
-  /* ============ 最近盘点记录：编辑/删除 ============ */
-  let recCheckEditIdx=-1;
-  function openRecCheckEdit(i){
-    recCheckEditIdx=i;
-    const r=checkRecords[i]; if(!r) return;
-    document.getElementById('recCheckEditTitle').textContent='编辑盘点记录';
-    document.getElementById('recCheckEditBody').innerHTML=[
-      {k:'title',t:'标题',v:r.title,ty:'text'},
-      {k:'sub',t:'说明',v:r.sub,ty:'text'},
-      {k:'date',t:'时间',v:r.date,ty:'text'},
-      {k:'dot',t:'类型',v:r.dot,ty:'select',opts:[['in','正常'],['warn','警示'],['out','待办']]},
-    ].map(f=>{
-      if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="rcF_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${f.v===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
-      return `<div class="field"><label>${f.t}</label><input id="rcF_${f.k}" type="text" value="${f.v}" /></div>`;
-    }).join('');
-    document.getElementById('recCheckEditModal').classList.add('show');
-  }
-  function saveRecCheckEdit(){
-    if(recCheckEditIdx<0) return;
-    const r=checkRecords[recCheckEditIdx]; if(!r) return;
-    ['title','sub','date','dot'].forEach(k=>{ const el=document.getElementById('rcF_'+k); if(el) r[k]=el.value; });
-    closeRecCheckEdit(); renderCheckTimeline();
-    toast('记录已更新','ok','修改后的盘点记录已保存');
-  }
-  function closeRecCheckEdit(){ document.getElementById('recCheckEditModal').classList.remove('show'); }
-  function deleteRecCheck(i){
-    const r=checkRecords[i]; if(!r) return;
-    if(!confirm('确定删除该盘点记录「'+r.title+'」吗？此操作不可撤销。')) return;
-    checkRecords.splice(i,1); renderCheckTimeline();
-    toast('记录已删除','ok','已移除该条盘点记录');
-  }
+  /* ============ 最近盘点记录：仅展示（由「保存/下载盘点单」归档写入） ============ */
 
   /* ============ 盘点单录入：行内编辑/删除 ============ */
   let checkItemEditIdx=-1;
@@ -1693,13 +1650,11 @@
       const dq=e.target.closest('[data-del-plan-q]'); if(dq){ deletePlan('q',+dq.dataset.delPlanQ); return; }
       const ey=e.target.closest('[data-edit-plan-y]'); if(ey){ openPlanEdit('y',+ey.dataset.editPlanY); return; }
       const dy=e.target.closest('[data-del-plan-y]'); if(dy){ deletePlan('y',+dy.dataset.delPlanY); return; }
-      const er=e.target.closest('[data-edit-rec-check]'); if(er){ openRecCheckEdit(+er.dataset.editRecCheck); return; }
-      const dr=e.target.closest('[data-del-rec-check]'); if(dr){ deleteRecCheck(+dr.dataset.delRecCheck); return; }
       const ei=e.target.closest('[data-edit-check-item]'); if(ei){ openCheckItemEdit(+ei.dataset.editCheckItem); return; }
       const di=e.target.closest('[data-del-check-item]'); if(di){ deleteCheckItem(+di.dataset.delCheckItem); return; }
     });
   }
-  ['planEdit','recCheckEdit','checkItemEdit'].forEach(function(prefix){
+  ['planEdit','checkItemEdit'].forEach(function(prefix){
     const closeBtn=document.getElementById(prefix+'Close');
     const cancelBtn=document.getElementById(prefix+'Cancel');
     const mask=document.getElementById(prefix+'Modal');
@@ -1708,7 +1663,6 @@
     if(mask) mask.addEventListener('click',ev=>{ if(ev.target.id===prefix+'Modal') mask.classList.remove('show'); });
   });
   const planSave=document.getElementById('planEditSave'); if(planSave) planSave.addEventListener('click',savePlanEdit);
-  const rcSave=document.getElementById('recCheckEditSave'); if(rcSave) rcSave.addEventListener('click',saveRecCheckEdit);
   const ciSave=document.getElementById('checkItemEditSave'); if(ciSave) ciSave.addEventListener('click',saveCheckItemEdit);
 
   document.querySelectorAll('#checkTabs .tab').forEach(t=>t.addEventListener('click',()=>{
@@ -1774,9 +1728,11 @@
     const headerAt=checkExportData.info.length+2;
     exportXLSX(aoa,'盘点记录_'+checkExportData.info[0][1]+'.xlsx',{headerAt,titleMerge:true});
     const snap={type:checkExportData.info[0][1],scope:checkExportData.info[1][1],date:checkExportData.info[4][1],items:checkExportData.items,diffCount:checkExportData.items.filter(i=>i.d!==0).length};
+    const synced=syncPlanStatus(checkExportData.info[4][1]);
+    if(synced){ renderPlanQuarter(); renderPlanYear(); }
     const archived=archiveCheckToTimeline(snap);
     renderCheckKpi();
-    toast(archived?'已导出 Excel 并归档':'已导出 Excel','ok', archived?'盘点记录已生成 .xlsx 并已归入最近记录':'本单此前已保存，Excel 已重新导出');
+    toast(archived?'已导出 Excel 并归档':'已导出 Excel','ok', (synced?'对应盘点计划已自动标记「已完成」；':'')+(archived?'盘点记录已生成 .xlsx 并已归入最近记录':'本单此前已保存，Excel 已重新导出'));
   }
   const dcBtn=document.getElementById('downloadCheck');
   if(dcBtn) dcBtn.addEventListener('click',openCheckModal);
@@ -1793,11 +1749,13 @@
   }
   function saveCheckConfirm(){
     const snap=buildCheckSnapshot();
+    const synced=syncPlanStatus(snap.date);
+    if(synced){ renderPlanQuarter(); renderPlanYear(); }
     const archived=archiveCheckToTimeline(snap);
     document.getElementById('saveCheckModal').classList.remove('show');
     const msg=document.getElementById('checkDownMsg'); if(msg) msg.textContent= archived?'已保存至最近盘点记录':'本单此前已保存';
     renderCheckKpi();
-    toast('盘点单已保存','ok', archived?'已归入「最近盘点记录」，可继续导出 Excel':'该盘点单此前已归档，未重复添加');
+    toast('盘点单已保存','ok', (synced?'对应盘点计划已自动标记「已完成」；':'')+(archived?'已归入「最近盘点记录」，可继续导出 Excel':'该盘点单此前已归档，未重复添加'));
   }
   const svBtn=document.getElementById('saveCheck');
   if(svBtn) svBtn.addEventListener('click',openSaveCheckModal);
@@ -2700,10 +2658,12 @@
   const newCheck=document.getElementById('newCheck');
   if(newCheck) newCheck.addEventListener('click',()=>{
     resetCheckForm();
+    const body=document.getElementById('checkEntryBody'); if(body) body.style.display='block';
+    const tip=document.getElementById('checkEntryTip'); if(tip) tip.style.display='none';
     const card=document.getElementById('checkEntryCard');
     if(card){ card.scrollIntoView({behavior:'smooth',block:'center'}); card.classList.add('pulse'); setTimeout(()=>card.classList.remove('pulse'),1800); }
     const lead=document.getElementById('chkLead'); if(lead) setTimeout(()=>lead.focus(),450);
-    toast('新建盘点单','info','已清空实盘数量与表单，请重新录入并核对');
+    toast('新建盘点单','info','已展开物资明细表（全部 '+checkItems.length+' 项），请录入实盘数量后保存或下载');
   });
   const allCheck=document.getElementById('allCheckRecords');
   if(allCheck) allCheck.addEventListener('click',()=>{ renderCheckTimeline(); const tl=document.getElementById('checkTimeline'); if(tl) tl.scrollIntoView({behavior:'smooth',block:'center'}); toast('全部记录','info','共 '+checkRecords.length+' 条盘点记录'); });
@@ -2711,6 +2671,7 @@
   const _ac=document.querySelector('#invChips .chip.active');
   renderInv(_ac?_ac.dataset.cat:'all');
   renderSafe();
+  const _amc=document.getElementById('allMatCount'); if(_amc) _amc.textContent=checkItems.length;
 
   // ============ 动画反馈增强 END ============
 
