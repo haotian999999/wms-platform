@@ -253,7 +253,9 @@
   .tl-dot.warn{background:rgba(255,93,108,.15);color:#ff97a1}
   .tl-body .t1{font-size:14px;font-weight:600;color:#e9eefb}
   .tl-body .t2{font-size:12px;color:var(--ink-3);margin-top:2px}
-  .tl-time{margin-left:auto;font-size:12px;color:var(--ink-3);white-space:nowrap}
+  .tl-time{font-size:12px;color:var(--ink-3);white-space:nowrap}
+  .tl-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+  .tl-act{display:flex;gap:8px;flex-wrap:nowrap;white-space:nowrap}
 
   /* Forms */
   .form-card{padding:22px;background:linear-gradient(155deg,rgba(255,255,255,.035),rgba(255,255,255,.015));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm),inset 0 1px 0 rgba(255,255,255,.07);backdrop-filter:blur(16px) saturate(150%)}
@@ -948,12 +950,7 @@
               <div class="plan-meta" style="padding:0 20px 6px">每季度末由仓库管理员自行盘点，每年 4 次（全盘）。</div>
               <table>
                 <thead><tr><th>盘点周期</th><th>计划时间</th><th>盘点人</th><th>方式</th><th>状态</th><th>差异</th></tr></thead>
-                <tbody>
-                  <tr><td>2026 Q1</td><td class="code">03-31</td><td>李娜</td><td><span class="pill self">🧑‍💼 自盘</span></td><td><span class="status ok">已完成</span></td><td class="num">0</td></tr>
-                  <tr><td>2026 Q2</td><td class="code">06-30</td><td>李娜</td><td><span class="pill self">🧑‍💼 自盘</span></td><td><span class="status low">进行中</span></td><td class="num">—</td></tr>
-                  <tr><td>2026 Q3</td><td class="code">09-30</td><td>李娜</td><td><span class="pill self">🧑‍💼 自盘</span></td><td><span class="status out">待开始</span></td><td class="num">—</td></tr>
-                  <tr><td>2026 Q4</td><td class="code">12-31</td><td>李娜</td><td><span class="pill self">🧑‍💼 自盘</span></td><td><span class="status out">待开始</span></td><td class="num">—</td></tr>
-                </tbody>
+              <tbody id="planQuarterBody"></tbody>
               </table>
             </div>
 
@@ -962,10 +959,7 @@
               <div class="plan-meta" style="padding:0 20px 6px">每半年与年末开展联合盘点，仓库管理员牵头、财务监盘人员共同参与，全面盘点，每年 2 次。</div>
               <table>
                 <thead><tr><th>盘点名称</th><th>计划时间</th><th>牵头（仓库）</th><th>监盘（财务）</th><th>范围</th><th>状态</th></tr></thead>
-                <tbody>
-                  <tr><td>2026 年中全面盘点</td><td class="code">06-30</td><td>李娜</td><td>赵敏（财务）</td><td><span class="pill join">🤝 全面</span></td><td><span class="status out">待开始</span></td></tr>
-                  <tr><td>2026 年末全面盘点</td><td class="code">12-31</td><td>李娜</td><td>赵敏（财务）</td><td><span class="pill join">🤝 全面</span></td><td><span class="status out">待开始</span></td></tr>
-                </tbody>
+              <tbody id="planYearBody"></tbody>
               </table>
             </div>
           </div>
@@ -1294,6 +1288,51 @@
     </div>
   </div>
 
+  <!-- 盘点计划编辑窗口 -->
+  <div class="modal-mask" id="planEditModal">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-head">
+        <h3 id="planEditTitle">编辑盘点计划</h3>
+        <button class="modal-close" id="planEditClose">✕</button>
+      </div>
+      <div class="modal-body"><div class="form-grid" id="planEditBody"></div></div>
+      <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line)">
+        <button class="btn btn-ghost" id="planEditCancel">取消</button>
+        <button class="btn btn-primary" id="planEditSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 最近盘点记录编辑窗口 -->
+  <div class="modal-mask" id="recCheckEditModal">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-head">
+        <h3 id="recCheckEditTitle">编辑盘点记录</h3>
+        <button class="modal-close" id="recCheckEditClose">✕</button>
+      </div>
+      <div class="modal-body"><div class="form-grid" id="recCheckEditBody"></div></div>
+      <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line)">
+        <button class="btn btn-ghost" id="recCheckEditCancel">取消</button>
+        <button class="btn btn-primary" id="recCheckEditSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 盘点项编辑窗口 -->
+  <div class="modal-mask" id="checkItemEditModal">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-head">
+        <h3 id="checkItemEditTitle">编辑盘点项</h3>
+        <button class="modal-close" id="checkItemEditClose">✕</button>
+      </div>
+      <div class="modal-body"><div class="form-grid" id="checkItemEditBody"></div></div>
+      <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line)">
+        <button class="btn btn-ghost" id="checkItemEditCancel">取消</button>
+        <button class="btn btn-primary" id="checkItemEditSave">保存</button>
+      </div>
+    </div>
+  </div>
+
 <script>
   // ---- Navigation ----
   const titles={dashboard:['工作台','首页 / 工作台'],inventory:['库存管理','运营管理 / 库存管理'],inbound:['入库管理','运营管理 / 入库管理'],outbound:['出库领用','运营管理 / 出库领用'],check:['盘点管理','运营管理 / 盘点管理'],import:['数据导入','运营管理 / 数据导入'],data:['数据管理','数据 / 数据管理'],reports:['统计报表','分析 / 统计报表'],settings:['系统设置','系统 / 系统设置']};
@@ -1386,7 +1425,7 @@
         <td class="num">${i.sys} ${i.u}</td>
         <td><input class="real-input" type="number" value="${i.sys}" data-sys="${i.sys}" data-idx="${idx}" /></td>
         <td class="num"><span class="diff zero" id="diff-${idx}">0</span></td>
-        <td><span class="row-act">复核</span></td>
+        <td><span class="lnk" data-edit-check-item="${idx}">编辑</span><span class="lnk" data-del-check-item="${idx}">删除</span></td>
       </tr>`;
     }).join('');
     body.querySelectorAll('.real-input').forEach(inp=>{
@@ -1407,9 +1446,183 @@
   ];
   function renderCheckTimeline(){
     const el=document.getElementById('checkTimeline'); if(!el) return;
-    el.innerHTML=checkRecords.map(r=>`<div class="tl-item"><div class="tl-dot ${r.dot}">${r.dot==='in'?'🧮':r.dot==='warn'?'⚠️':'🤝'}</div><div class="tl-body"><div class="t1">${r.title}</div><div class="t2">${r.sub}</div></div><div class="tl-time">${r.date}</div></div>`).join('');
+    el.innerHTML=checkRecords.map((r,i)=>`<div class="tl-item"><div class="tl-dot ${r.dot}">${r.dot==='in'?'🧮':r.dot==='warn'?'⚠️':'🤝'}</div><div class="tl-body"><div class="t1">${r.title}</div><div class="t2">${r.sub}</div></div><div class="tl-right"><div class="tl-time">${r.date}</div><div class="tl-act"><span class="lnk" data-edit-rec-check="${i}">编辑</span><span class="lnk" data-del-rec-check="${i}">删除</span></div></div></div>`).join('');
   }
   renderCheckTimeline();
+
+  /* ============ 盘点计划：数据驱动 + 编辑/删除 ============ */
+  const planStatusText={ok:'已完成',low:'进行中',out:'待开始'};
+  const checkPlansQuarter=[
+    {period:'2026 Q1',time:'03-31',person:'李娜',status:'ok',diff:'0'},
+    {period:'2026 Q2',time:'06-30',person:'李娜',status:'low',diff:'—'},
+    {period:'2026 Q3',time:'09-30',person:'李娜',status:'out',diff:'—'},
+    {period:'2026 Q4',time:'12-31',person:'李娜',status:'out',diff:'—'},
+  ];
+  const checkPlansYear=[
+    {name:'2026 年中全面盘点',time:'06-30',lead:'李娜',watch:'赵敏（财务）',status:'out'},
+    {name:'2026 年末全面盘点',time:'12-31',lead:'李娜',watch:'赵敏（财务）',status:'out'},
+  ];
+  function renderPlanQuarter(){
+    const tb=document.getElementById('planQuarterBody'); if(!tb) return;
+    tb.innerHTML=checkPlansQuarter.map((p,i)=>`<tr>
+      <td>${p.period}</td>
+      <td class="code">${p.time}</td>
+      <td>${p.person}</td>
+      <td><span class="pill self">🧑‍💼 自盘</span></td>
+      <td><span class="status ${p.status}">${planStatusText[p.status]}</span></td>
+      <td class="num">${p.diff}</td>
+      <td><span class="lnk" data-edit-plan-q="${i}">编辑</span><span class="lnk" data-del-plan-q="${i}">删除</span></td>
+    </tr>`).join('');
+  }
+  function renderPlanYear(){
+    const tb=document.getElementById('planYearBody'); if(!tb) return;
+    tb.innerHTML=checkPlansYear.map((p,i)=>`<tr>
+      <td>${p.name}</td>
+      <td class="code">${p.time}</td>
+      <td>${p.lead}</td>
+      <td>${p.watch}</td>
+      <td><span class="pill join">🤝 全面</span></td>
+      <td><span class="status ${p.status}">${planStatusText[p.status]}</span></td>
+      <td><span class="lnk" data-edit-plan-y="${i}">编辑</span><span class="lnk" data-del-plan-y="${i}">删除</span></td>
+    </tr>`).join('');
+  }
+  renderPlanQuarter(); renderPlanYear();
+  let planEditCtx=null;
+  function openPlanEdit(type,idx){
+    planEditCtx={type,idx};
+    const p=(type==='q'?checkPlansQuarter:checkPlansYear)[idx]; if(!p) return;
+    document.getElementById('planEditTitle').textContent=(type==='q'?'编辑季度盘点计划':'编辑年度盘点计划');
+    let fields;
+    if(type==='q'){
+      fields=[
+        {k:'period',t:'盘点周期',v:p.period,ty:'text'},
+        {k:'time',t:'计划时间',v:p.time,ty:'text'},
+        {k:'person',t:'盘点人',v:p.person,ty:'text'},
+        {k:'status',t:'状态',v:p.status,ty:'select',opts:[['ok','已完成'],['low','进行中'],['out','待开始']]},
+        {k:'diff',t:'差异',v:p.diff,ty:'text'},
+      ];
+    } else {
+      fields=[
+        {k:'name',t:'盘点名称',v:p.name,ty:'text'},
+        {k:'time',t:'计划时间',v:p.time,ty:'text'},
+        {k:'lead',t:'牵头（仓库）',v:p.lead,ty:'text'},
+        {k:'watch',t:'监盘（财务）',v:p.watch,ty:'text'},
+        {k:'status',t:'状态',v:p.status,ty:'select',opts:[['ok','已完成'],['low','进行中'],['out','待开始']]},
+      ];
+    }
+    document.getElementById('planEditBody').innerHTML=fields.map(f=>{
+      if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="planF_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${f.v===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
+      return `<div class="field"><label>${f.t}</label><input id="planF_${f.k}" type="text" value="${f.v}" /></div>`;
+    }).join('');
+    document.getElementById('planEditModal').classList.add('show');
+  }
+  function savePlanEdit(){
+    if(!planEditCtx) return;
+    const p=(planEditCtx.type==='q'?checkPlansQuarter:checkPlansYear)[planEditCtx.idx]; if(!p) return;
+    ['period','time','person','status','diff','name','lead','watch'].forEach(k=>{ const el=document.getElementById('planF_'+k); if(el) p[k]=el.value; });
+    closePlanEdit(); renderPlanQuarter(); renderPlanYear();
+    toast('计划已更新','ok','修改后的盘点计划已保存');
+  }
+  function closePlanEdit(){ document.getElementById('planEditModal').classList.remove('show'); }
+  function deletePlan(type,idx){
+    const arr=type==='q'?checkPlansQuarter:checkPlansYear;
+    const p=arr[idx]; if(!p) return;
+    const label=type==='q'?(p.period||'该计划'):(p.name||'该计划');
+    if(!confirm('确定删除盘点计划「'+label+'」吗？此操作不可撤销。')) return;
+    arr.splice(idx,1); renderPlanQuarter(); renderPlanYear();
+    toast('计划已删除','ok','已移除该条盘点计划');
+  }
+
+  /* ============ 最近盘点记录：编辑/删除 ============ */
+  let recCheckEditIdx=-1;
+  function openRecCheckEdit(i){
+    recCheckEditIdx=i;
+    const r=checkRecords[i]; if(!r) return;
+    document.getElementById('recCheckEditTitle').textContent='编辑盘点记录';
+    document.getElementById('recCheckEditBody').innerHTML=[
+      {k:'title',t:'标题',v:r.title,ty:'text'},
+      {k:'sub',t:'说明',v:r.sub,ty:'text'},
+      {k:'date',t:'时间',v:r.date,ty:'text'},
+      {k:'dot',t:'类型',v:r.dot,ty:'select',opts:[['in','正常'],['warn','警示'],['out','待办']]},
+    ].map(f=>{
+      if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="rcF_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${f.v===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
+      return `<div class="field"><label>${f.t}</label><input id="rcF_${f.k}" type="text" value="${f.v}" /></div>`;
+    }).join('');
+    document.getElementById('recCheckEditModal').classList.add('show');
+  }
+  function saveRecCheckEdit(){
+    if(recCheckEditIdx<0) return;
+    const r=checkRecords[recCheckEditIdx]; if(!r) return;
+    ['title','sub','date','dot'].forEach(k=>{ const el=document.getElementById('rcF_'+k); if(el) r[k]=el.value; });
+    closeRecCheckEdit(); renderCheckTimeline();
+    toast('记录已更新','ok','修改后的盘点记录已保存');
+  }
+  function closeRecCheckEdit(){ document.getElementById('recCheckEditModal').classList.remove('show'); }
+  function deleteRecCheck(i){
+    const r=checkRecords[i]; if(!r) return;
+    if(!confirm('确定删除该盘点记录「'+r.title+'」吗？此操作不可撤销。')) return;
+    checkRecords.splice(i,1); renderCheckTimeline();
+    toast('记录已删除','ok','已移除该条盘点记录');
+  }
+
+  /* ============ 盘点单录入：行内编辑/删除 ============ */
+  let checkItemEditIdx=-1;
+  function openCheckItemEdit(idx){
+    checkItemEditIdx=idx;
+    const it=checkItems[idx]; if(!it) return;
+    document.getElementById('checkItemEditTitle').textContent='编辑盘点项';
+    document.getElementById('checkItemEditBody').innerHTML=[
+      {k:'n',t:'物资名称',v:it.n,ty:'text'},
+      {k:'c',t:'分类',v:it.c,ty:'select',opts:[['office','办公用品'],['tobacco','烟酒茶'],['gift','礼品']]},
+      {k:'sys',t:'系统库存',v:it.sys,ty:'number'},
+      {k:'u',t:'单位',v:it.u,ty:'text'},
+    ].map(f=>{
+      if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="ciF_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${f.v===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
+      return `<div class="field"><label>${f.t}</label><input id="ciF_${f.k}" type="${f.ty}" value="${f.v}" /></div>`;
+    }).join('');
+    document.getElementById('checkItemEditModal').classList.add('show');
+  }
+  function saveCheckItemEdit(){
+    if(checkItemEditIdx<0) return;
+    const it=checkItems[checkItemEditIdx]; if(!it) return;
+    ['n','c','sys','u'].forEach(k=>{ const el=document.getElementById('ciF_'+k); if(el) it[k]=(k==='sys')?(parseFloat(el.value)||0):el.value; });
+    closeCheckItemEdit(); renderCheck();
+    toast('盘点项已更新','ok','修改后的盘点项已保存');
+  }
+  function closeCheckItemEdit(){ document.getElementById('checkItemEditModal').classList.remove('show'); }
+  function deleteCheckItem(idx){
+    const it=checkItems[idx]; if(!it) return;
+    if(!confirm('确定删除盘点项「'+it.n+'」吗？此操作不可撤销。')) return;
+    checkItems.splice(idx,1); renderCheck();
+    toast('盘点项已删除','ok','已移除该项');
+  }
+
+  /* ============ 盘点管理：统一事件委托 ============ */
+  const checkView=document.getElementById('view-check');
+  if(checkView){
+    checkView.addEventListener('click',e=>{
+      const eq=e.target.closest('[data-edit-plan-q]'); if(eq){ openPlanEdit('q',+eq.dataset.editPlanQ); return; }
+      const dq=e.target.closest('[data-del-plan-q]'); if(dq){ deletePlan('q',+dq.dataset.delPlanQ); return; }
+      const ey=e.target.closest('[data-edit-plan-y]'); if(ey){ openPlanEdit('y',+ey.dataset.editPlanY); return; }
+      const dy=e.target.closest('[data-del-plan-y]'); if(dy){ deletePlan('y',+dy.dataset.delPlanY); return; }
+      const er=e.target.closest('[data-edit-rec-check]'); if(er){ openRecCheckEdit(+er.dataset.editRecCheck); return; }
+      const dr=e.target.closest('[data-del-rec-check]'); if(dr){ deleteRecCheck(+dr.dataset.delRecCheck); return; }
+      const ei=e.target.closest('[data-edit-check-item]'); if(ei){ openCheckItemEdit(+ei.dataset.editCheckItem); return; }
+      const di=e.target.closest('[data-del-check-item]'); if(di){ deleteCheckItem(+di.dataset.delCheckItem); return; }
+    });
+  }
+  ['planEdit','recCheckEdit','checkItemEdit'].forEach(function(prefix){
+    const closeBtn=document.getElementById(prefix+'Close');
+    const cancelBtn=document.getElementById(prefix+'Cancel');
+    const mask=document.getElementById(prefix+'Modal');
+    if(closeBtn) closeBtn.addEventListener('click',()=>mask.classList.remove('show'));
+    if(cancelBtn) cancelBtn.addEventListener('click',()=>mask.classList.remove('show'));
+    if(mask) mask.addEventListener('click',ev=>{ if(ev.target.id===prefix+'Modal') mask.classList.remove('show'); });
+  });
+  const planSave=document.getElementById('planEditSave'); if(planSave) planSave.addEventListener('click',savePlanEdit);
+  const rcSave=document.getElementById('recCheckEditSave'); if(rcSave) rcSave.addEventListener('click',saveRecCheckEdit);
+  const ciSave=document.getElementById('checkItemEditSave'); if(ciSave) ciSave.addEventListener('click',saveCheckItemEdit);
+
   document.querySelectorAll('#checkTabs .tab').forEach(t=>t.addEventListener('click',()=>{
     document.querySelectorAll('#checkTabs .tab').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
