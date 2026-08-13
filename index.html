@@ -391,6 +391,9 @@
   .data-toolbar .search{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1.5px solid var(--line);border-radius:11px;padding:0 12px;height:36px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   .data-toolbar .search input{border:none;background:none;outline:none;font-family:var(--font);font-size:13px;width:100%;color:var(--ink)}
   .data-toolbar .search input::placeholder{color:var(--ink-3)}
+  .toolbar .inv-search{flex:1;min-width:180px;max-width:260px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1.5px solid var(--line);border-radius:20px;padding:0 12px;height:32px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font-size:13px;color:var(--ink-3)}
+  .toolbar .inv-search input{border:none;background:none;outline:none;font-family:var(--font);font-size:13px;width:100%;color:var(--ink)}
+  .toolbar .inv-search input::placeholder{color:var(--ink-3)}
   .lnk{color:#9db4ff;font-weight:400;cursor:pointer;font-size:12px}
   .lnk:hover{text-decoration:underline;text-shadow:0 0 10px rgba(91,140,255,.5)}
   .lnk.dl{color:#ffb088}
@@ -669,6 +672,8 @@
   [data-theme="light"] .chip.active.c-office{background:rgba(58,91,240,.14);color:#3a5bf0;border-color:rgba(58,91,240,.25);box-shadow:none}
   [data-theme="light"] .chip.active.c-tobacco{background:rgba(232,97,44,.14);color:#e8612c;border-color:rgba(232,97,44,.25);box-shadow:none}
   [data-theme="light"] .chip.active.c-gift{background:rgba(155,84,224,.14);color:#9b54e0;border-color:rgba(155,84,224,.25);box-shadow:none}
+  [data-theme="light"] .toolbar .inv-search{background:rgba(255,255,255,.62);border-color:var(--line)}
+  [data-theme="light"] .toolbar .inv-search input::placeholder{color:#8890a3}
   [data-theme="light"] .btn-ghost{background:rgba(255,255,255,.5);color:var(--ink)}
   [data-theme="light"] .btn-ghost:hover{background:#eef1f8;border-color:rgba(20,30,60,.18)}
   [data-theme="light"] thead th{background:rgba(20,30,60,.04);color:#5b6577}
@@ -870,6 +875,7 @@
               <div class="chip c-tobacco" data-cat="tobacco"><span class="d" style="background:var(--c-tobacco)"></span>烟酒茶</div>
               <div class="chip c-gift" data-cat="gift"><span class="d" style="background:var(--c-gift)"></span>礼品</div>
             </div>
+            <div class="search inv-search" id="invSearchWrap">🔍<input id="invSearch" placeholder="搜索编号 / 物资名称 / 规格 / 状态…" /></div>
             <div class="spacer"></div>
             <button class="btn btn-ghost" id="invExport" data-perm="data">⬇ 导出</button>
             <button class="btn btn-primary" id="invAdd" data-perm="data">＋ 新增物资</button>
@@ -1480,9 +1486,12 @@
   function wStatus(dl){ if(dl===null) return {cls:'',txt:'—'}; if(dl<0) return {cls:'out',txt:'已过期'}; if(dl<=90) return {cls:'low',txt:'临期 '+dl+'天'}; return {cls:'ok',txt:'正常'}; }
   function warrantyCell(it){ if(!it.warranty) return '<td>—</td>'; const exp=it.expire||addMonths(it.inDate||'2026-01-01',it.warranty); const dl=daysLeft(exp); const st=wStatus(dl); const col=st.cls==='out'?'var(--danger)':st.cls==='low'?'var(--accent)':'var(--ink-3)'; return `<td><span style="color:${col};font-weight:600">${exp}</span></td>`; }
   function warrantyMonthsCell(it){ return `<td>${it.warranty? it.warranty+' 个月':'—'}</td>`; }
-  function renderInv(cat){
+  function renderInv(cat,filter){
     const body=document.getElementById('invBody');
-    const list=cat==='all'?items:items.filter(i=>i.c===cat);
+    const fInput=document.getElementById('invSearch');
+    const f=(filter===undefined?(fInput?fInput.value:''):filter).trim().toLowerCase();
+    let list=cat==='all'?items.slice():items.filter(i=>i.c===cat);
+    if(f){ list=list.filter(i=>{ const m=catMeta[i.c]; const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; const statusText=statusOf(i.q,i.safe)[1]; const text=[code, i.n, m.t, i.s, i.u, String(i.q), String(i.safe), statusText].join(' ').toLowerCase(); return text.includes(f); }); }
     body.innerHTML=list.map((i,idx)=>{
       const oi=items.indexOf(i);
       const m=catMeta[i.c];const[st,txt]=statusOf(i.q,i.safe);
@@ -1507,6 +1516,10 @@
     document.querySelectorAll('#invChips .chip').forEach(c=>c.classList.remove('active'));
     ch.classList.add('active');renderInv(ch.dataset.cat);
   }));
+  document.getElementById('invSearch').addEventListener('input',()=>{
+    const ac=document.querySelector('#invChips .chip.active');
+    renderInv(ac?ac.dataset.cat:'all');
+  });
 
   // ---- 盘点管理 ----
   const checkItems=items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
