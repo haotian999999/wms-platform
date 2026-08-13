@@ -507,9 +507,11 @@
   #view-data .data-table{font-size:12.5px}
   #view-data .data-table th,#view-data .data-table td{padding:8px 12px}
   #view-data .cell-act button,#view-data .cell-act .btn-mini{padding:4px 10px;font-size:12px}
-  /* 子标签统一缩小，与表格字号协调 */
+  /* 子标签统一缩小，与表格字号协调；数据管理页放在工具栏内，与搜索框同高对齐 */
   .tabs{padding:3px;border-radius:10px}
   .tab{padding:6px 14px;border-radius:7px;font-size:12px}
+  #dataTabs{align-self:stretch;display:flex;align-items:center}
+  #dataTabs .tab{padding:8px 16px}
   .modal-mask{position:fixed;inset:0;background:rgba(20,26,44,.28);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:2000;padding:20px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .25s ease,visibility .25s ease}
   .modal-mask.show{opacity:1;visibility:visible;pointer-events:auto}
   .modal{background:linear-gradient(160deg,rgba(22,30,54,.76),rgba(14,20,38,.76));border:1px solid var(--line);border-radius:18px;width:min(560px,100%);max-height:86vh;overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);color:var(--ink);transform:translateY(14px) scale(.96);opacity:0;transition:transform .3s cubic-bezier(.2,.85,.25,1),opacity .3s ease}
@@ -1095,14 +1097,14 @@
       <section class="view" id="view-data">
         <div class="card">
           <div class="panel-head">
-            <div><h3>数据管理 · 后台数据记录</h3><div class="sub">入库记录与出库记录的查询、查看与下载（系统管理员 / 管理员 / 仓库管理员可访问）</div></div>
+            <div><h3>数据管理 · 后台数据记录</h3></div>
+          </div>
+
+          <div class="data-toolbar">
             <div class="tabs" id="dataTabs">
               <button class="tab active" data-tab="in">入库记录</button>
               <button class="tab" data-tab="out">出库记录</button>
             </div>
-          </div>
-
-          <div class="data-toolbar">
             <div class="search">🔍<input id="dataSearch" placeholder="搜索单号 / 物资名称 / 供应商 / 领用人 / 部门…" /></div>
             <span class="plan-meta" id="dataCount"></span>
             <button class="btn btn-ghost" id="downloadAll" data-perm="data">⬇ 下载全部（当前筛选）</button>
