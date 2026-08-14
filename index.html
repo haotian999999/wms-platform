@@ -932,7 +932,7 @@
           </div>
           <div class="table-scroll">
             <table class="data-table">
-              <thead><tr><th>编号</th><th>物资名称</th><th>分类</th><th>规格</th><th>单位</th><th>库存数量</th><th>安全库存</th><th>入库累计</th><th>出库累计</th><th>质保期(月)</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
+              <thead><tr><th>编号</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格</th><th>单位</th><th>库存数量</th><th>安全库存</th><th>入库累计</th><th>出库累计</th><th>质保期(月)</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
               <tbody id="invBody"></tbody>
             </table>
           </div>
@@ -949,7 +949,10 @@
             <div class="form-grid">
               <div class="field"><label>物资分类</label><select id="inCat"><option>办公用品</option><option>烟酒茶</option><option>礼品</option></select></div>
               <div class="field"><label>物资名称</label><input id="inName" placeholder="如：A4 复印纸 70g" /></div>
+              <div class="field"><label>品牌 <span style="color:var(--ink-3);font-weight:400">选填</span></label><input id="inBrand" placeholder="如：晨光 / 得力" /></div>
+              <div class="field"><label>规格</label><input id="inSpec" placeholder="如：500张/包" /></div>
               <div class="field"><label>入库数量</label><input id="inQty" placeholder="0" type="number" /></div>
+              <div class="field"><label>安全库存 <span style="color:var(--ink-3);font-weight:400">选填</span></label><input id="inSafe" placeholder="低于此值将预警" type="number" min="0" /></div>
               <div class="field"><label>单位</label><input id="inUnit" list="unitOptions" placeholder="可选预设或输入自定义单位" autocomplete="off" /><datalist id="unitOptions"><option value="箱"></option><option value="个"></option><option value="条"></option><option value="瓶"></option><option value="盒"></option><option value="支"></option><option value="把"></option><option value="件"></option><option value="袋"></option><option value="包"></option><option value="套"></option><option value="台"></option><option value="本"></option><option value="卷"></option><option value="千克"></option><option value="公斤"></option><option value="克"></option><option value="升"></option><option value="毫升"></option><option value="米"></option></datalist></div>
               <div class="field"><label>单价（元）</label><input id="inPrice" placeholder="0.00" type="number" /></div>
               <div class="field"><label>供应商</label><input id="inSupplier" placeholder="如：得力办公" /></div>
@@ -1331,6 +1334,7 @@
         <form id="invEditForm" class="form-grid">
           <div class="field"><label>物资分类</label><select id="invEditCat"><option value="office">办公用品</option><option value="tobacco">烟酒茶</option><option value="gift">礼品</option></select></div>
           <div class="field"><label>物资名称</label><input id="invEditName" placeholder="如：A4 复印纸 70g" /></div>
+          <div class="field"><label>品牌 <span style="color:var(--ink-3);font-weight:400">选填</span></label><input id="invEditBrand" placeholder="如：晨光 / 得力" /></div>
           <div class="field"><label>规格</label><input id="invEditSpec" placeholder="如：500张/包" /></div>
           <div class="field"><label>单位</label><input id="invEditUnit" list="unitOptions" placeholder="件/箱/个…" autocomplete="off" /></div>
           <div class="field"><label>库存数量</label><input id="invEditQty" type="number" min="0" placeholder="0" /></div>
@@ -1339,9 +1343,12 @@
           <div class="field"><label>质保期(月) <span style="color:var(--ink-3);font-weight:400">选填</span></label><input id="invEditWarranty" type="number" min="0" placeholder="如：12" /></div>
         </form>
       </div>
-      <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line)">
-        <button class="btn btn-ghost" id="invEditCancel">取消</button>
-        <button class="btn btn-primary" id="invEditSave">保存</button>
+      <div class="modal-foot" style="display:flex;align-items:center;gap:12px;padding:16px 22px;border-top:1px solid var(--line)">
+        <button class="btn btn-danger" id="invEditDelete" style="display:none;justify-content:center">🗑️ 删除</button>
+        <div style="display:flex;gap:12px;margin-left:auto">
+          <button class="btn btn-ghost" id="invEditCancel">取消</button>
+          <button class="btn btn-primary" id="invEditSave">保存</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1354,9 +1361,12 @@
         <button class="modal-close" id="recEditClose">✕</button>
       </div>
       <div class="modal-body"><div class="form-grid" id="recEditBody"></div></div>
-      <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line)">
-        <button class="btn btn-ghost" id="recEditCancel">取消</button>
-        <button class="btn btn-primary" id="recEditSave">保存</button>
+      <div class="modal-foot" style="display:flex;align-items:center;gap:12px;padding:16px 22px;border-top:1px solid var(--line)">
+        <button class="btn btn-danger" id="recEditDelete" style="justify-content:center">🗑️ 删除</button>
+        <div style="display:flex;gap:12px;margin-left:auto">
+          <button class="btn btn-ghost" id="recEditCancel">取消</button>
+          <button class="btn btn-primary" id="recEditSave">保存</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1516,20 +1526,20 @@
 
   // ---- Inventory data ----
   const items=[
-    {c:'office',n:'A4 复印纸 70g',s:'500张/包',u:'箱',q:18,safe:25},
-    {c:'office',n:'中性签字笔',s:'0.5mm 黑',u:'支',q:640,safe:200},
-    {c:'office',n:'文件夹（双夹）',s:'A4',u:'个',q:120,safe:50},
-    {c:'office',n:'订书机',s:'中型',u:'个',q:36,safe:15},
-    {c:'office',n:'打印墨盒',s:'HP 26A',u:'个',q:22,safe:10,warranty:24,inDate:'2026-03-10'},
-    {c:'tobacco',n:'中华（软）香烟',s:'硬盒',u:'条',q:12,safe:30,warranty:12,inDate:'2025-09-01'},
-    {c:'tobacco',n:'飞天茅台',s:'500ml',u:'瓶',q:48,safe:20,warranty:60,inDate:'2024-01-01'},
-    {c:'tobacco',n:'五粮液',s:'500ml',u:'瓶',q:36,safe:15,warranty:12,inDate:'2025-06-01'},
-    {c:'tobacco',n:'西湖龙井',s:'250g',u:'盒',q:60,safe:25,warranty:12,inDate:'2025-09-15'},
-    {c:'tobacco',n:'普洱礼盒茶',s:'357g',u:'盒',q:14,safe:15,warranty:24,inDate:'2024-08-01'},
-    {c:'gift',n:'商务保温杯',s:'500ml',u:'个',q:9,safe:20,warranty:12,inDate:'2025-07-20'},
-    {c:'gift',n:'定制雨伞',s:'折叠',u:'把',q:45,safe:20},
-    {c:'gift',n:'商务公文包',s:'牛皮',u:'个',q:28,safe:12,warranty:12,inDate:'2025-10-01'},
-    {c:'gift',n:'新春礼盒',s:'组合装',u:'盒',q:52,safe:30,warranty:6,inDate:'2026-02-01'},
+    {c:'office',n:'A4 复印纸 70g',b:'得力',s:'500张/包',u:'箱',q:18,safe:25},
+    {c:'office',n:'中性签字笔',b:'晨光',s:'0.5mm 黑',u:'支',q:640,safe:200},
+    {c:'office',n:'文件夹（双夹）',b:'得力',s:'A4',u:'个',q:120,safe:50},
+    {c:'office',n:'订书机',b:'得力',s:'中型',u:'个',q:36,safe:15},
+    {c:'office',n:'打印墨盒',b:'惠普',s:'HP 26A',u:'个',q:22,safe:10,warranty:24,inDate:'2026-03-10'},
+    {c:'tobacco',n:'中华（软）香烟',b:'中华',s:'硬盒',u:'条',q:12,safe:30,warranty:12,inDate:'2025-09-01'},
+    {c:'tobacco',n:'飞天茅台',b:'茅台',s:'500ml',u:'瓶',q:48,safe:20,warranty:60,inDate:'2024-01-01'},
+    {c:'tobacco',n:'五粮液',b:'五粮液',s:'500ml',u:'瓶',q:36,safe:15,warranty:12,inDate:'2025-06-01'},
+    {c:'tobacco',n:'西湖龙井',b:'西湖',s:'250g',u:'盒',q:60,safe:25,warranty:12,inDate:'2025-09-15'},
+    {c:'tobacco',n:'普洱礼盒茶',b:'大益',s:'357g',u:'盒',q:14,safe:15,warranty:24,inDate:'2024-08-01'},
+    {c:'gift',n:'商务保温杯',b:'富光',s:'500ml',u:'个',q:9,safe:20,warranty:12,inDate:'2025-07-20'},
+    {c:'gift',n:'定制雨伞',b:'天堂',s:'折叠',u:'把',q:45,safe:20},
+    {c:'gift',n:'商务公文包',b:'金利来',s:'牛皮',u:'个',q:28,safe:12,warranty:12,inDate:'2025-10-01'},
+    {c:'gift',n:'新春礼盒',b:'锦上添礼',s:'组合装',u:'盒',q:52,safe:30,warranty:6,inDate:'2026-02-01'},
   ];
   items.forEach(i=>{ if(i.warranty) i.expire=addMonths(i.inDate,i.warranty); });
   const catMeta={office:{t:'办公用品',cls:'office',col:'var(--c-office)'},tobacco:{t:'烟酒茶',cls:'tobacco',col:'var(--c-tobacco)'},gift:{t:'礼品',cls:'gift',col:'var(--c-gift)'}};
@@ -1551,7 +1561,7 @@
     const fInput=document.getElementById('invSearch');
     const f=(filter===undefined?(fInput?fInput.value:''):filter).trim().toLowerCase();
     let list=cat==='all'?items.slice():items.filter(i=>i.c===cat);
-    if(f){ list=list.filter(i=>{ const m=catMeta[i.c]; const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; const statusText=statusOf(i.q,i.safe)[1]; const text=[code, i.n, m.t, i.s, i.u, String(i.q), String(i.safe), statusText].join(' ').toLowerCase(); return text.includes(f); }); }
+    if(f){ list=list.filter(i=>{ const m=catMeta[i.c]; const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; const statusText=statusOf(i.q,i.safe)[1]; const text=[code, i.n, m.t, i.b||'', i.s, i.u, String(i.q), String(i.safe), statusText].join(' ').toLowerCase(); return text.includes(f); }); }
     body.innerHTML=list.map((i,idx)=>{
       const oi=items.indexOf(i);
       const m=catMeta[i.c];const[st,txt]=statusOf(i.q,i.safe);
@@ -1561,13 +1571,14 @@
         <td class="code">${code}-${String(idx+1).padStart(3,'0')}</td>
         <td>${i.n}</td>
         <td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td>
+        <td>${i.b||'—'}</td>
         <td>${i.s}</td><td>${i.u}</td>
         <td class="num">${i.q} ${i.u}</td><td class="num">${i.safe} ${i.u}</td>
         <td class="num">${inT} ${i.u}</td><td class="num">${outT} ${i.u}</td>
         ${warrantyMonthsCell(i)}
         ${warrantyCell(i)}
         <td><span class="status ${st}">${txt}</span></td>
-        <td><span class="cell-act"><button type="button" data-edit-inv="${oi}">编辑</button><button type="button" class="del" data-del-inv="${oi}">删除</button></span></td>
+        <td><span class="cell-act"><button type="button" data-edit-inv="${oi}">编辑</button></span></td>
       </tr>`;
     }).join('');
     checkTableOverflow();
@@ -2291,7 +2302,7 @@
         if(c.k==='expire') return warrantyCell(r);
         return `<td>${r[c.k]}</td>`;
       }).join('');
-      return `<tr data-row-rec="${type}:${i}"><td class="code">${r.id}</td>${cells}<td><span class="cell-act"><button type="button" class="btn-mini edit" data-edit-rec="${type}:${i}">编辑</button><button type="button" class="btn-mini del" data-del-rec="${type}:${i}">删除</button></span></td></tr>`;
+      return `<tr data-row-rec="${type}:${i}"><td class="code">${r.id}</td>${cells}<td><span class="cell-act"><button type="button" class="btn-mini edit" data-edit-rec="${type}:${i}">编辑</button></span></td></tr>`;
     }).join('');
     return list.length;
   }
@@ -2545,12 +2556,8 @@
   document.addEventListener('click',e=>{
     const edi=e.target.closest('[data-edit-inv]');
     if(edi){ openInvEdit(+edi.dataset.editInv); e.stopPropagation(); return; }
-    const dli=e.target.closest('[data-del-inv]');
-    if(dli){ deleteInv(+dli.dataset.delInv); e.stopPropagation(); return; }
     const edr=e.target.closest('[data-edit-rec]');
     if(edr){ const p=edr.dataset.editRec.split(':'); openRecEdit(p[0],+p[1]); e.stopPropagation(); return; }
-    const dlr=e.target.closest('[data-del-rec]');
-    if(dlr){ const p=dlr.dataset.delRec.split(':'); deleteRec(p[0],+p[1]); e.stopPropagation(); return; }
     const r=e.target.closest('[data-row-rec]');
     if(r){ const p=r.dataset.rowRec.split(':'); openRec(p[0],+p[1]); return; }
     const iv=e.target.closest('[data-row-inv]');
@@ -2567,7 +2574,7 @@
   }
   const ICON={office:'📄',tobacco:'🍶',gift:'🎁'};
   function resetInbound(){
-    ['inName','inQty','inPrice','inSupplier','inHandler','inNote'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
+    ['inName','inBrand','inSpec','inQty','inSafe','inPrice','inSupplier','inHandler','inNote'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
     const w=document.getElementById('inWarranty'); if(w) w.value='';
   }
   document.getElementById('confirmInbound').addEventListener('click',()=>{
@@ -2582,13 +2589,16 @@
     const warehouse=document.getElementById('inWarehouse').value;
     const date=document.getElementById('inDate').value||new Date().toISOString().slice(0,10);
     const warranty=parseInt(document.getElementById('inWarranty').value)||0;
+    const brand=document.getElementById('inBrand').value.trim();
+    const spec=document.getElementById('inSpec').value.trim()||'—';
+    const safe=parseFloat(document.getElementById('inSafe').value)||0;
     const amount=+(qty*price).toFixed(2);
-    const rec={id:genId('RK'),date,name,category:cat,spec:'—',unit,qty,price,amount,supplier,handler,warehouse,status:'已入库',warranty};
+    const rec={id:genId('RK'),date,name,category:cat,brand,spec,unit,qty,price,amount,supplier,handler,warehouse,status:'已入库',warranty};
     if(warranty) rec.expire=addMonths(date,warranty);
     inboundRecords.unshift(rec);
     const exist=items.find(i=>i.n===name && i.c===cat);
-    if(exist){ exist.q+=qty; if(warranty&&!exist.warranty){exist.warranty=warranty; exist.inDate=date; exist.expire=addMonths(date,warranty);} }
-    else { const ni={c:cat,n:name,s:'—',u:unit,q:qty,safe:catDefault[cat]||10,warranty:warranty||undefined,inDate:date}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
+    if(exist){ exist.q+=qty; if(brand) exist.b=brand; if(spec!=='—') exist.s=spec; if(safe) exist.safe=safe; if(warranty&&!exist.warranty){exist.warranty=warranty; exist.inDate=date; exist.expire=addMonths(date,warranty);} }
+    else { const ni={c:cat,n:name,b:brand,s:spec,u:unit,q:qty,safe:safe||catDefault[cat]||10,warranty:warranty||undefined,inDate:date}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
     const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all');
     renderDataTables(); renderWarranty(); wmsSave();
     const rl=document.querySelector('#view-inbound .rec-list');
@@ -2623,9 +2633,9 @@
   function exportInv(){
     const ac=document.querySelector('#invChips .chip.active'); const cat=ac?ac.dataset.cat:'all';
     const list=cat==='all'?items:items.filter(i=>i.c===cat);
-    const header=['编号','物资名称','分类','规格','单位','库存数量','安全库存','入库累计','出库累计','质保期(月)','到期日','状态'];
+    const header=['编号','物资名称','分类','品牌','规格','单位','库存数量','安全库存','入库累计','出库累计','质保期(月)','到期日','状态'];
     const body=list.map((i,idx)=>{ const m=catMeta[i.c]; const[st]=statusOf(i.q,i.safe); const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
-      return [code+'-'+String(items.indexOf(i)+1).padStart(3,'0'), i.n, m.t, i.s, i.u, i.q+' '+i.u, i.safe+' '+i.u, inTotalOf(i.n,i.c)+' '+i.u, outTotalOf(i.n,i.c)+' '+i.u, i.warranty?i.warranty+' 个月':'—', i.expire||'—', st]; });
+      return [code+'-'+String(items.indexOf(i)+1).padStart(3,'0'), i.n, m.t, i.b||'—', i.s, i.u, i.q+' '+i.u, i.safe+' '+i.u, inTotalOf(i.n,i.c)+' '+i.u, outTotalOf(i.n,i.c)+' '+i.u, i.warranty?i.warranty+' 个月':'—', i.expire||'—', st]; });
     exportXLSX([header].concat(body), '库存管理_'+(cat==='all'?'全部':catMeta[cat].t)+'.xlsx');
     toast('已导出库存','ok','库存清单已生成 .xlsx');
   }
@@ -2636,6 +2646,7 @@
     if(invEditIdx>=0){ const i=items[invEditIdx];
       document.getElementById('invEditCat').value=i.c;
       document.getElementById('invEditName').value=i.n;
+      document.getElementById('invEditBrand').value=i.b||'';
       document.getElementById('invEditSpec').value=i.s||'';
       document.getElementById('invEditUnit').value=i.u||'';
       document.getElementById('invEditQty').value=i.q;
@@ -2643,18 +2654,21 @@
       document.getElementById('invEditInDate').value=i.inDate||'';
       document.getElementById('invEditWarranty').value=i.warranty||'';
       t.textContent='编辑物资';
+      document.getElementById('invEditDelete').style.display='';
     } else {
       document.getElementById('invEditForm').reset();
       document.getElementById('invEditCat').value='office';
       document.getElementById('invEditUnit').value='件';
       document.getElementById('invEditSafe').value=(catDefault&&catDefault.office)||10;
       t.textContent='新增物资';
+      document.getElementById('invEditDelete').style.display='none';
     }
     document.getElementById('invEditModal').classList.add('show');
   }
   function saveInvEdit(){
     const c=document.getElementById('invEditCat').value;
     const n=document.getElementById('invEditName').value.trim();
+    const b=document.getElementById('invEditBrand').value.trim();
     const s=document.getElementById('invEditSpec').value.trim()||'—';
     const u=document.getElementById('invEditUnit').value.trim()||'件';
     const q=parseFloat(document.getElementById('invEditQty').value);
@@ -2664,10 +2678,10 @@
     if(!n){ toast('请填写物资名称','warn'); return; }
     if(isNaN(q)||q<0){ toast('库存数量无效','warn'); return; }
     if(invEditIdx>=0){ const i=items[invEditIdx];
-      i.c=c;i.n=n;i.s=s;i.u=u;i.q=q;i.safe=safe;i.inDate=inDate;i.warranty=warranty||undefined;
+      i.c=c;i.n=n;i.b=b;i.s=s;i.u=u;i.q=q;i.safe=safe;i.inDate=inDate;i.warranty=warranty||undefined;
       if(warranty){ i.expire=addMonths(inDate||'2026-01-01',warranty); } else { i.expire=undefined; }
     } else {
-      const ni={c,n,s,u,q,safe,inDate,warranty:warranty||undefined};
+      const ni={c,n,b,s,u,q,safe,inDate,warranty:warranty||undefined};
       if(warranty) ni.expire=addMonths(inDate||'2026-01-01',warranty);
       items.push(ni);
     }
@@ -2681,6 +2695,7 @@
     if(!confirm('确定删除该物资「'+i.n+'」吗？\n（联动的出入库记录仍会保留）')) return;
     items.splice(idx,1);
     const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); renderWarranty(); wmsSave();
+    closeInvEdit();
     toast('已删除物资','ok',i.n);
   }
 
@@ -2690,6 +2705,7 @@
     in:[
       {k:'date',t:'日期',ty:'date'},
       {k:'name',t:'物资名称',ty:'text'},
+      {k:'brand',t:'品牌',ty:'text'},
       {k:'spec',t:'规格',ty:'text'},
       {k:'unit',t:'单位',ty:'text'},
       {k:'qty',t:'数量',ty:'number'},
@@ -2746,6 +2762,7 @@
     if(type==='in'){ adjustInventory(rec.name,rec.category,rec.qty,-1); inboundRecords.splice(idx,1); }
     else { adjustInventory(rec.name,rec.category,rec.qty,+1); outboundRecords.splice(idx,1); }
     renderDataTables(); renderInv('all'); renderRecentOut(); wmsSave();
+    closeRecEdit();
     toast('记录已删除','ok','已移除该条记录');
   }
 
@@ -2768,10 +2785,12 @@
   document.getElementById('invEditSave').addEventListener('click',saveInvEdit);
   document.getElementById('invEditClose').addEventListener('click',closeInvEdit);
   document.getElementById('invEditCancel').addEventListener('click',closeInvEdit);
+  document.getElementById('invEditDelete').addEventListener('click',()=>deleteInv(invEditIdx));
   document.getElementById('invEditModal').addEventListener('click',e=>{ if(e.target.id==='invEditModal') closeInvEdit(); });
   document.getElementById('recEditSave').addEventListener('click',saveRecEdit);
   document.getElementById('recEditClose').addEventListener('click',closeRecEdit);
   document.getElementById('recEditCancel').addEventListener('click',closeRecEdit);
+  document.getElementById('recEditDelete').addEventListener('click',()=>deleteRec(recEditType,recEditIdx));
   document.getElementById('recEditModal').addEventListener('click',e=>{ if(e.target.id==='recEditModal') closeRecEdit(); });
   document.getElementById('viewAllOut').addEventListener('click',viewAllOut);
   renderRecentOut();
