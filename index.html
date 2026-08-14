@@ -1377,10 +1377,10 @@
             <tbody id="saveCheckBody"></tbody>
           </table>
         </div>
-        <div style="display:flex;justify-content:center;gap:12px;margin-top:18px;flex-wrap:wrap">
+        <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:18px;flex-wrap:nowrap">
           <button class="btn btn-ghost" id="saveCheckCancel">取消</button>
-          <button class="btn btn-accent" id="saveCheckDownload" style="min-width:200px;justify-content:center">⬇ 下载实盘单</button>
-          <button class="btn btn-primary" id="saveCheckConfirm" style="min-width:220px;justify-content:center">✔ 确认保存至最近盘点记录</button>
+          <button class="btn btn-accent" id="saveCheckDownload" style="min-width:180px;justify-content:center">⬇ 下载实盘单</button>
+          <button class="btn btn-primary" id="saveCheckConfirm" style="min-width:200px;justify-content:center">✔ 确认保存盘点记录</button>
         </div>
       </div>
     </div>
@@ -1435,9 +1435,9 @@
         </div>
         <div class="scroll-hint">← 左右滑动查看完整信息 →</div>
         <div class="note">差异为负 = 盘亏（实物少于账面），为正 = 盘盈（实物多于账面）；0 表示账实相符。差异项需仓库管理员与财务共同复核后调整账面。</div>
-        <div style="display:flex;gap:12px;align-items:center;padding:8px 0 4px;flex-wrap:wrap">
-          <button class="btn btn-primary" id="saveCheck" style="justify-content:center">💾 保存盘点单</button>
+        <div style="display:flex;gap:12px;align-items:center;justify-content:center;padding:8px 0 4px;flex-wrap:wrap">
           <button class="btn btn-primary" id="downloadCheck" style="justify-content:center">⬇ 下载盘点单（线下核账）</button>
+          <button class="btn btn-primary" id="saveCheck" style="justify-content:center">💾 保存盘点单</button>
           <span class="plan-meta" id="checkDownMsg"></span>
         </div>
       </div>
@@ -1625,16 +1625,29 @@
   }
   renderCheck(); checkTableOverflow();
   const checkRecords=[
-    {title:'2026 Q1 季度盘点完成',sub:'李娜 · 全盘 36 项 · 无差异',date:'03-31',dot:'in'},
-    {title:'Q2 季度盘点进行中',sub:'李娜 · 已盘 28/36 项',date:'进行中',dot:'warn'},
-    {title:'年中全面盘点待启动',sub:'牵头：李娜 · 监盘：赵敏（财务）',date:'06-30',dot:'out'},
-    {title:'2025 年末全面盘点归档',sub:'联合盘点 · 盘亏 ¥1,240 已报批',date:'2025-12-31',dot:'in'}
+    {title:'2026 Q1 季度盘点完成',sub:'李娜 · 全盘 36 项 · 无差异',date:'03-31',dot:'in',planKey:'2026 Q1'},
+    {title:'Q2 季度盘点进行中',sub:'李娜 · 已盘 28/36 项',date:'06-30',dot:'warn',planKey:'2026 Q2'},
+    {title:'年中全面盘点待启动',sub:'牵头：李娜 · 监盘：赵敏（财务）',date:'06-30',dot:'out',planKey:'2026 年中全面盘点'},
+    {title:'2025 年末全面盘点归档',sub:'联合盘点 · 盘亏 ¥1,240 已报批',date:'2025-12-31',dot:'in',planKey:'2025 年末全面盘点'}
   ];
+  function planStatusByKey(key){
+    if(!key) return null;
+    const all=checkPlansQuarter.concat(checkPlansYear);
+    const p=all.find(x=>(x.period||x.name)===key);
+    return p? p.status : null;
+  }
   function renderCheckTimeline(){
     const el=document.getElementById('checkTimeline'); if(!el) return;
-    el.innerHTML=checkRecords.map((r,i)=>`<div class="tl-item" data-rec-idx="${i}" role="button" tabindex="0" title="点击查看操作"><div class="tl-dot ${r.dot}">${r.dot==='in'?'🧮':r.dot==='warn'?'⚠️':'🤝'}</div><div class="tl-body"><div class="t1">${r.title}</div><div class="t2">${r.sub}</div></div><div class="tl-right"><div class="tl-time">${r.date}</div><div class="rec-act-hint">⋯ 操作</div></div></div>`).join('');
+    el.innerHTML=checkRecords.map((r,i)=>{
+      const stt=planStatusByKey(r.planKey);
+      const badge= stt? `<span class="status ${stt}">${planStatusText[stt]}</span>` : '';
+      return `<div class="tl-item" data-rec-idx="${i}" role="button" tabindex="0" title="点击查看操作">`+
+        `<div class="tl-dot ${r.dot}">${r.dot==='in'?'🧮':r.dot==='warn'?'⚠️':'🤝'}</div>`+
+        `<div class="tl-body"><div class="t1">${r.title}</div><div class="t2">${r.sub}</div></div>`+
+        `<div class="tl-right"><div class="tl-time">${r.date}</div>${badge}</div>`+
+      `</div>`;
+    }).join('');
   }
-  renderCheckTimeline();
 
   /* ============ 最近盘点记录：编辑/删除 ============ */
   let recCheckEditIdx=-1;
@@ -1694,6 +1707,7 @@
     {name:'2026 年中全面盘点',time:'06-30',lead:'李娜',watch:'赵敏（财务）',status:'out'},
     {name:'2026 年末全面盘点',time:'12-31',lead:'李娜',watch:'赵敏（财务）',status:'out'},
   ];
+  let activeCheckPlan=null; // 当前正在盘点的计划（用于存档记录与计划状态双向呼应）
   function renderPlanQuarter(){
     const tb=document.getElementById('planQuarterBody'); if(!tb) return;
     tb.innerHTML=checkPlansQuarter.map((p,i)=>`<tr>
@@ -1734,7 +1748,7 @@
     }
     const dt=document.getElementById('kpiDoneTrend'); if(dt){ dt.textContent= done? ('▲ 已归档 '+done+' 次') : '▲ 暂无已归档盘点'; }
   }
-  renderPlanQuarter(); renderPlanYear(); checkTableOverflow(); renderCheckKpi();
+  renderPlanQuarter(); renderPlanYear(); checkTableOverflow(); renderCheckKpi(); renderCheckTimeline();
   // 提交实盘（日期落在计划时间 ±5 天内）→ 对应盘点计划状态自动置「已完成」
   function syncPlanStatus(dateStr){
     if(!dateStr) return false;
@@ -1775,6 +1789,8 @@
   function openStartCheck(type,idx){
     const p=(type==='q'?checkPlansQuarter:checkPlansYear)[idx]; if(!p) return;
     resetCheckForm();
+    activeCheckPlan={type,idx};
+    if(p.status==='out'){ p.status='low'; renderPlanQuarter(); renderPlanYear(); } // 开始盘点→计划置「进行中」，与记录呼应
     const g=id=>document.getElementById(id);
     g('chkType').value = type==='q' ? '季度盘点（自盘）' : '年度盘点（联合）';
     g('chkLead').value = type==='q' ? (p.person||'李娜') : (p.lead||'李娜');
@@ -1886,10 +1902,16 @@
     const b=document.getElementById('saveCheck');
     if(b){ b.textContent='✅ 已保存至最近记录'; b.disabled=true; b.style.opacity=.7; }
   }
-  function archiveCheckToTimeline(snap){
+  function archiveCheckToTimeline(snap, planLabel, planKey){
     if(checkArchived) return false;
-    checkRecords.unshift({title:(snap.type||'盘点')+' 完成', sub:(snap.scope||'—')+' · '+snap.items.length+' 项 · '+(snap.diffCount?('差异 '+snap.diffCount+' 项'):'无差异'), date:snap.date||new Date().toISOString().slice(0,10), dot:snap.diffCount?'warn':'in'});
-    renderCheckTimeline(); checkArchived=true; markSaved(); return true;
+    const title=planLabel||((snap.type||'盘点')+' 完成');
+    const rec={title, sub:(snap.scope||'—')+' · '+snap.items.length+' 项 · '+(snap.diffCount?('差异 '+snap.diffCount+' 项'):'无差异'), date:snap.date||new Date().toISOString().slice(0,10), dot:snap.diffCount?'warn':'in', planKey};
+    // 同一计划已存在记录（如「进行中」）→ 原地更新为「已完成」，实现计划与记录双向呼应
+    if(planKey){
+      const ex=checkRecords.findIndex(r=>r.planKey===planKey);
+      if(ex>=0){ checkRecords[ex]=rec; renderCheckTimeline(); checkArchived=true; markSaved(); return true; }
+    }
+    checkRecords.unshift(rec); renderCheckTimeline(); checkArchived=true; markSaved(); return true;
   }
   function resetCheckForm(){
     const g=id=>document.getElementById(id);
@@ -1955,13 +1977,24 @@
     let synced=false, archived=false;
     try{
       const snap=buildCheckSnapshot();
-      synced=syncPlanStatus(snap.date);
-      if(synced){ renderPlanQuarter(); renderPlanYear(); }
-      archived=archiveCheckToTimeline(snap);
+      let planLabel='', planKey='';
+      // 优先按当前盘点的计划精确关联：保存后该计划置「已完成」
+      if(activeCheckPlan){
+        const arr=activeCheckPlan.type==='q'?checkPlansQuarter:checkPlansYear;
+        const p=arr[activeCheckPlan.idx];
+        if(p){
+          p.status='ok';
+          planLabel = activeCheckPlan.type==='q' ? (p.period+' 季度盘点已完成') : (p.name+' 已完成');
+          planKey  = activeCheckPlan.type==='q' ? p.period : p.name;
+          synced=true; renderPlanQuarter(); renderPlanYear();
+        }
+      }
+      if(!synced){ synced=syncPlanStatus(snap.date); if(synced){ renderPlanQuarter(); renderPlanYear(); } }
+      archived=archiveCheckToTimeline(snap, planLabel, planKey);
       const msg=document.getElementById('checkDownMsg'); if(msg) msg.textContent= archived?'已保存至最近盘点记录':'本单此前已保存';
       renderCheckKpi();
     }catch(err){ console.error('saveCheckConfirm 保存异常:', err); }
-    // 无论保存是否成功，均关闭窗口并隐藏录入区、恢复提示（满足「确认保存后自动收起」）
+    // 无论保存是否成功，均关闭窗口并隐藏录入区（满足「确认保存后自动收起」）
     document.getElementById('saveCheckModal').classList.remove('show');
     const sc=document.getElementById('startCheckModal'); if(sc) sc.classList.remove('show');
     toast('盘点单已保存','ok', (synced?'对应盘点计划已自动标记「已完成」；':'')+(archived?'已归入「最近盘点记录」，可继续导出 Excel':'该盘点单此前已归档，未重复添加'));
