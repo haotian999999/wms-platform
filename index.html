@@ -305,6 +305,22 @@
   .rec .rq.in{color:var(--success)} .rec .rq.out{color:#9db4ff}
 
   .section-title{font-size:15.5px;font-weight:700;margin:4px 2px 2px;color:#fff}
+  /* ===== 数据维护 ===== */
+  .grid.cols-2{grid-template-columns:repeat(2,1fr)}
+  .maint-grid{margin-top:18px}
+  .store-stat{display:flex;flex-direction:column;gap:7px;margin:8px 0 12px}
+  .store-stat .row{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-2)}
+  .store-stat .row b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .store-bar{height:13px;border-radius:8px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid var(--line);box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+  .store-fill{height:100%;width:0;background:linear-gradient(90deg,#2fe6a0,#27c06a);transition:width .6s var(--ease);border-radius:8px}
+  .store-meta{margin-top:8px;font-size:12px;color:var(--ink-3)}
+  .switch-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:13px;color:var(--ink-2);border-bottom:1px solid var(--line-2)}
+  .switch-row input{width:18px;height:18px;accent-color:var(--primary);cursor:pointer}
+  .maint-line{font-size:12.5px;color:var(--ink-2);margin:12px 0 14px;min-height:18px;line-height:1.5}
+  .maint-line b{color:var(--ink);font-weight:600}
+  .maint-actions{display:flex;gap:10px;flex-wrap:wrap}
+  .maint-warn{font-size:12px;color:#ffb088;background:rgba(255,138,76,.1);border:1px solid rgba(255,138,76,.3);border-radius:10px;padding:9px 11px;margin:10px 0 14px;line-height:1.5}
+  .perm-lock{margin-top:18px;padding:40px 20px;text-align:center;color:var(--ink-3);font-size:14px;background:rgba(255,93,108,.08);border:1px dashed rgba(255,93,108,.4);border-radius:var(--radius)}
   .section-sub{font-size:12.5px;color:var(--ink-3);margin:0 2px 11px}
   .mt{margin-top:18px}
   .chart-box{position:relative;height:240px;padding:6px 16px 18px}
@@ -707,6 +723,7 @@
   [data-theme="light"] .topbar h1{color:#1d2433;text-shadow:none}
   [data-theme="light"] .search{background:rgba(255,255,255,.46);border:1px solid var(--line)}
   [data-theme="light"] .date-note{background:rgba(255,255,255,.46);border:1px solid var(--line);color:#1d2433}
+  [data-theme="light"] .store-bar{background:rgba(20,30,60,.12)}
   [data-theme="light"] .icon-btn{background:rgba(255,255,255,.46);color:var(--ink-2)}
   [data-theme="light"] .icon-btn:hover{background:var(--primary-soft);color:#1d2433}
   [data-theme="light"] .icon-btn .badge{border-color:#fff}
@@ -812,6 +829,7 @@
       <div class="nav-label">分析 & 系统</div>
       <div class="nav-item" data-view="reports"><span class="ico">📊</span>统计报表</div>
       <div class="nav-item" data-view="settings"><span class="ico">⚙️</span>系统设置</div>
+      <div class="nav-item" data-view="maintenance"><span class="ico">🛠️</span>数据维护</div>
     </nav>
     <div class="side-foot">
       <div class="av">管</div>
@@ -1234,6 +1252,77 @@
         </div>
       </section>
 
+      <!-- ============ 数据维护 ============ -->
+      <section class="view" id="view-maintenance">
+        <div id="maintGuard" class="perm-lock" style="display:none">🔒 数据维护为系统管理员专属功能，当前账号无访问权限。</div>
+        <div class="grid cols-2 maint-grid" id="maintGrid">
+
+          <!-- 1. 存储状态 -->
+          <div class="card form-card">
+            <div class="section-title">💾 存储状态</div>
+            <div class="section-sub">本地存储空间使用概览</div>
+            <div id="storeStat" class="store-stat"></div>
+            <div class="store-bar"><div class="store-fill" id="storeFill"></div></div>
+            <div class="store-meta" id="storeMeta"></div>
+          </div>
+
+          <!-- 2. 自动备份恢复 -->
+          <div class="card form-card">
+            <div class="section-title">🔄 自动备份恢复</div>
+            <div class="section-sub">开启后数据变更时自动留存备份，可一键恢复</div>
+            <label class="switch-row"><span>启用自动备份</span><input type="checkbox" id="autoBackupOn" /></label>
+            <div class="maint-line" id="autoBackupInfo">尚未创建备份</div>
+            <div class="maint-actions">
+              <button class="btn btn-ghost" id="btnBackupNow">立即备份</button>
+              <button class="btn btn-primary" id="btnRestoreBackup">恢复上次备份</button>
+            </div>
+          </div>
+
+          <!-- 3. 重置数据 -->
+          <div class="card form-card">
+            <div class="section-title">♻️ 重置数据</div>
+            <div class="section-sub">清空全部业务数据并恢复初始示例数据</div>
+            <p class="maint-warn">⚠️ 此操作不可撤销，将清空库存、出入库、盘点等全部业务数据（登录账号不受影响）。</p>
+            <div class="maint-actions">
+              <button class="btn btn-danger" id="btnResetData">重置为初始数据</button>
+            </div>
+          </div>
+
+          <!-- 4. 导出数据 -->
+          <div class="card form-card">
+            <div class="section-title">📤 导出数据</div>
+            <div class="section-sub">将全部业务数据导出为 Excel 工作簿</div>
+            <div class="maint-line" id="exportInfo">包含：库存 / 入库 / 出库 / 盘点计划 / 盘点记录</div>
+            <div class="maint-actions">
+              <button class="btn btn-primary" id="btnExportAll">导出全部数据 (Excel)</button>
+            </div>
+          </div>
+
+          <!-- 5. 整库 JSON 备份 -->
+          <div class="card form-card">
+            <div class="section-title">🗃️ 整库 JSON 备份</div>
+            <div class="section-sub">导出完整数据库为 JSON 文件，便于长期归档</div>
+            <div class="maint-line" id="jsonBackupInfo">含全部业务数据与账户配置</div>
+            <div class="maint-actions">
+              <button class="btn btn-primary" id="btnJsonBackup">下载整库 JSON</button>
+            </div>
+          </div>
+
+          <!-- 6. 整库 JSON 还原 -->
+          <div class="card form-card">
+            <div class="section-title">📥 整库 JSON 还原</div>
+            <div class="section-sub">从备份的 JSON 文件恢复完整数据库</div>
+            <p class="maint-warn">⚠️ 还原将覆盖当前全部业务数据，请确认文件来源可靠。</p>
+            <div class="maint-actions">
+              <input type="file" id="jsonRestoreFile" accept="application/json,.json" hidden />
+              <button class="btn btn-accent" id="btnPickJson">选择备份文件</button>
+            </div>
+            <div class="maint-line" id="jsonRestoreInfo"></div>
+          </div>
+
+        </div>
+      </section>
+
     </main>
   </div>
 </div>
@@ -1501,7 +1590,7 @@
 
 <script>
   // ---- Navigation ----
-  const titles={dashboard:['工作台','首页 / 工作台'],inventory:['库存管理','运营管理 / 库存管理'],inbound:['入库管理','运营管理 / 入库管理'],outbound:['出库领用','运营管理 / 出库领用'],check:['盘点管理','运营管理 / 盘点管理'],import:['数据导入','运营管理 / 数据导入'],data:['数据管理','数据 / 数据管理'],reports:['统计报表','分析 / 统计报表'],settings:['系统设置','系统 / 系统设置']};
+  const titles={dashboard:['工作台','首页 / 工作台'],inventory:['库存管理','运营管理 / 库存管理'],inbound:['入库管理','运营管理 / 入库管理'],outbound:['出库领用','运营管理 / 出库领用'],check:['盘点管理','运营管理 / 盘点管理'],import:['数据导入','运营管理 / 数据导入'],data:['数据管理','数据 / 数据管理'],reports:['统计报表','分析 / 统计报表'],settings:['系统设置','系统 / 系统设置'],maintenance:['数据维护','系统 / 数据维护']};
   const navItems=document.querySelectorAll('.nav-item');
   const views=document.querySelectorAll('.view');
   let charts={};
@@ -1516,6 +1605,7 @@
     if(v==='data') renderDataTables();
     if(v==='dashboard') runDashboardCounts();
     if(v==='settings') renderSafe();
+    if(v==='maintenance') renderMaintenance();
     if(v==='check') setTimeout(()=>checkTableOverflow(),60);
     if(!charts[v]) initCharts(v);
     if(charts[v]) setTimeout(()=>Object.values(charts[v]).forEach(c=>c.resize()),60);
@@ -1523,10 +1613,15 @@
 
   // ---- 数据持久化（取消「模拟状态」：业务数据真实落库 localStorage，刷新不丢失） ----
   const WMS_DB_KEY='wms_db_v2';
+  const WMS_AUTO_KEY='wms_auto_backup';
+  const WMS_FULL_KEY='wms_full_backup';
+  let autoBackupEnabled=false;
+  try{ autoBackupEnabled=localStorage.getItem('wms_autobackup_on')==='1'; }catch(e){}
   function _wmsLoad(){ try{ const r=localStorage.getItem(WMS_DB_KEY); const o=r&&JSON.parse(r); return (o&&Array.isArray(o.items))?o:null; }catch(e){ return null; } }
   const _wmsData=_wmsLoad();
   function wmsSave(){
     try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify({items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords})); }catch(e){ console.warn('wms 保存失败',e); }
+    if(autoBackupEnabled) writeAutoBackup();
   }
 
   // ---- Inventory data ----
@@ -2845,6 +2940,138 @@
     });
   }
 
+  // ============ 数据维护（仅系统管理员） ============
+  const LS_QUOTA=5*1024*1024; // 浏览器本地存储典型配额约 5MB
+  function fmtBytes(n){ if(n<1024) return n+' B'; if(n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(2)+' MB'; }
+  function lsBytes(){ let t=0; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); const v=localStorage.getItem(k)||''; t+=v.length*2; } return t; } // UTF-16 码元×2≈字节
+  function writeAutoBackup(){
+    try{
+      const data={items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords};
+      localStorage.setItem(WMS_AUTO_KEY, JSON.stringify({ts:new Date().toISOString(),data}));
+    }catch(e){ console.warn('自动备份失败',e); }
+  }
+  function readAutoBackup(){ try{ const r=localStorage.getItem(WMS_AUTO_KEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
+  function hydrateAll(){
+    const o=_wmsLoad(); if(!o) return false;
+    [['items',items],['inboundRecords',inboundRecords],['outboundRecords',outboundRecords],['checkRecords',checkRecords],['checkPlansQuarter',checkPlansQuarter],['checkPlansYear',checkPlansYear]].forEach(([k,arr])=>{
+      if(Array.isArray(o[k])){ arr.length=0; o[k].forEach(x=>arr.push(x)); }
+    });
+    checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
+    renderInv('all'); renderDataTables(); renderWarranty(); renderRecentOut();
+    runDashboardCounts(); updateDataNote();
+    return true;
+  }
+  function restoreAutoBackup(){
+    const b=readAutoBackup();
+    if(!b||!b.data||!Array.isArray(b.data.items)){ toast('恢复失败','err','未找到有效备份'); return; }
+    if(!confirm('确定用上次自动备份恢复数据吗？当前未备份的更改将被覆盖。')) return;
+    try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify(b.data)); }catch(e){ toast('恢复失败','err','存储空间不足'); return; }
+    hydrateAll();
+    toast('已恢复备份','ok','已恢复到 '+fmtCNDate((b.ts||'').slice(0,10))+' 的备份');
+    renderMaintenance();
+  }
+  function resetData(){
+    if(!confirm('⚠️ 确定重置所有业务数据吗？\n此操作不可撤销，库存/出入库/盘点等全部业务数据将清空并恢复初始示例。')) return;
+    if(!confirm('再次确认：清空全部业务数据并恢复初始示例数据？')) return;
+    try{ localStorage.removeItem(WMS_DB_KEY); localStorage.removeItem(WMS_AUTO_KEY); }catch(e){}
+    toast('正在重置…','info','即将重新载入初始数据');
+    setTimeout(()=>location.reload(),400);
+  }
+  function recordsToRows(arr){
+    if(!arr||!arr.length) return [['（无数据）']];
+    const keys=[]; arr.forEach(r=>Object.keys(r).forEach(k=>{ if(!keys.includes(k)) keys.push(k); }));
+    return [keys].concat(arr.map(r=>keys.map(k=> r[k]==null?'':r[k])));
+  }
+  function buildWorkbook(sheets,filename){
+    if(typeof XLSX==='undefined'){ alert('表格组件未加载，请联网后重试'); return; }
+    const wb=XLSX.utils.book_new();
+    sheets.forEach(s=>{ const ws=XLSX.utils.aoa_to_sheet(s.rows); const c=s.rows[0]?s.rows[0].length:1; ws['!cols']=Array.from({length:c},()=>({wch:18})); XLSX.utils.book_append_sheet(wb,ws,s.name); });
+    XLSX.writeFile(wb,filename);
+  }
+  function exportAllData(){
+    const p=new Date(); const pad=n=>String(n).padStart(2,'0'); const fn='物资数据库_'+p.getFullYear()+'-'+pad(p.getMonth()+1)+'-'+pad(p.getDate())+'.xlsx';
+    const invHeader=['分类','品牌','名称','规格','单位','数量','安全库存','质保(月)','入库日期'];
+    const invRows=[invHeader].concat(items.map(i=>[ (catMeta[i.c]||{}).t||i.c, i.b||'', i.n||'', i.s||'', i.u||'', i.q, i.safe||'', i.warranty||'', i.inDate||'' ]));
+    const inRows=[inCols.map(c=>c.t)].concat(inboundRecords.map(r=>inCols.map(c=> c.k==='category'? (catMeta[r.category]||{}).t : (r[c.k]==null?'':r[c.k]) )));
+    const outRows=[outCols.map(c=>c.t)].concat(outboundRecords.map(r=>outCols.map(c=> c.k==='category'? (catMeta[r.category]||{}).t : (r[c.k]==null?'':r[c.k]) )));
+    const planRows=recordsToRows(checkPlansQuarter.concat(checkPlansYear));
+    const recRows=recordsToRows(checkRecords);
+    buildWorkbook([
+      {name:'库存',rows:invRows},
+      {name:'入库记录',rows:inRows},
+      {name:'出库记录',rows:outRows},
+      {name:'盘点计划',rows:planRows},
+      {name:'盘点记录',rows:recRows}
+    ], fn);
+    toast('正在导出','ok','已生成 Excel 工作簿');
+  }
+  function backupJSON(){
+    const p=new Date(); const pad=n=>String(n).padStart(2,'0');
+    const ts=p.getFullYear()+pad(p.getMonth()+1)+pad(p.getDate())+'_'+pad(p.getHours())+pad(p.getMinutes());
+    const full={ app:'wms-platform', version:2, exportedAt:new Date().toISOString(), data:{items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords}, accounts:loadAccounts() };
+    const blob=new Blob([JSON.stringify(full,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='wms_backup_'+ts+'.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    toast('已备份','ok','整库 JSON 已下载');
+  }
+  function restoreJSON(file){
+    if(!file) return;
+    const info=document.getElementById('jsonRestoreInfo');
+    const reader=new FileReader();
+    reader.onload=()=>{
+      let obj;
+      try{ obj=JSON.parse(reader.result); }catch(e){ info.textContent='✕ 文件解析失败：不是有效的 JSON'; toast('还原失败','err','文件格式错误'); return; }
+      const data=obj&&obj.data?obj.data:obj;
+      if(!data||!Array.isArray(data.items)){ info.textContent='✕ 备份文件缺少有效的 items 数据'; toast('还原失败','err','结构不合法'); return; }
+      if(!confirm('确定用此备份覆盖当前全部业务数据吗？当前数据将被替换。')) return;
+      try{
+        localStorage.setItem(WMS_DB_KEY, JSON.stringify({
+          items:data.items, inboundRecords:data.inboundRecords||[], outboundRecords:data.outboundRecords||[],
+          checkPlansQuarter:data.checkPlansQuarter||[], checkPlansYear:data.checkPlansYear||[], checkRecords:data.checkRecords||[]
+        }));
+        if(obj&&obj.accounts) saveAccounts(obj.accounts);
+      }catch(e){ info.textContent='✕ 写入失败：存储空间不足'; toast('还原失败','err','存储空间不足'); return; }
+      hydrateAll();
+      info.textContent='✓ 已成功还原 '+data.items.length+' 项库存数据';
+      toast('还原成功','ok','整库数据已恢复');
+      renderMaintenance();
+    };
+    reader.readAsText(file);
+  }
+  function statRow(k,v){ return '<div class="row"><span>'+k+'</span><b>'+v+'</b></div>'; }
+  function renderMaintenance(){
+    const guard=document.getElementById('maintGuard');
+    const grid=document.getElementById('maintGrid');
+    if(!grid) return;
+    if(!currentUser || currentUser.role!=='sysadmin'){ if(guard) guard.style.display=''; grid.style.display='none'; return; }
+    if(guard) guard.style.display='none'; grid.style.display='';
+    const used=lsBytes();
+    const pct=Math.min(100, Math.round(used/LS_QUOTA*100));
+    const fill=document.getElementById('storeFill');
+    if(fill) fill.style.width=pct+'%';
+    const color= pct>=85?'linear-gradient(90deg,#ff5d6c,#ff7a7a)': pct>=60?'linear-gradient(90deg,#ffc24b,#ffd486)':'linear-gradient(90deg,#2fe6a0,#27c06a)';
+    if(fill) fill.style.background=color;
+    const dbSize=JSON.stringify({items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords}).length*2;
+    const accSize=(localStorage.getItem('wms_accounts')||'').length*2;
+    const autoSize=(localStorage.getItem(WMS_AUTO_KEY)||'').length*2;
+    const fullSize=(localStorage.getItem(WMS_FULL_KEY)||'').length*2;
+    const ss=document.getElementById('storeStat'); if(ss) ss.innerHTML= statRow('业务数据库', fmtBytes(dbSize))+statRow('账户配置', fmtBytes(accSize))+statRow('自动备份', fmtBytes(autoSize))+statRow('整库备份', fmtBytes(fullSize));
+    const sm=document.getElementById('storeMeta'); if(sm) sm.innerHTML='已用 <b>'+fmtBytes(used)+'</b> / 配额约 <b>'+fmtBytes(LS_QUOTA)+'</b>（'+pct+'%）';
+    const abEl=document.getElementById('autoBackupOn'); if(abEl) abEl.checked=autoBackupEnabled;
+    const ab=readAutoBackup();
+    const ai=document.getElementById('autoBackupInfo'); if(ai) ai.innerHTML= ab&&ab.ts ? ('上次备份：<b>'+fmtCNDate(ab.ts.slice(0,10))+' '+ab.ts.slice(11,16)+'</b>') : '尚未创建备份';
+  }
+  // 数据维护事件绑定
+  (function bindMaint(){
+    const ab=document.getElementById('autoBackupOn'); if(ab) ab.addEventListener('change',()=>{ autoBackupEnabled=ab.checked; try{localStorage.setItem('wms_autobackup_on', ab.checked?'1':'0');}catch(e){} if(autoBackupEnabled) writeAutoBackup(); renderMaintenance(); toast('自动备份已'+(ab.checked?'开启':'关闭'),'ok'); });
+    const bbn=document.getElementById('btnBackupNow'); if(bbn) bbn.addEventListener('click',()=>{ writeAutoBackup(); renderMaintenance(); toast('已备份','ok','自动备份已创建'); });
+    const rbb=document.getElementById('btnRestoreBackup'); if(rbb) rbb.addEventListener('click',restoreAutoBackup);
+    const rd=document.getElementById('btnResetData'); if(rd) rd.addEventListener('click',resetData);
+    const ea=document.getElementById('btnExportAll'); if(ea) ea.addEventListener('click',exportAllData);
+    const jb=document.getElementById('btnJsonBackup'); if(jb) jb.addEventListener('click',backupJSON);
+    const pk=document.getElementById('btnPickJson'); if(pk) pk.addEventListener('click',()=>{ const f=document.getElementById('jsonRestoreFile'); if(f) f.click(); });
+    const jf=document.getElementById('jsonRestoreFile'); if(jf) jf.addEventListener('change',e=>{ const f=e.target.files&&e.target.files[0]; if(f) restoreJSON(f); e.target.value=''; });
+  })();
+
   // --- 按钮涟漪反馈 ---
   document.addEventListener('click',e=>{
     const b=e.target.closest('.btn');
@@ -2973,7 +3200,7 @@
     finance:'仅浏览 + 盘点管理等对应权限'
   };
   const ROLE_MODULES={
-    sysadmin:['dashboard','inventory','inbound','outbound','check','import','data','reports','settings'],
+    sysadmin:['dashboard','inventory','inbound','outbound','check','import','data','reports','settings','maintenance'],
     admin:['dashboard','inventory','inbound','outbound','check','import','data','reports','settings'],
     warehouse:['dashboard','inventory','inbound','outbound','check','import','data','reports','settings'],
     finance:['dashboard','inventory','check','reports']
