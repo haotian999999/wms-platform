@@ -891,7 +891,7 @@
           <div class="card">
             <div class="panel-head"><div><h3>最近动态</h3><div class="sub">实时业务流水</div></div></div>
             <div class="timeline">
-              <div class="tl-item"><div class="tl-dot out">⬆️</div><div class="tl-body"><div class="t1">张伟 领用 签字笔 ×5</div><div class="t2">办公室 · 已审批</div></div><div class="tl-time">10分钟前</div></div>
+              <div class="tl-item"><div class="tl-dot out">⬆️</div><div class="tl-body"><div class="t1">张伟 领用 签字笔 ×5</div><div class="t2">办公室 · 已出库</div></div><div class="tl-time">10分钟前</div></div>
               <div class="tl-item"><div class="tl-dot in">⬇️</div><div class="tl-body"><div class="t1">入库 茅台酒 ×6 瓶</div><div class="t2">供应商：华兴商贸 · 经办 李娜</div></div><div class="tl-time">1小时前</div></div>
               <div class="tl-item"><div class="tl-dot warn">⚠️</div><div class="tl-body"><div class="t1">中华香烟 库存预警</div><div class="t2">低于安全库存，建议补货</div></div><div class="tl-time">2小时前</div></div>
               <div class="tl-item"><div class="tl-dot out">⬆️</div><div class="tl-body"><div class="t1">王芳 领用 商务礼盒 ×3</div><div class="t2">销售部 · 客户拜访</div></div><div class="tl-time">今天 09:20</div></div>
@@ -2243,7 +2243,7 @@
     {id:'RK-20260528-006',date:'2026-05-28',name:'五粮液',category:'tobacco',spec:'500ml',unit:'瓶',qty:12,price:899,amount:10788,supplier:'华兴商贸',handler:'李娜',warehouse:'烟酒专用柜 B',status:'已入库',warranty:1},
     {id:'RK-20260520-007',date:'2026-05-20',name:'商务保温杯',category:'gift',spec:'500ml',unit:'个',qty:25,price:129,amount:3225,supplier:'礼意坊',handler:'王芳',warehouse:'礼品仓储 C',status:'已入库',warranty:1},
     {id:'RK-20260515-008',date:'2026-05-15',name:'新春礼盒',category:'gift',spec:'组合装',unit:'盒',qty:40,price:198,amount:7920,supplier:'锦上添礼',handler:'王芳',warehouse:'礼品仓储 C',status:'已入库',warranty:3},
-    {id:'RK-20260510-009',date:'2026-05-10',name:'打印墨盒 HP 26A',category:'office',spec:'原装',unit:'个',qty:10,price:320,amount:3200,supplier:'得力办公',handler:'李娜',warehouse:'行政库房 A',status:'待入库',warranty:24}
+    {id:'RK-20260510-009',date:'2026-05-10',name:'打印墨盒 HP 26A',category:'office',spec:'原装',unit:'个',qty:10,price:320,amount:3200,supplier:'得力办公',handler:'李娜',warehouse:'行政库房 A',status:'已入库',warranty:24}
   ];
   inboundRecords.forEach(r=>{ if(r.warranty) r.expire=addMonths(r.date,r.warranty); });
   const outboundRecords=[
@@ -2252,8 +2252,8 @@
     {id:'CK-20260610-003',date:'2026-06-10',applicant:'刘强',dept:'财务部',name:'文件夹（双夹）',category:'office',qty:10,unit:'个',purpose:'档案整理',handler:'admin',status:'已出库'},
     {id:'CK-20260609-004',date:'2026-06-09',applicant:'陈静',dept:'海外事业部',name:'飞天茅台',category:'tobacco',qty:2,unit:'瓶',purpose:'重要客户接待',handler:'admin',status:'已出库'},
     {id:'CK-20260608-005',date:'2026-06-08',applicant:'李娜',dept:'办公室',name:'A4 复印纸 70g',category:'office',qty:4,unit:'箱',purpose:'日常打印耗材',handler:'admin',status:'已出库'},
-    {id:'CK-20260607-006',date:'2026-06-07',applicant:'赵敏',dept:'人力资源部',name:'定制雨伞',category:'gift',qty:6,unit:'把',purpose:'员工关怀福利',handler:'admin',status:'待审批'},
-    {id:'CK-20260606-007',date:'2026-06-06',applicant:'周磊',dept:'法务/董办',name:'商务公文包',category:'gift',qty:2,unit:'个',purpose:'商务活动赠礼',handler:'admin',status:'已驳回'},
+    {id:'CK-20260607-006',date:'2026-06-07',applicant:'赵敏',dept:'人力资源部',name:'定制雨伞',category:'gift',qty:6,unit:'把',purpose:'员工关怀福利',handler:'admin',status:'已出库'},
+    {id:'CK-20260606-007',date:'2026-06-06',applicant:'周磊',dept:'法务/董办',name:'商务公文包',category:'gift',qty:2,unit:'个',purpose:'商务活动赠礼',handler:'admin',status:'已出库'},
     {id:'CK-20260605-008',date:'2026-06-05',applicant:'孙莉',dept:'采购部',name:'西湖龙井',category:'tobacco',qty:8,unit:'盒',purpose:'接待用茶',handler:'admin',status:'已出库'}
   ];
   function inTotalOf(name,cat){ return inboundRecords.filter(r=>r.name===name && r.category===cat).reduce((s,r)=>s+(+r.qty||0),0); }
@@ -2608,12 +2608,14 @@
     const approver=document.getElementById('outHandler').value.trim()||'admin';
     const purpose=document.getElementById('outPurpose').value.trim();
     if(!applicant||!cat||!name||isNaN(qty)||qty<=0){ toast('请完整填写领用人/分类/名称/数量','warn','以上为必填项'); return; }
-    const rec={id:genId('CK'),date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit:'件',purpose,handler:approver,status:'待审批'};
+    const rec={id:genId('CK'),date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit:'件',purpose,handler:approver,status:'已出库'};
     outboundRecords.unshift(rec);
+    const exist=items.find(i=>i.n===name && i.c===cat);
+    if(exist){ exist.q=Math.max(0,exist.q-qty); } else { items.push({c:cat,n:name,s:'—',u:'件',q:0,safe:catDefault[cat]||10}); }
     renderRecentOut();
-    renderDataTables(); wmsSave();
+    renderDataTables(); renderInv('all'); wmsSave();
     resetOutbound();
-    toast('申请已提交','ok',`${applicant} 的 ${name} ×${qty} 领用申请已提交，待审批`);
+    toast('出库成功','ok',`${applicant} 的 ${name} ×${qty} 已出库并更新库存`);
   });
   document.getElementById('draftOutbound').addEventListener('click',()=>{ toast('草稿已暂存','info','草稿已本地暂存，可稍后继续填写'); resetOutbound(); });
 
@@ -2695,8 +2697,7 @@
       {k:'supplier',t:'供应商',ty:'text'},
       {k:'handler',t:'经办人',ty:'text'},
       {k:'warehouse',t:'仓库',ty:'text'},
-      {k:'warranty',t:'质保期(月)',ty:'number'},
-      {k:'status',t:'状态',ty:'select',opts:['已入库','待入库','已驳回']}
+      {k:'warranty',t:'质保期(月)',ty:'number'}
     ],
     out:[
       {k:'date',t:'日期',ty:'date'},
@@ -2706,8 +2707,7 @@
       {k:'qty',t:'数量',ty:'number'},
       {k:'unit',t:'单位',ty:'text'},
       {k:'purpose',t:'用途',ty:'text'},
-      {k:'handler',t:'经办人',ty:'text'},
-      {k:'status',t:'状态',ty:'select',opts:['待审批','已出库','已驳回']}
+      {k:'handler',t:'经办人',ty:'text'}
     ]
   };
   function openRecEdit(type,idx){
@@ -2726,15 +2726,13 @@
     if(recEditIdx<0) return;
     const arr=(recEditType==='in'?inboundRecords:outboundRecords);
     const rec=arr[recEditIdx]; if(!rec) return;
-    const oldQty=rec.qty, wasIn=rec.status==='已入库', wasOut=rec.status==='已出库';
+    const oldQty=rec.qty;
     recEditFields[recEditType].forEach(f=>{ const el=document.getElementById('recF_'+f.k); if(el) rec[f.k]=(f.ty==='number')?(parseFloat(el.value)||0):el.value; });
     if(recEditType==='in'){
       rec.amount=+(rec.qty*(rec.price||0)).toFixed(2); if(rec.warranty) rec.expire=addMonths(rec.date,rec.warranty); else rec.expire=undefined;
-      if(rec.status==='已入库'){ adjustInventory(rec.name,rec.category,(rec.qty-oldQty),+1); }      // 已入库：按数量差同步库存
-      else if(wasIn){ adjustInventory(rec.name,rec.category,oldQty,-1); }                            // 由已入库改为他状态：回退库存
+      adjustInventory(rec.name,rec.category,(rec.qty-oldQty),+1);   // 已入库：按数量差同步库存（状态固定「已入库」）
     } else {
-      if(rec.status==='已出库' && !wasOut){ adjustInventory(rec.name,rec.category,rec.qty,-1); }      // 审批出库：扣减库存
-      else if(rec.status!=='已出库' && wasOut){ adjustInventory(rec.name,rec.category,rec.qty,+1); }  // 由已出库改为他状态：回补库存
+      adjustInventory(rec.name,rec.category,(rec.qty-oldQty),-1);   // 已出库：按数量差扣减库存（状态固定「已出库」）
     }
     closeRecEdit();
     renderDataTables(); renderInv('all'); renderRecentOut(); wmsSave();
@@ -2745,8 +2743,8 @@
     const arr=(type==='in'?inboundRecords:outboundRecords);
     const rec=arr[idx]; if(!rec) return;
     if(!confirm('确定删除该记录「'+rec.id+'」吗？此操作不可撤销。')) return;
-    if(type==='in'){ if(rec.status==='已入库') adjustInventory(rec.name,rec.category,rec.qty,-1); inboundRecords.splice(idx,1); }
-    else { if(rec.status==='已出库') adjustInventory(rec.name,rec.category,rec.qty,+1); outboundRecords.splice(idx,1); }
+    if(type==='in'){ adjustInventory(rec.name,rec.category,rec.qty,-1); inboundRecords.splice(idx,1); }
+    else { adjustInventory(rec.name,rec.category,rec.qty,+1); outboundRecords.splice(idx,1); }
     renderDataTables(); renderInv('all'); renderRecentOut(); wmsSave();
     toast('记录已删除','ok','已移除该条记录');
   }
