@@ -1506,6 +1506,14 @@
     if(charts[v]) setTimeout(()=>Object.values(charts[v]).forEach(c=>c.resize()),60);
   }));
 
+  // ---- 数据持久化（取消「模拟状态」：业务数据真实落库 localStorage，刷新不丢失） ----
+  const WMS_DB_KEY='wms_db_v2';
+  function _wmsLoad(){ try{ const r=localStorage.getItem(WMS_DB_KEY); const o=r&&JSON.parse(r); return (o&&Array.isArray(o.items))?o:null; }catch(e){ return null; } }
+  const _wmsData=_wmsLoad();
+  function wmsSave(){
+    try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify({items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords})); }catch(e){ console.warn('wms 保存失败',e); }
+  }
+
   // ---- Inventory data ----
   const items=[
     {c:'office',n:'A4 复印纸 70g',s:'500张/包',u:'箱',q:18,safe:25},
@@ -1574,7 +1582,7 @@
   });
 
   // ---- 盘点管理 ----
-  const checkItems=items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
+  let checkItems=items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
   function renderCheck(){
     const body=document.getElementById('checkBody');
     body.innerHTML=checkItems.map((i,idx)=>{
@@ -1647,14 +1655,14 @@
     if(recCheckEditIdx<0) return;
     const r=checkRecords[recCheckEditIdx]; if(!r) return;
     ['title','sub','date','dot'].forEach(k=>{ const el=document.getElementById('rcF_'+k); if(el) r[k]=el.value; });
-    closeRecCheckEdit(); renderCheckTimeline();
+    closeRecCheckEdit(); renderCheckTimeline(); wmsSave();
     toast('记录已更新','ok','修改后的盘点记录已保存');
   }
   function closeRecCheckEdit(){ const m=document.getElementById('recCheckEditModal'); if(m) m.classList.remove('show'); }
   function deleteRecCheck(i){
     const r=checkRecords[i]; if(!r) return;
     if(!confirm('确定删除该盘点记录「'+r.title+'」吗？此操作不可撤销。')) return;
-    checkRecords.splice(i,1); renderCheckTimeline();
+    checkRecords.splice(i,1); renderCheckTimeline(); wmsSave();
     toast('记录已删除','ok','已移除该条盘点记录');
   }
 
@@ -1759,7 +1767,7 @@
     if(!planEditCtx) return;
     const p=(planEditCtx.type==='q'?checkPlansQuarter:checkPlansYear)[planEditCtx.idx]; if(!p) return;
     const el=document.getElementById('planF_status'); if(el) p.status=el.value;
-    closePlanEdit(); renderPlanQuarter(); renderPlanYear(); renderCheckKpi();
+    closePlanEdit(); renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); wmsSave();
     toast('状态已更新','ok','盘点计划状态已保存');
   }
   function closePlanEdit(){ document.getElementById('planEditModal').classList.remove('show'); }
@@ -1767,7 +1775,7 @@
     const p=(type==='q'?checkPlansQuarter:checkPlansYear)[idx]; if(!p) return;
     resetCheckForm();
     activeCheckPlan={type,idx};
-    if(p.status==='out'){ p.status='low'; renderPlanQuarter(); renderPlanYear(); } // 开始盘点→计划置「进行中」，与记录呼应
+    if(p.status==='out'){ p.status='low'; renderPlanQuarter(); renderPlanYear(); wmsSave(); } // 开始盘点→计划置「进行中」，与记录呼应
     const g=id=>document.getElementById(id);
     g('chkType').value = type==='q' ? '季度盘点（自盘）' : '年度盘点（联合）';
     g('chkLead').value = type==='q' ? (p.person||'李娜') : (p.lead||'李娜');
@@ -1895,7 +1903,8 @@
     if(g('chkType')) g('chkType').selectedIndex=0;
     if(g('chkScope')) g('chkScope').selectedIndex=0;
     ['chkLead','chkWatch','chkDate','chkNote'].forEach(id=>{ const e=g(id); if(e) e.value= id==='chkLead'?'李娜':id==='chkWatch'?'赵敏':id==='chkDate'?new Date().toISOString().slice(0,10):''; });
-    checkItems.forEach(i=>{ i.real=i.sys; });
+    // 从最新库存重建盘点明细，确保盘点单始终基于当前真实库存
+    checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
     renderCheck(); checkArchived=false; renderCheckKpi();
     const b=document.getElementById('saveCheck'); if(b){ b.textContent='💾 保存盘点单'; b.disabled=false; b.style.opacity=1; }
     const m=document.getElementById('checkDownMsg'); if(m) m.textContent='';
@@ -1950,6 +1959,10 @@
     let synced=false, archived=false;
     try{
       const snap=buildCheckSnapshot();
+      // 盘点→库存联动：将实盘数量回写系统库存（重新计数，账实合一）
+      const realInputs=document.querySelectorAll('#checkBody .real-input');
+      checkItems.forEach((it,idx)=>{ const v=realInputs[idx]; if(v) it.real=+v.value||0; });
+      checkItems.forEach(it=>{ const item=items.find(i=>i.n===it.n && i.c===it.c); if(item) item.q=Math.max(0, +it.real||0); });
       let planLabel='', planKey='';
       // 优先按当前盘点的计划精确关联：保存后该计划置「已完成」
       if(activeCheckPlan){
@@ -1965,7 +1978,7 @@
       if(!synced){ synced=syncPlanStatus(snap.date); if(synced){ renderPlanQuarter(); renderPlanYear(); } }
       archived=archiveCheckToTimeline(snap, planLabel, planKey);
       const msg=document.getElementById('checkDownMsg'); if(msg) msg.textContent= archived?'已保存至最近盘点记录':'本单此前已保存';
-      renderCheckKpi();
+      renderCheckKpi(); renderInv('all'); renderWarranty(); wmsSave();
     }catch(err){ console.error('saveCheckConfirm 保存异常:', err); }
     // 无论保存是否成功，均关闭窗口并隐藏录入区（满足「确认保存后自动收起」）
     document.getElementById('saveCheckModal').classList.remove('show');
@@ -2082,6 +2095,7 @@
     renderInv('all');
     document.getElementById('importMsg').textContent=`✓ 已成功导入 ${added} 条物资，已并入「库存管理」。`;
     toast('批量导入完成','ok',`已成功并入库存 ${added} 条物资`);
+    wmsSave();
     document.querySelector('.nav-item[data-view="inventory"]').click();
   });
   const dropzone=document.getElementById('dropzone'), fileInput=document.getElementById('fileInput');
@@ -2244,6 +2258,19 @@
   ];
   function inTotalOf(name,cat){ return inboundRecords.filter(r=>r.name===name && r.category===cat).reduce((s,r)=>s+(+r.qty||0),0); }
   function outTotalOf(name,cat){ return outboundRecords.filter(r=>r.name===name && r.category===cat).reduce((s,r)=>s+(+r.qty||0),0); }
+  // 库存联动：按 名称+分类 调整系统库存（sign=+1 增加 / -1 减少），最低为 0
+  function adjustInventory(name,cat,qty,sign){
+    const it=items.find(i=>i.n===name && i.c===cat);
+    if(it) it.q=Math.max(0, it.q + sign*(+qty||0));
+  }
+  // ---- 从 localStorage 恢复已保存数据（覆盖种子，实现真实持久化） ----
+  if(_wmsData){
+    [['items',items],['inboundRecords',inboundRecords],['outboundRecords',outboundRecords],['checkRecords',checkRecords],['checkPlansQuarter',checkPlansQuarter],['checkPlansYear',checkPlansYear]].forEach(([k,arr])=>{
+      if(Array.isArray(_wmsData[k])){ arr.length=0; _wmsData[k].forEach(x=>arr.push(x)); }
+    });
+    // 盘点明细从最新库存重建，确保各模块数据一致
+    checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
+  } else { wmsSave(); } // 首次运行：写入种子，保证后续刷新一致
   renderInv('all');
   function catTag(c){const m=catMeta[c];return `<span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span>`;}
   function statusCls(s){ if(s.indexOf('待')>=0)return 'low'; if(s.indexOf('驳')>=0||s.indexOf('取')>=0)return 'out'; return 'ok'; }
@@ -2563,7 +2590,7 @@
     if(exist){ exist.q+=qty; if(warranty&&!exist.warranty){exist.warranty=warranty; exist.inDate=date; exist.expire=addMonths(date,warranty);} }
     else { const ni={c:cat,n:name,s:'—',u:unit,q:qty,safe:catDefault[cat]||10,warranty:warranty||undefined,inDate:date}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
     const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all');
-    renderDataTables(); renderWarranty();
+    renderDataTables(); renderWarranty(); wmsSave();
     const rl=document.querySelector('#view-inbound .rec-list');
     if(rl){ rl.insertAdjacentHTML('afterbegin', `<div class="rec"><div class="ri">${ICON[cat]}</div><div><div class="rt">${name} ×${qty} ${unit}</div><div class="rs">${catMeta[cat].t} · ${supplier||'—'} · ${handler}</div></div><div class="rq in">+${qty}</div></div>`); }
     resetInbound();
@@ -2584,11 +2611,11 @@
     const rec={id:genId('CK'),date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit:'件',purpose,handler:approver,status:'待审批'};
     outboundRecords.unshift(rec);
     renderRecentOut();
-    renderDataTables();
+    renderDataTables(); wmsSave();
     resetOutbound();
     toast('申请已提交','ok',`${applicant} 的 ${name} ×${qty} 领用申请已提交，待审批`);
   });
-  document.getElementById('draftOutbound').addEventListener('click',()=>{ toast('草稿已暂存','info','演示环境：草稿仅本地暂存'); resetOutbound(); });
+  document.getElementById('draftOutbound').addEventListener('click',()=>{ toast('草稿已暂存','info','草稿已本地暂存，可稍后继续填写'); resetOutbound(); });
 
   // ============ 库存管理：导出 / 新增 / 编辑 / 删除 ============
   function exportInv(){
@@ -2643,7 +2670,7 @@
       items.push(ni);
     }
     closeInvEdit();
-    const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); renderWarranty();
+    const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); renderWarranty(); wmsSave();
     toast(invEditIdx>=0?'已更新物资':'已新增物资','ok',n);
   }
   function closeInvEdit(){ document.getElementById('invEditModal').classList.remove('show'); }
@@ -2651,7 +2678,7 @@
     const i=items[idx]; if(!i) return;
     if(!confirm('确定删除该物资「'+i.n+'」吗？\n（联动的出入库记录仍会保留）')) return;
     items.splice(idx,1);
-    const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); renderWarranty();
+    const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); renderWarranty(); wmsSave();
     toast('已删除物资','ok',i.n);
   }
 
@@ -2697,20 +2724,30 @@
   }
   function saveRecEdit(){
     if(recEditIdx<0) return;
-    const rec=(recEditType==='in'?inboundRecords:outboundRecords)[recEditIdx];
+    const arr=(recEditType==='in'?inboundRecords:outboundRecords);
+    const rec=arr[recEditIdx]; if(!rec) return;
+    const oldQty=rec.qty, wasIn=rec.status==='已入库', wasOut=rec.status==='已出库';
     recEditFields[recEditType].forEach(f=>{ const el=document.getElementById('recF_'+f.k); if(el) rec[f.k]=(f.ty==='number')?(parseFloat(el.value)||0):el.value; });
-    if(recEditType==='in'){ rec.amount=+(rec.qty*(rec.price||0)).toFixed(2); if(rec.warranty) rec.expire=addMonths(rec.date,rec.warranty); else rec.expire=undefined; }
+    if(recEditType==='in'){
+      rec.amount=+(rec.qty*(rec.price||0)).toFixed(2); if(rec.warranty) rec.expire=addMonths(rec.date,rec.warranty); else rec.expire=undefined;
+      if(rec.status==='已入库'){ adjustInventory(rec.name,rec.category,(rec.qty-oldQty),+1); }      // 已入库：按数量差同步库存
+      else if(wasIn){ adjustInventory(rec.name,rec.category,oldQty,-1); }                            // 由已入库改为他状态：回退库存
+    } else {
+      if(rec.status==='已出库' && !wasOut){ adjustInventory(rec.name,rec.category,rec.qty,-1); }      // 审批出库：扣减库存
+      else if(rec.status!=='已出库' && wasOut){ adjustInventory(rec.name,rec.category,rec.qty,+1); }  // 由已出库改为他状态：回补库存
+    }
     closeRecEdit();
-    renderDataTables(); renderInv('all'); renderRecentOut();
+    renderDataTables(); renderInv('all'); renderRecentOut(); wmsSave();
     toast('记录已更新','ok','修改后的记录已保存');
   }
   function closeRecEdit(){ document.getElementById('recEditModal').classList.remove('show'); }
   function deleteRec(type,idx){
-    const rec=(type==='in'?inboundRecords:outboundRecords)[idx]; if(!rec) return;
+    const arr=(type==='in'?inboundRecords:outboundRecords);
+    const rec=arr[idx]; if(!rec) return;
     if(!confirm('确定删除该记录「'+rec.id+'」吗？此操作不可撤销。')) return;
-    if(type==='in'){ inboundRecords.splice(idx,1); if(rec.status==='已入库'){ const it=items.find(i=>i.n===rec.name&&i.c===rec.category); if(it) it.q=Math.max(0,it.q-rec.qty); } }
-    else { outboundRecords.splice(idx,1); }
-    renderDataTables(); renderInv('all'); renderRecentOut();
+    if(type==='in'){ if(rec.status==='已入库') adjustInventory(rec.name,rec.category,rec.qty,-1); inboundRecords.splice(idx,1); }
+    else { if(rec.status==='已出库') adjustInventory(rec.name,rec.category,rec.qty,+1); outboundRecords.splice(idx,1); }
+    renderDataTables(); renderInv('all'); renderRecentOut(); wmsSave();
     toast('记录已删除','ok','已移除该条记录');
   }
 
@@ -2795,7 +2832,7 @@
     if(more && more.id!=='openWarBtn' && more.id!=='viewAllOut' && more.id!=='allCheckRecords' && more.id!=='exportTrendBtn' && more.id!=='processAllAlertBtn'){ toast(more.textContent.trim(),'info',''); }
   });
 
-  // 演示账号一键登录的反馈 toast 已在 initAuth 内动态绑定（避免渲染时序问题）
+  // 登录相关反馈 toast 已在 initAuth 内动态绑定（避免渲染时序问题）
 
   // ============ 安全库存阈值（分类默认 + 单品单独预警） ============
   const SAFE_KEY='wms_safe';
