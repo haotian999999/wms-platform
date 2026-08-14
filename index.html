@@ -1134,7 +1134,7 @@
           <div class="tabpane active" id="pane-data-in">
             <div class="table-scroll">
               <table class="data-table">
-                <thead><tr><th>单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>规格</th><th>单位</th><th>数量</th><th>单价</th><th>金额</th><th>供应商</th><th>经办人</th><th>仓库</th><th>质保期</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
+                <thead><tr><th>单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格</th><th>单位</th><th>数量</th><th>单价</th><th>金额</th><th>供应商</th><th>经办人</th><th>仓库</th><th>质保期</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
                 <tbody id="inBody"></tbody>
               </table>
             </div>
@@ -2236,7 +2236,7 @@
   // ---- 数据管理（入库 / 出库后台记录）----
   const inCols=[
     {k:'id',t:'单号'},{k:'date',t:'日期'},{k:'name',t:'物资名称'},{k:'category',t:'分类',tag:true},
-    {k:'spec',t:'规格'},{k:'unit',t:'单位'},{k:'qty',t:'数量'},{k:'price',t:'单价(元)'},
+    {k:'brand',t:'品牌'},{k:'spec',t:'规格'},{k:'unit',t:'单位'},{k:'qty',t:'数量'},{k:'price',t:'单价(元)'},
     {k:'amount',t:'金额(元)'},{k:'supplier',t:'供应商'},{k:'handler',t:'经办人'},{k:'warehouse',t:'仓库'},
     {k:'warranty',t:'质保期(月)'},{k:'expire',t:'到期日'},{k:'status',t:'状态'}
   ];
@@ -2246,15 +2246,15 @@
     {k:'handler',t:'经办人'},{k:'status',t:'状态'}
   ];
   const inboundRecords=[
-    {id:'RK-20260612-001',date:'2026-06-12',name:'飞天茅台',category:'tobacco',spec:'500ml',unit:'瓶',qty:6,price:1499,amount:8994,supplier:'华兴商贸',handler:'李娜',warehouse:'烟酒专用柜 B',status:'已入库',warranty:60},
-    {id:'RK-20260610-002',date:'2026-06-10',name:'A4 复印纸 70g',category:'office',spec:'500张/包',unit:'箱',qty:20,price:185,amount:3700,supplier:'得力办公',handler:'李娜',warehouse:'行政库房 A',status:'已入库'},
-    {id:'RK-20260608-003',date:'2026-06-08',name:'商务礼盒',category:'gift',spec:'组合装',unit:'盒',qty:30,price:268,amount:8040,supplier:'锦上添礼',handler:'王芳',warehouse:'礼品仓储 C',status:'已入库',warranty:12},
-    {id:'RK-20260605-004',date:'2026-06-05',name:'西湖龙井',category:'tobacco',spec:'250g',unit:'盒',qty:15,price:320,amount:4800,supplier:'西湖茶业',handler:'李娜',warehouse:'烟酒专用柜 B',status:'已入库',warranty:2},
-    {id:'RK-20260603-005',date:'2026-06-03',name:'中性签字笔',category:'office',spec:'0.5mm 黑',unit:'支',qty:200,price:1.8,amount:360,supplier:'晨光文具',handler:'李娜',warehouse:'行政库房 A',status:'已入库'},
-    {id:'RK-20260528-006',date:'2026-05-28',name:'五粮液',category:'tobacco',spec:'500ml',unit:'瓶',qty:12,price:899,amount:10788,supplier:'华兴商贸',handler:'李娜',warehouse:'烟酒专用柜 B',status:'已入库',warranty:1},
-    {id:'RK-20260520-007',date:'2026-05-20',name:'商务保温杯',category:'gift',spec:'500ml',unit:'个',qty:25,price:129,amount:3225,supplier:'礼意坊',handler:'王芳',warehouse:'礼品仓储 C',status:'已入库',warranty:1},
-    {id:'RK-20260515-008',date:'2026-05-15',name:'新春礼盒',category:'gift',spec:'组合装',unit:'盒',qty:40,price:198,amount:7920,supplier:'锦上添礼',handler:'王芳',warehouse:'礼品仓储 C',status:'已入库',warranty:3},
-    {id:'RK-20260510-009',date:'2026-05-10',name:'打印墨盒 HP 26A',category:'office',spec:'原装',unit:'个',qty:10,price:320,amount:3200,supplier:'得力办公',handler:'李娜',warehouse:'行政库房 A',status:'已入库',warranty:24}
+    {id:'RK-20260612-001',date:'2026-06-12',name:'飞天茅台',category:'tobacco',brand:'茅台',spec:'500ml',unit:'瓶',qty:6,price:1499,amount:8994,supplier:'华兴商贸',handler:'李娜',warehouse:'烟酒专用柜 B',status:'已入库',warranty:60},
+    {id:'RK-20260610-002',date:'2026-06-10',name:'A4 复印纸 70g',category:'office',brand:'得力',spec:'500张/包',unit:'箱',qty:20,price:185,amount:3700,supplier:'得力办公',handler:'李娜',warehouse:'行政库房 A',status:'已入库'},
+    {id:'RK-20260608-003',date:'2026-06-08',name:'商务礼盒',category:'gift',brand:'锦上添礼',spec:'组合装',unit:'盒',qty:30,price:268,amount:8040,supplier:'锦上添礼',handler:'王芳',warehouse:'礼品仓储 C',status:'已入库',warranty:12},
+    {id:'RK-20260605-004',date:'2026-06-05',name:'西湖龙井',category:'tobacco',brand:'西湖',spec:'250g',unit:'盒',qty:15,price:320,amount:4800,supplier:'西湖茶业',handler:'李娜',warehouse:'烟酒专用柜 B',status:'已入库',warranty:2},
+    {id:'RK-20260603-005',date:'2026-06-03',name:'中性签字笔',category:'office',brand:'晨光',spec:'0.5mm 黑',unit:'支',qty:200,price:1.8,amount:360,supplier:'晨光文具',handler:'李娜',warehouse:'行政库房 A',status:'已入库'},
+    {id:'RK-20260528-006',date:'2026-05-28',name:'五粮液',category:'tobacco',brand:'五粮液',spec:'500ml',unit:'瓶',qty:12,price:899,amount:10788,supplier:'华兴商贸',handler:'李娜',warehouse:'烟酒专用柜 B',status:'已入库',warranty:1},
+    {id:'RK-20260520-007',date:'2026-05-20',name:'商务保温杯',category:'gift',brand:'富光',spec:'500ml',unit:'个',qty:25,price:129,amount:3225,supplier:'礼意坊',handler:'王芳',warehouse:'礼品仓储 C',status:'已入库',warranty:1},
+    {id:'RK-20260515-008',date:'2026-05-15',name:'新春礼盒',category:'gift',brand:'锦上添礼',spec:'组合装',unit:'盒',qty:40,price:198,amount:7920,supplier:'锦上添礼',handler:'王芳',warehouse:'礼品仓储 C',status:'已入库',warranty:3},
+    {id:'RK-20260510-009',date:'2026-05-10',name:'打印墨盒 HP 26A',category:'office',brand:'惠普',spec:'原装',unit:'个',qty:10,price:320,amount:3200,supplier:'得力办公',handler:'李娜',warehouse:'行政库房 A',status:'已入库',warranty:24}
   ];
   inboundRecords.forEach(r=>{ if(r.warranty) r.expire=addMonths(r.date,r.warranty); });
   const outboundRecords=[
@@ -2300,7 +2300,7 @@
         if(c.k==='status') return `<td><span class="status ${statusCls(r.status)}">${r.status}</span></td>`;
         if(c.k==='warranty') return warrantyMonthsCell(r);
         if(c.k==='expire') return warrantyCell(r);
-        return `<td>${r[c.k]}</td>`;
+        const v=r[c.k]; return `<td>${v==null||v===''?'—':v}</td>`;
       }).join('');
       return `<tr data-row-rec="${type}:${i}"><td class="code">${r.id}</td>${cells}<td><span class="cell-act"><button type="button" class="btn-mini edit" data-edit-rec="${type}:${i}">编辑</button></span></td></tr>`;
     }).join('');
