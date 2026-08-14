@@ -829,7 +829,7 @@
         <h1 id="pageTitle">工作台</h1>
         <div class="breadcrumb" id="pageCrumb">首页 / 工作台</div>
       </div>
-      <div class="date-note">📅 数据截至 2026年8月3日</div>
+      <div class="date-note" id="dateNote">📅 数据截至 —</div>
       <div class="icon-btn" id="notifyBtn" title="质保期预警"><svg class="bell" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h20v-1l-2-2z"/></svg><span class="badge" id="notifyBadge">0</span></div>
       <div class="icon-btn" id="themeToggle" title="切换到浅色模式"><span id="themeIcon">🌙</span></div>
       <div class="icon-btn" id="fullscreenBtn" title="全屏显示"><svg class="fs-ico" viewBox="0 0 24 24" aria-hidden="true"><path id="fsPath" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></div>
@@ -1557,6 +1557,14 @@
   }
   // ---- 质保期 / 到期日 工具 ----
   function addMonths(dateStr,m){ const d=new Date(dateStr+'T00:00:00'); d.setMonth(d.getMonth()+m); const y=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); return `${y}-${mm}-${dd}`; }
+  // 顶部「数据截至」日期：与最新入库记录的日期同步
+  function fmtCNDate(s){ if(!s) return ''; const [y,m,d]=s.split('-'); return `${y}年${parseInt(m,10)}月${parseInt(d,10)}日`; }
+  function latestInboundDate(){ return inboundRecords.reduce((m,r)=> (r.date && r.date>m) ? r.date : m, ''); }
+  function updateDataNote(){
+    const el=document.getElementById('dateNote'); if(!el) return;
+    const latest=latestInboundDate();
+    el.innerHTML = latest ? `📅 数据截至 ${fmtCNDate(latest)}` : `📅 暂无入库记录`;
+  }
   function daysLeft(expireStr){ if(!expireStr) return null; return Math.round((new Date(expireStr+'T00:00:00')-new Date())/86400000); }
   function wStatus(dl){ if(dl===null) return {cls:'',txt:'—'}; if(dl<0) return {cls:'out',txt:'已过期'}; if(dl<=90) return {cls:'low',txt:'临期 '+dl+'天'}; return {cls:'ok',txt:'正常'}; }
   function warrantyCell(it){ if(!it.warranty) return '<td>—</td>'; const exp=it.expire||addMonths(it.inDate||'2026-01-01',it.warranty); const dl=daysLeft(exp); const st=wStatus(dl); const col=st.cls==='out'?'var(--danger)':st.cls==='low'?'var(--accent)':'var(--ink-3)'; return `<td><span style="color:${col};font-weight:600">${exp}</span></td>`; }
@@ -2601,6 +2609,7 @@
     const rec={id:genId('RK'),date,name,category:cat,brand,spec,unit,qty,price,amount,supplier,handler,warehouse,status:'已入库',warranty};
     if(warranty) rec.expire=addMonths(date,warranty);
     inboundRecords.unshift(rec);
+    updateDataNote();
     const exist=items.find(i=>i.n===name && i.c===cat);
     if(exist){ exist.q+=qty; if(brand) exist.b=brand; if(spec!=='—') exist.s=spec; if(safe) exist.safe=safe; if(warranty&&!exist.warranty){exist.warranty=warranty; exist.inDate=date; exist.expire=addMonths(date,warranty);} }
     else { const ni={c:cat,n:name,b:brand,s:spec,u:unit,q:qty,safe:safe||catDefault[cat]||10,warranty:warranty||undefined,inDate:date}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
@@ -2757,6 +2766,7 @@
     }
     closeRecEdit();
     renderDataTables(); renderInv('all'); renderRecentOut(); wmsSave();
+    updateDataNote();
     toast('记录已更新','ok','修改后的记录已保存');
   }
   function closeRecEdit(){ document.getElementById('recEditModal').classList.remove('show'); }
@@ -2767,6 +2777,7 @@
     if(type==='in'){ adjustInventory(rec.name,rec.category,rec.qty,-1); inboundRecords.splice(idx,1); }
     else { adjustInventory(rec.name,rec.category,rec.qty,+1); outboundRecords.splice(idx,1); }
     renderDataTables(); renderInv('all'); renderRecentOut(); wmsSave();
+    updateDataNote();
     closeRecEdit();
     toast('记录已删除','ok','已移除该条记录');
   }
@@ -2975,7 +2986,7 @@
     for(const k of ROLE_ORDER){ if(a[k].user===user && a[k].pass===pass){ currentUser={role:a[k].role,name:a[k].name,roleName:a[k].roleName}; try{localStorage.setItem('wms_current',JSON.stringify(currentUser));}catch(e){} hideLogin(); applyPermissions(); updateNotifyBadge(); return true; } }
     return false;
   }
-  function hideLogin(){ document.getElementById('loginScreen').style.display='none'; document.body.style.overflow=''; document.documentElement.style.overflow=''; var app=document.querySelector('.app'); if(app) app.classList.add('ready'); refreshUserUI(); runDashboardCounts(); }
+  function hideLogin(){ document.getElementById('loginScreen').style.display='none'; document.body.style.overflow=''; document.documentElement.style.overflow=''; var app=document.querySelector('.app'); if(app) app.classList.add('ready'); refreshUserUI(); runDashboardCounts(); updateDataNote(); }
   function showLogin(){ document.getElementById('loginScreen').style.display='flex'; document.body.style.overflow='hidden'; document.documentElement.style.overflow='hidden'; var app=document.querySelector('.app'); if(app) app.classList.remove('ready'); }
   function logout(){ try{localStorage.removeItem('wms_current');}catch(e){} currentUser=null; showLogin(); toast('已退出登录','info','您可以随时重新登录'); }
   function refreshUserUI(){
