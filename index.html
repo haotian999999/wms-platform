@@ -242,16 +242,16 @@
   tbody td{padding:9px 14px;font-size:12px;border-bottom:1px solid var(--line-2);color:var(--ink)}
   tbody tr:hover{background:rgba(255,255,255,.04)}
   .code{font-family:var(--font);font-size:13px;color:var(--ink-3)}
-  .tag{padding:3px 10px;border-radius:7px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;border:1px solid transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+  .tag{padding:3px 10px;border-radius:7px;font-size:12px;font-weight:400;display:inline-flex;align-items:center;gap:5px}
   .tag .d{width:7px;height:7px;border-radius:50%}
-  .tag.office{background:rgba(91,140,255,.18);color:#b6d0ff;border-color:rgba(91,140,255,.32)}
-  .tag.tobacco{background:rgba(255,138,76,.18);color:#ffc4a3;border-color:rgba(255,138,76,.35)}
-  .tag.gift{background:rgba(192,139,255,.18);color:#dfc2ff;border-color:rgba(192,139,255,.32)}
-  .status{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid transparent;text-shadow:0 1px 2px rgba(0,0,0,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
-  .status.ok{background:rgba(47,230,160,.18);color:#a8ffe0;border-color:rgba(47,230,160,.35)}
-  .status.low{background:rgba(255,194,75,.22);color:#ffecad;border-color:rgba(255,194,75,.45)}
-  .status.out{background:rgba(255,93,108,.20);color:#ffb8bd;border-color:rgba(255,93,108,.48)}
-  .status.done{background:rgba(60,180,120,.22);color:#6ee7b0;border-color:rgba(60,180,120,.50)}
+  .tag.office{background:rgba(91,140,255,.16);color:#9db4ff}
+  .tag.tobacco{background:rgba(255,138,76,.16);color:#ffb088}
+  .tag.gift{background:rgba(192,139,255,.16);color:#cda6ff}
+  .status{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:400}
+  .status.ok{background:rgba(47,230,160,.15);color:#6ff0bf}
+  .status.low{background:rgba(255,194,75,.16);color:#ffd486}
+  .status.out{background:rgba(255,93,108,.16);color:#ff97a1}
+  .status.done{background:rgba(60,180,120,.18);color:#39c08a;border:1px solid rgba(60,180,120,.4)}
   .row-done td{opacity:.45}
   .more.done{opacity:.55;cursor:default}
   .num{font-variant-numeric:tabular-nums}
@@ -453,10 +453,9 @@
   .data-table tbody tr:last-child td:last-child{border-bottom-right-radius:10px}
   .data-table td:last-child{min-width:100px}
   .data-table .status,.data-table .tag{font-size:11px;padding:2px 8px;display:inline-block;vertical-align:middle}
-  .data-table .status{padding:3px 9px}
   .data-table .lnk,.data-table .row-act{font-size:11.5px}
   .cell-act{display:inline-flex;gap:5px;justify-content:center;flex-wrap:nowrap;white-space:nowrap}
-  .cell-act button,.cell-act .btn-mini{font:inherit;cursor:pointer;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.10);color:#e8efff;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+  .cell-act button,.cell-act .btn-mini{font:inherit;cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink-2);padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
   .cell-act button::before,.cell-act .btn-mini::before{font-size:11px;opacity:.9}
   .cell-act button[data-edit-inv]::before,.cell-act .btn-mini.edit::before{content:'✏️'}
   .cell-act button.del::before,.cell-act .btn-mini.del::before{content:'🗑️'}
@@ -467,9 +466,9 @@
   [data-theme="light"] .cell-act .btn-mini.start:hover{background:rgba(22,163,74,.20);color:#166534}
   .cell-act button:hover{background:rgba(91,140,255,.18);border-color:rgba(91,140,255,.5);color:#e8efff;transform:translateY(-1px)}
   .cell-act button.del:hover{background:rgba(255,90,90,.18);border-color:rgba(255,90,90,.55);color:#ffe0e0;transform:translateY(-1px)}
-  [data-theme="light"] .cell-act button,[data-theme="light"] .cell-act .btn-mini{color:#33405c;background:rgba(20,30,60,.05);border-color:rgba(20,30,60,.12)}
-  [data-theme="light"] .cell-act button:hover,[data-theme="light"] .cell-act .btn-mini:hover{color:#2347d6;background:rgba(79,110,247,.12);border-color:rgba(79,110,247,.30)}
-  [data-theme="light"] .cell-act button.del:hover{color:#d93025;background:rgba(255,90,90,.1);border-color:rgba(226,59,70,.35)}
+  [data-theme="light"] .cell-act button,[data-theme="light"] .cell-act .btn-mini{color:#33405c;background:rgba(20,30,60,.05)}
+  [data-theme="light"] .cell-act button:hover,[data-theme="light"] .cell-act .btn-mini:hover{color:#2347d6;background:rgba(79,110,247,.12)}
+  [data-theme="light"] .cell-act button.del:hover{color:#d93025;background:rgba(255,90,90,.1)}
   /* 无 class 的裸表格（工作台预警/到期、导入映射/预览、弹窗表格）与主表格统一风格 */
   .card table:not(.data-table):not(.plan-table):not(.safe-table),
   .modal table:not(.data-table):not(.plan-table):not(.safe-table){
@@ -733,15 +732,15 @@
   [data-theme="light"] .modal table:not(.data-table):not(.plan-table):not(.safe-table) tbody tr:hover{background:rgba(20,30,60,.04)}
   [data-theme="light"] .data-table tbody tr:hover{background:#eef3ff}
   [data-theme="light"] .data-table tbody tr:active{background:#e4ebff}
-  [data-theme="light"] .tag.office{background:rgba(58,91,240,.12);color:#2d4bd0;border-color:rgba(58,91,240,.22)}
-  [data-theme="light"] .tag.tobacco{background:rgba(232,97,44,.12);color:#c44a1a;border-color:rgba(232,97,44,.22)}
-  [data-theme="light"] .tag.gift{background:rgba(155,84,224,.12);color:#7c36b8;border-color:rgba(155,84,224,.22)}
+  [data-theme="light"] .tag.office{color:#3a5bf0}
+  [data-theme="light"] .tag.tobacco{color:#e8612c}
+  [data-theme="light"] .tag.gift{color:#9b54e0}
   [data-theme="light"] .pill.self{background:rgba(58,91,240,.14);color:#3a5bf0}
   [data-theme="light"] .pill.join{background:rgba(13,160,106,.14);color:#0f9d6a}
-  [data-theme="light"] .status.ok{background:rgba(19,160,106,.14);color:#0f8559;border-color:rgba(19,160,106,.30)}
-  [data-theme="light"] .status.low{background:rgba(201,138,18,.16);color:#9a5f08;border-color:rgba(201,138,18,.32)}
-  [data-theme="light"] .status.out{background:rgba(226,59,70,.14);color:#c42531;border-color:rgba(226,59,70,.32)}
-  [data-theme="light"] .status.done{background:rgba(22,163,74,.16);color:#0f8559;border-color:rgba(22,163,74,.32)}
+  [data-theme="light"] .status.ok{color:#0f9d6a}
+  [data-theme="light"] .status.low{color:#b5790f}
+  [data-theme="light"] .status.out{color:#d23b46}
+  [data-theme="light"] .status.done{color:#1f9e6e}
   [data-theme="light"] .row-act{color:#3a5bf0}
   [data-theme="light"] .row-act:hover{text-shadow:0 0 10px rgba(58,91,240,.4)}
   [data-theme="light"] .tl-body .t1{color:#1d2433}
@@ -1555,7 +1554,7 @@
   function addMonths(dateStr,m){ const d=new Date(dateStr+'T00:00:00'); d.setMonth(d.getMonth()+m); const y=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); return `${y}-${mm}-${dd}`; }
   function daysLeft(expireStr){ if(!expireStr) return null; return Math.round((new Date(expireStr+'T00:00:00')-new Date())/86400000); }
   function wStatus(dl){ if(dl===null) return {cls:'',txt:'—'}; if(dl<0) return {cls:'out',txt:'已过期'}; if(dl<=90) return {cls:'low',txt:'临期 '+dl+'天'}; return {cls:'ok',txt:'正常'}; }
-  function warrantyCell(it){ if(!it.warranty) return '<td>—</td>'; const exp=it.expire||addMonths(it.inDate||'2026-01-01',it.warranty); const dl=daysLeft(exp); const st=wStatus(dl); const cls=st.cls||''; if(!cls) return `<td>${exp}</td>`; return `<td><span class="status ${cls}">${exp}</span></td>`; }
+  function warrantyCell(it){ if(!it.warranty) return '<td>—</td>'; const exp=it.expire||addMonths(it.inDate||'2026-01-01',it.warranty); const dl=daysLeft(exp); const st=wStatus(dl); const col=st.cls==='out'?'var(--danger)':st.cls==='low'?'var(--accent)':'var(--ink-3)'; return `<td><span style="color:${col};font-weight:600">${exp}</span></td>`; }
   function warrantyMonthsCell(it){ return `<td>${it.warranty? it.warranty+' 个月':'—'}</td>`; }
   function renderInv(cat,filter){
     const body=document.getElementById('invBody');
