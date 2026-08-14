@@ -159,6 +159,13 @@
   }
   .search input{border:none;background:none;outline:none;font-family:var(--font);font-size:13px;width:100%;color:var(--ink)}
   .search input::placeholder{color:var(--ink-3)}
+  .date-note{
+    margin-left:auto;display:flex;align-items:center;gap:8px;
+    background:rgba(255,255,255,.08);border:1px solid var(--line);
+    border-radius:20px;padding:8px 16px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    font-size:13px;color:var(--ink);font-weight:600;white-space:nowrap;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 4px 14px rgba(0,0,0,.15);
+  }
   .icon-btn{
     width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
     background:rgba(255,255,255,.07);display:grid;place-items:center;cursor:pointer;position:relative;transition:all .15s,transform .12s;color:var(--ink-2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
@@ -699,6 +706,7 @@
   }
   [data-theme="light"] .topbar h1{color:#1d2433;text-shadow:none}
   [data-theme="light"] .search{background:rgba(255,255,255,.46);border:1px solid var(--line)}
+  [data-theme="light"] .date-note{background:rgba(255,255,255,.46);border:1px solid var(--line);color:#1d2433}
   [data-theme="light"] .icon-btn{background:rgba(255,255,255,.46);color:var(--ink-2)}
   [data-theme="light"] .icon-btn:hover{background:var(--primary-soft);color:#1d2433}
   [data-theme="light"] .icon-btn .badge{border-color:#fff}
@@ -821,10 +829,7 @@
         <h1 id="pageTitle">工作台</h1>
         <div class="breadcrumb" id="pageCrumb">首页 / 工作台</div>
       </div>
-      <div class="search">
-        <span>🔍</span>
-        <input placeholder="搜索物资、单号、领用人…" />
-      </div>
+      <div class="date-note">📅 数据截至 2026年8月3日</div>
       <div class="icon-btn" id="notifyBtn" title="质保期预警"><svg class="bell" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h20v-1l-2-2z"/></svg><span class="badge" id="notifyBadge">0</span></div>
       <div class="icon-btn" id="themeToggle" title="切换到浅色模式"><span id="themeIcon">🌙</span></div>
       <div class="icon-btn" id="fullscreenBtn" title="全屏显示"><svg class="fs-ico" viewBox="0 0 24 24" aria-hidden="true"><path id="fsPath" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></div>
