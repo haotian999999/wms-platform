@@ -1387,30 +1387,6 @@
     </div>
   </div>
 
-  <!-- 盘点记录下载窗口 -->
-  <div class="modal-mask" id="checkModal">
-    <div class="modal" style="--mw:720px">
-      <div class="modal-head">
-        <h3>🧮 实盘单下载</h3>
-        <button class="modal-close" id="checkModalClose">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="section-sub" style="margin-bottom:12px">下方为本次已核实的实盘数据，可导出 Excel 留存，便于存档与财务复核。</div>
-        <div id="checkModalInfo" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 18px;margin-bottom:6px"></div>
-        <div style="margin:16px 0 8px;font-weight:600;font-size:13px;color:var(--ink-2)">盘点明细 · 需要盘点的项目内容</div>
-        <div style="overflow-x:auto;border:1px solid var(--line);border-radius:12px">
-          <table class="safe-table" style="font-size:12px">
-            <thead><tr><th>物资名称</th><th>分类</th><th class="num">系统库存</th><th class="num">实盘数量</th><th class="num">差异</th><th>状态</th></tr></thead>
-            <tbody id="checkModalBody"></tbody>
-          </table>
-        </div>
-        <div style="display:flex;justify-content:center;margin-top:18px">
-          <button class="btn btn-primary" id="checkExportXlsx" style="min-width:220px;justify-content:center">⬇ 导出 Excel</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- 开始盘点窗口（承接原「盘点单录入 · 实盘核对」功能） -->
   <div class="modal-mask" id="startCheckModal">
     <div class="modal" style="--mw:880px">
@@ -1870,7 +1846,7 @@
   // 「编辑」窗口内「重新盘点」：基于当前计划重新发起盘点
   const planReCheckBtn=document.getElementById('planReCheck'); if(planReCheckBtn) planReCheckBtn.addEventListener('click',()=>{ if(!planEditCtx) return; const t=planEditCtx.type, i=planEditCtx.idx; closePlanEdit(); openStartCheck(t,i); });
   // 保存盘点单窗口内「下载实盘单」
-  const scDown=document.getElementById('saveCheckDownload'); if(scDown) scDown.addEventListener('click',openCheckModal);
+  const scDown=document.getElementById('saveCheckDownload'); if(scDown) scDown.addEventListener('click',downloadRealSheet);
 
   document.querySelectorAll('#checkTabs .tab').forEach(t=>t.addEventListener('click',()=>{
     document.querySelectorAll('#checkTabs .tab').forEach(x=>x.classList.remove('active'));
@@ -1924,12 +1900,11 @@
     const b=document.getElementById('saveCheck'); if(b){ b.textContent='💾 保存盘点单'; b.disabled=false; b.style.opacity=1; }
     const m=document.getElementById('checkDownMsg'); if(m) m.textContent='';
   }
-  function openCheckModal(){
+  /* 直接下载实盘单：构建快照后直接导出 Excel，不再弹出「实盘单下载」窗口 */
+  function downloadRealSheet(){
     const snap=buildCheckSnapshot();
-    document.getElementById('checkModalInfo').innerHTML=snap.info.map(r=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--ink-3)">${r[0]}</span><span>${r[1]||'—'}</span></div>`).join('');
-    document.getElementById('checkModalBody').innerHTML=snap.rows;
     checkExportData={info:snap.info,items:snap.items};
-    document.getElementById('checkModal').classList.add('show');
+    checkExportXlsx();
   }
   /* 线下盘点单：导出空白实盘列，供打印后手动核账 */
   function downloadOfflineSheet(){
@@ -1957,9 +1932,6 @@
   }
   const dcBtn=document.getElementById('downloadCheck');
   if(dcBtn) dcBtn.addEventListener('click',downloadOfflineSheet);
-  document.getElementById('checkModalClose').addEventListener('click',()=>document.getElementById('checkModal').classList.remove('show'));
-  document.getElementById('checkModal').addEventListener('click',e=>{ if(e.target.id==='checkModal') document.getElementById('checkModal').classList.remove('show'); });
-  document.getElementById('checkExportXlsx').addEventListener('click',checkExportXlsx);
 
   // ---- 保存盘点单窗口 ----
   function openSaveCheckModal(){
