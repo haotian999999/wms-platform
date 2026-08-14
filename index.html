@@ -226,6 +226,12 @@
   .btn-primary:hover{background:linear-gradient(135deg,#4f7cf0,#6f80f5);transform:translateY(-1px);box-shadow:0 10px 28px rgba(91,140,255,.6)}
   .btn-ghost{background:rgba(255,255,255,.05);color:var(--ink);border:1px solid var(--line);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .btn-ghost:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2)}
+  .btn-danger{background:linear-gradient(135deg,#ff5a5a,#ff7a7a);color:#fff;box-shadow:0 6px 18px rgba(255,90,90,.4),inset 0 1px 0 rgba(255,255,255,.25)}
+  .btn-danger:hover{background:linear-gradient(135deg,#f04747,#ff6a6a);transform:translateY(-1px);box-shadow:0 10px 26px rgba(255,90,90,.55)}
+  .btn-accent{background:linear-gradient(135deg,#2ecc71,#27c06a);color:#fff;box-shadow:0 6px 18px rgba(46,204,113,.4),inset 0 1px 0 rgba(255,255,255,.25)}
+  .btn-accent:hover{background:linear-gradient(135deg,#27b863,#22ad5e);transform:translateY(-1px);box-shadow:0 10px 26px rgba(46,204,113,.55)}
+  [data-theme="light"] .btn-danger{background:linear-gradient(135deg,#e23b3b,#f05656);box-shadow:0 6px 16px rgba(226,59,59,.28)}
+  [data-theme="light"] .btn-accent{background:linear-gradient(135deg,#16a34a,#1aa152);box-shadow:0 6px 16px rgba(22,163,74,.26)}
   .spacer{flex:1}
 
   table{width:100%;border-collapse:collapse}
@@ -254,7 +260,11 @@
 
   /* Activity timeline */
   .timeline{padding:6px 20px 22px}
-  .tl-item{display:flex;gap:14px;padding:11px 0;border-bottom:1px solid var(--line-2)}
+  .tl-item{display:flex;gap:14px;padding:11px 12px;margin:0 -12px;border-bottom:1px solid var(--line-2);border-radius:10px;cursor:pointer;transition:background .15s,box-shadow .15s}
+  .tl-item:hover{background:rgba(91,140,255,.10);box-shadow:inset 0 0 0 1px rgba(91,140,255,.25)}
+  .tl-item:focus{outline:none;background:rgba(91,140,255,.14);box-shadow:inset 0 0 0 1px rgba(91,140,255,.4)}
+  .rec-act-hint{font-size:12px;font-weight:600;color:var(--ink-3);background:rgba(91,140,255,.12);border:1px solid rgba(91,140,255,.3);padding:3px 10px;border-radius:8px;white-space:nowrap}
+  .tl-item:hover .rec-act-hint{color:var(--primary);border-color:rgba(91,140,255,.55)}
   .tl-item:last-child{border:none}
   .tl-dot{width:34px;height:34px;border-radius:10px;flex:0 0 34px;display:grid;place-items:center;font-size:16px}
   .tl-dot.in{background:rgba(47,230,160,.15);color:#6ff0bf}
@@ -1367,8 +1377,9 @@
             <tbody id="saveCheckBody"></tbody>
           </table>
         </div>
-        <div style="display:flex;justify-content:center;gap:12px;margin-top:18px">
+        <div style="display:flex;justify-content:center;gap:12px;margin-top:18px;flex-wrap:wrap">
           <button class="btn btn-ghost" id="saveCheckCancel">取消</button>
+          <button class="btn btn-accent" id="saveCheckDownload" style="min-width:200px;justify-content:center">⬇ 下载实盘单</button>
           <button class="btn btn-primary" id="saveCheckConfirm" style="min-width:220px;justify-content:center">✔ 确认保存至最近盘点记录</button>
         </div>
       </div>
@@ -1379,11 +1390,11 @@
   <div class="modal-mask" id="checkModal">
     <div class="modal" style="max-width:720px">
       <div class="modal-head">
-        <h3>🧮 盘点记录下载</h3>
+        <h3>🧮 实盘单下载</h3>
         <button class="modal-close" id="checkModalClose">✕</button>
       </div>
       <div class="modal-body">
-        <div class="section-sub" style="margin-bottom:12px">完成实盘核对后可导出本次盘点记录，便于存档与财务复核。下方为本次需要盘点的项目内容及盘点后信息记录。</div>
+        <div class="section-sub" style="margin-bottom:12px">下方为本次已核实的实盘数据，可导出 Excel 留存，便于存档与财务复核。</div>
         <div id="checkModalInfo" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 18px;margin-bottom:6px"></div>
         <div style="margin:16px 0 8px;font-weight:600;font-size:13px;color:var(--ink-2)">盘点明细 · 需要盘点的项目内容</div>
         <div style="overflow-x:auto;border:1px solid var(--line);border-radius:12px">
@@ -1426,7 +1437,7 @@
         <div class="note">差异为负 = 盘亏（实物少于账面），为正 = 盘盈（实物多于账面）；0 表示账实相符。差异项需仓库管理员与财务共同复核后调整账面。</div>
         <div style="display:flex;gap:12px;align-items:center;padding:8px 0 4px;flex-wrap:wrap">
           <button class="btn btn-primary" id="saveCheck" style="justify-content:center">💾 保存盘点单</button>
-          <button class="btn btn-primary" id="downloadCheck" style="justify-content:center">⬇ 下载盘点记录</button>
+          <button class="btn btn-primary" id="downloadCheck" style="justify-content:center">⬇ 下载盘点单（线下核账）</button>
           <span class="plan-meta" id="checkDownMsg"></span>
         </div>
       </div>
@@ -1441,8 +1452,9 @@
         <button class="modal-close" id="planEditClose">✕</button>
       </div>
       <div class="modal-body"><div class="form-grid" id="planEditBody"></div></div>
-      <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line)">
+      <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line);flex-wrap:wrap">
         <button class="btn btn-ghost" id="planEditCancel">取消</button>
+        <button class="btn btn-accent" id="planReCheck">🔄 重新盘点</button>
         <button class="btn btn-primary" id="planEditSave">保存</button>
       </div>
     </div>
@@ -1459,6 +1471,23 @@
       <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line)">
         <button class="btn btn-ghost" id="recCheckEditCancel">取消</button>
         <button class="btn btn-primary" id="recCheckEditSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 最近盘点记录：行内操作弹窗（隐藏编辑/删除，点击记录行弹出） -->
+  <div class="modal-mask" id="recActionModal">
+    <div class="modal" style="max-width:380px">
+      <div class="modal-head">
+        <h3>📋 记录操作</h3>
+        <button class="modal-close" id="recActionClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="recActionTitle" style="font-weight:600;font-size:14px;color:var(--ink-1);padding:2px 0 16px;word-break:break-all"></div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <button class="btn btn-primary" id="recActionEdit" style="justify-content:center">✏️ 编辑记录</button>
+          <button class="btn btn-danger" id="recActionDel" style="justify-content:center">🗑️ 删除记录</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1603,7 +1632,7 @@
   ];
   function renderCheckTimeline(){
     const el=document.getElementById('checkTimeline'); if(!el) return;
-    el.innerHTML=checkRecords.map((r,i)=>`<div class="tl-item"><div class="tl-dot ${r.dot}">${r.dot==='in'?'🧮':r.dot==='warn'?'⚠️':'🤝'}</div><div class="tl-body"><div class="t1">${r.title}</div><div class="t2">${r.sub}</div></div><div class="tl-right"><div class="tl-time">${r.date}</div><div class="cell-act"><button type="button" class="btn-mini edit" data-edit-rec-check="${i}">编辑</button><button type="button" class="btn-mini del" data-del-rec-check="${i}">删除</button></div></div></div>`).join('');
+    el.innerHTML=checkRecords.map((r,i)=>`<div class="tl-item" data-rec-idx="${i}" role="button" tabindex="0" title="点击查看操作"><div class="tl-dot ${r.dot}">${r.dot==='in'?'🧮':r.dot==='warn'?'⚠️':'🤝'}</div><div class="tl-body"><div class="t1">${r.title}</div><div class="t2">${r.sub}</div></div><div class="tl-right"><div class="tl-time">${r.date}</div><div class="rec-act-hint">⋯ 操作</div></div></div>`).join('');
   }
   renderCheckTimeline();
 
@@ -1639,6 +1668,20 @@
     toast('记录已删除','ok','已移除该条盘点记录');
   }
 
+  /* ============ 最近盘点记录：行内操作弹窗（隐藏编辑/删除） ============ */
+  let recActionIdx=-1;
+  function openRecAction(i){
+    const r=checkRecords[i]; if(!r) return;
+    recActionIdx=i;
+    document.getElementById('recActionTitle').textContent=r.title;
+    document.getElementById('recActionModal').classList.add('show');
+  }
+  function closeRecAction(){ const m=document.getElementById('recActionModal'); if(m) m.classList.remove('show'); }
+  const recActClose=document.getElementById('recActionClose'); if(recActClose) recActClose.addEventListener('click',closeRecAction);
+  const recActMask=document.getElementById('recActionModal'); if(recActMask) recActMask.addEventListener('click',e=>{ if(e.target.id==='recActionModal') closeRecAction(); });
+  const recActEdit=document.getElementById('recActionEdit'); if(recActEdit) recActEdit.addEventListener('click',()=>{ const i=recActionIdx; closeRecAction(); if(i>=0) openRecCheckEdit(i); });
+  const recActDel=document.getElementById('recActionDel'); if(recActDel) recActDel.addEventListener('click',()=>{ const i=recActionIdx; closeRecAction(); if(i>=0) deleteRecCheck(i); });
+
   /* ============ 盘点计划：数据驱动 + 编辑/删除 ============ */
   const planStatusText={ok:'已完成',low:'进行中',out:'待开始'};
   const checkPlansQuarter=[
@@ -1660,7 +1703,7 @@
       <td><span class="pill self">🧑‍💼 自盘</span></td>
       <td><span class="status ${p.status}">${planStatusText[p.status]}</span></td>
       <td class="num">${p.diff}</td>
-      <td><span class="cell-act"><button type="button" class="btn-mini edit" data-edit-plan-q="${i}">编辑</button><button type="button" class="btn-mini start" data-start-check-q="${i}">开始盘点</button></span></td>
+      <td><span class="cell-act"><button type="button" class="btn-mini start" data-start-check-q="${i}">开始盘点</button><button type="button" class="btn-mini edit" data-edit-plan-q="${i}">编辑</button></span></td>
     </tr>`).join('');
   }
   function renderPlanYear(){
@@ -1672,7 +1715,7 @@
       <td>${p.watch}</td>
       <td><span class="pill join">🤝 全面</span></td>
       <td><span class="status ${p.status}">${planStatusText[p.status]}</span></td>
-      <td><span class="cell-act"><button type="button" class="btn-mini edit" data-edit-plan-y="${i}">编辑</button><button type="button" class="btn-mini start" data-start-check-y="${i}">开始盘点</button></span></td>
+      <td><span class="cell-act"><button type="button" class="btn-mini start" data-start-check-y="${i}">开始盘点</button><button type="button" class="btn-mini edit" data-edit-plan-y="${i}">编辑</button></span></td>
     </tr>`).join('');
   }
   function renderCheckKpi(){
@@ -1786,8 +1829,12 @@
       const sy=e.target.closest('[data-start-check-y]'); if(sy){ openStartCheck('y',+sy.dataset.startCheckY); return; }
       const ei=e.target.closest('[data-edit-check-item]'); if(ei){ openCheckItemEdit(+ei.dataset.editCheckItem); return; }
       const di=e.target.closest('[data-del-check-item]'); if(di){ deleteCheckItem(+di.dataset.delCheckItem); return; }
-      const er=e.target.closest('[data-edit-rec-check]'); if(er){ openRecCheckEdit(+er.dataset.editRecCheck); return; }
-      const dr=e.target.closest('[data-del-rec-check]'); if(dr){ deleteRecCheck(+dr.dataset.delRecCheck); return; }
+      const tl=e.target.closest('.tl-item'); if(tl){ openRecAction(+tl.dataset.recIdx); return; }
+    });
+    // 最近盘点记录：键盘可达（Enter / 空格 打开操作弹窗）
+    const tlEl=document.getElementById('checkTimeline');
+    if(tlEl) tlEl.addEventListener('keydown',e=>{
+      if(e.key==='Enter'||e.key===' '){ const it=e.target.closest('.tl-item'); if(it){ e.preventDefault(); openRecAction(+it.dataset.recIdx); } }
     });
   }
   ['planEdit','checkItemEdit','recCheckEdit'].forEach(function(prefix){
@@ -1803,6 +1850,10 @@
   const planSave=document.getElementById('planEditSave'); if(planSave) planSave.addEventListener('click',savePlanEdit);
   const ciSave=document.getElementById('checkItemEditSave'); if(ciSave) ciSave.addEventListener('click',saveCheckItemEdit);
   const rcSave=document.getElementById('recCheckEditSave'); if(rcSave) rcSave.addEventListener('click',saveRecCheckEdit);
+  // 「编辑」窗口内「重新盘点」：基于当前计划重新发起盘点
+  const planReCheckBtn=document.getElementById('planReCheck'); if(planReCheckBtn) planReCheckBtn.addEventListener('click',()=>{ if(!planEditCtx) return; const t=planEditCtx.type, i=planEditCtx.idx; closePlanEdit(); openStartCheck(t,i); });
+  // 保存盘点单窗口内「下载实盘单」
+  const scDown=document.getElementById('saveCheckDownload'); if(scDown) scDown.addEventListener('click',openCheckModal);
 
   document.querySelectorAll('#checkTabs .tab').forEach(t=>t.addEventListener('click',()=>{
     document.querySelectorAll('#checkTabs .tab').forEach(x=>x.classList.remove('active'));
@@ -1857,24 +1908,32 @@
     checkExportData={info:snap.info,items:snap.items};
     document.getElementById('checkModal').classList.add('show');
   }
+  /* 线下盘点单：导出空白实盘列，供打印后手动核账 */
+  function downloadOfflineSheet(){
+    const g=id=>document.getElementById(id);
+    const type=g('chkType').value, scope=g('chkScope').value, lead=g('chkLead').value, watch=g('chkWatch').value, date=g('chkDate').value, note=g('chkNote').value;
+    const aoa=[[type+' · 盘点单（线下核账）']];
+    aoa.push(['盘点类型',type],['盘点范围',scope],['牵头人（仓库）',lead],['监盘人（财务）',watch],['计划盘点日期',date],['备注',note||'—']);
+    aoa.push([]);
+    aoa.push(['序号','物资名称','分类','单位','系统库存','实盘数量（请手动填写）','差异','状态']);
+    checkItems.forEach((it,idx)=>{ const m=catMeta[it.c]; aoa.push([idx+1, it.n, m.t, it.u, it.sys, '', '待核', '待核']); });
+    exportXLSX(aoa,'盘点单_线下核账_'+date+'.xlsx',{headerAt:8,titleMerge:true});
+    toast('已导出线下盘点单','ok','实盘列已留空，可打印后手动核账');
+  }
+  /* 实盘单下载窗口：仅导出已核实的实盘数据，用于留存（不再重复归档） */
   function checkExportXlsx(){
-    if(!checkExportData){ toast('暂无数据','warn','请先打开盘点记录'); return; }
-    const aoa=[['盘点记录导出明细']];
+    if(!checkExportData){ toast('暂无数据','warn','请先保存盘点单'); return; }
+    const aoa=[['实盘单 · 盘点记录导出明细']];
     checkExportData.info.forEach(r=>aoa.push([r[0],r[1]||'—']));
     aoa.push([]);
     aoa.push(['物资名称','分类','单位','系统库存','实盘数量','差异','状态']);
     checkExportData.items.forEach(it=>aoa.push([it.n,it.c,it.u,it.sys,it.real,it.d,it.st]));
     const headerAt=checkExportData.info.length+2;
-    exportXLSX(aoa,'盘点记录_'+checkExportData.info[0][1]+'.xlsx',{headerAt,titleMerge:true});
-    const snap={type:checkExportData.info[0][1],scope:checkExportData.info[1][1],date:checkExportData.info[4][1],items:checkExportData.items,diffCount:checkExportData.items.filter(i=>i.d!==0).length};
-    const synced=syncPlanStatus(checkExportData.info[4][1]);
-    if(synced){ renderPlanQuarter(); renderPlanYear(); }
-    const archived=archiveCheckToTimeline(snap);
-    renderCheckKpi();
-    toast(archived?'已导出 Excel 并归档':'已导出 Excel','ok', (synced?'对应盘点计划已自动标记「已完成」；':'')+(archived?'盘点记录已生成 .xlsx 并已归入最近记录':'本单此前已保存，Excel 已重新导出'));
+    exportXLSX(aoa,'实盘单_'+(checkExportData.info[4]?checkExportData.info[4][1]:'')+'.xlsx',{headerAt,titleMerge:true});
+    toast('已导出实盘单','ok','实盘数据已留存为 Excel');
   }
   const dcBtn=document.getElementById('downloadCheck');
-  if(dcBtn) dcBtn.addEventListener('click',openCheckModal);
+  if(dcBtn) dcBtn.addEventListener('click',downloadOfflineSheet);
   document.getElementById('checkModalClose').addEventListener('click',()=>document.getElementById('checkModal').classList.remove('show'));
   document.getElementById('checkModal').addEventListener('click',e=>{ if(e.target.id==='checkModal') document.getElementById('checkModal').classList.remove('show'); });
   document.getElementById('checkExportXlsx').addEventListener('click',checkExportXlsx);
@@ -1884,7 +1943,13 @@
     const snap=buildCheckSnapshot();
     document.getElementById('saveCheckInfo').innerHTML=snap.info.map(r=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:var(--ink-3)">${r[0]}</span><span>${r[1]||'—'}</span></div>`).join('');
     document.getElementById('saveCheckBody').innerHTML=snap.rows;
+    checkExportData={info:snap.info,items:snap.items};
+    const sc=document.getElementById('startCheckModal'); if(sc) sc.classList.remove('show'); // 避免开始盘点弹窗遮挡保存弹窗
     document.getElementById('saveCheckModal').classList.add('show');
+  }
+  function closeSaveCheckModal(){
+    document.getElementById('saveCheckModal').classList.remove('show');
+    const sc=document.getElementById('startCheckModal'); if(sc) sc.classList.add('show'); // 取消则返回继续录入
   }
   function saveCheckConfirm(){
     let synced=false, archived=false;
@@ -1903,9 +1968,9 @@
   }
   const svBtn=document.getElementById('saveCheck');
   if(svBtn) svBtn.addEventListener('click',openSaveCheckModal);
-  document.getElementById('saveCheckClose').addEventListener('click',()=>document.getElementById('saveCheckModal').classList.remove('show'));
-  document.getElementById('saveCheckCancel').addEventListener('click',()=>document.getElementById('saveCheckModal').classList.remove('show'));
-  document.getElementById('saveCheckModal').addEventListener('click',e=>{ if(e.target.id==='saveCheckModal') document.getElementById('saveCheckModal').classList.remove('show'); });
+  document.getElementById('saveCheckClose').addEventListener('click',closeSaveCheckModal);
+  document.getElementById('saveCheckCancel').addEventListener('click',closeSaveCheckModal);
+  document.getElementById('saveCheckModal').addEventListener('click',e=>{ if(e.target.id==='saveCheckModal') closeSaveCheckModal(); });
   document.getElementById('saveCheckConfirm').addEventListener('click',saveCheckConfirm);
 
   // ---- XLSX 批量数据录入 ----
