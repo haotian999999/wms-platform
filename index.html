@@ -1578,12 +1578,13 @@
     document.getElementById('view-'+v).classList.add('active');
     document.getElementById('pageTitle').textContent=titles[v][0];
     document.getElementById('pageCrumb').textContent=titles[v][1];
+    if(!charts[v]) initCharts(v);
     if(v==='data') renderDataTables();
-    if(v==='dashboard') runDashboardCounts();
+    if(v==='dashboard') renderDashboard();
+    if(v==='reports') renderReports();
     if(v==='settings') renderSafe();
     if(v==='maintenance') renderMaintenance();
     if(v==='check') setTimeout(()=>checkTableOverflow(),60);
-    if(!charts[v]) initCharts(v);
     if(charts[v]) setTimeout(()=>Object.values(charts[v]).forEach(c=>c.resize()),60);
   }));
 
@@ -2310,28 +2311,10 @@
       :'<div class="tl-item"><div class="tl-dot out">⬆️</div><div class="tl-body"><div class="t1">暂无业务流水</div><div class="t2">完成入库或出库后将在此展示</div></div><div class="tl-time">—</div></div>';
   }
 
-  // 工作台库存预警：基于当前 items 实时计算（低于安全库存）
+  // 工作台库存预警：复用下方数据驱动 renderAlerts()
   let alertProcessed=new Set();
   function alertKey(it){ return it.n+'|'+it.c; }
-  function renderAlertsFromItems(){
-    const body=document.getElementById('alertBody'); if(!body) return;
-    const list=items.filter(i=> typeof i.safe==='number' && i.q < i.safe).map(i=>{
-      const [st,txt]=statusOf(i.q,i.safe); return {key:alertKey(i),...i,st,txt,processed:alertProcessed.has(alertKey(i))};
-    }).sort((a,b)=> (a.st==='out'?0:1) - (b.st==='out'?0:1) );
-    body.innerHTML=list.map((it,idx)=>{
-      const m=catMeta[it.c];
-      return '<tr class="'+(it.processed?'row-done':'')+'" data-alert="'+idx+'">'
-        +'<td>'+it.n+'</td>'
-        +'<td><span class="tag '+m.cls+'"><span class="d" style="background:'+m.col+'"></span>'+m.t+'</span></td>'
-        +'<td class="num">'+it.q+' '+(it.u||'')+'</td>'
-        +'<td class="num">'+it.safe+' '+(it.u||'')+'</td>'
-        +'<td>'+alertStatusBadge(it)+'</td>'
-        +'</tr>';
-    }).join('');
-    if(!list.length){ body.innerHTML='<tr><td colspan="5" class="empty">暂无库存预警 🎉</td></tr>'; }
-    const btn=document.getElementById('processAllAlertBtn');
-    if(btn){ const remaining=list.filter(i=>!i.processed).length; if(remaining===0){ btn.textContent='已全部处理 ✓'; btn.classList.add('done'); } else { btn.textContent='全部处理'; btn.classList.remove('done'); } }
-  }
+  function renderAlertsFromItems(){ renderAlerts(); }
   function renderDashboardKPIs(){
     const totalQty=items.reduce((s,i)=>s+(+i.q||0),0);
     const catCount=new Set(items.map(i=>i.c)).size;
@@ -3054,7 +3037,7 @@
     });
     checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
     renderInv('all'); renderDataTables(); renderWarranty(); renderRecentOut();
-    runDashboardCounts(); updateDataNote();
+    updateDataNote();
     return true;
   }
   function restoreAutoBackup(){
@@ -3309,7 +3292,7 @@
     for(const k of ROLE_ORDER){ if(a[k].user===user && a[k].pass===pass){ currentUser={role:a[k].role,name:a[k].name,roleName:a[k].roleName}; try{localStorage.setItem('wms_current',JSON.stringify(currentUser));}catch(e){} hideLogin(); applyPermissions(); updateNotifyBadge(); return true; } }
     return false;
   }
-  function hideLogin(){ document.getElementById('loginScreen').style.display='none'; document.body.style.overflow=''; document.documentElement.style.overflow=''; var app=document.querySelector('.app'); if(app) app.classList.add('ready'); refreshUserUI(); runDashboardCounts(); updateDataNote(); }
+  function hideLogin(){ document.getElementById('loginScreen').style.display='none'; document.body.style.overflow=''; document.documentElement.style.overflow=''; var app=document.querySelector('.app'); if(app) app.classList.add('ready'); refreshUserUI(); renderDashboard(); updateDataNote(); }
   function showLogin(){ document.getElementById('loginScreen').style.display='flex'; document.body.style.overflow='hidden'; document.documentElement.style.overflow='hidden'; var app=document.querySelector('.app'); if(app) app.classList.remove('ready'); }
   function logout(){ try{localStorage.removeItem('wms_current');}catch(e){} currentUser=null; showLogin(); toast('已退出登录','info','您可以随时重新登录'); }
   function refreshUserUI(){
@@ -3411,48 +3394,49 @@
     toast('已导出报表','ok','近6个月出入库趋势报表.xlsx 已生成');
   }
 
-  const alertItems=[
-    {name:'中华（软）香烟', cat:'tobacco', catName:'烟酒茶', cur:12, safe:30, unit:'条', status:'out', processed:false},
-    {name:'A4 复印纸 70g', cat:'office', catName:'办公用品', cur:18, safe:25, unit:'箱', status:'low', processed:false},
-    {name:'商务保温杯', cat:'gift', catName:'礼品', cur:9, safe:20, unit:'个', status:'low', processed:false},
-    {name:'普洱礼盒茶', cat:'tobacco', catName:'烟酒茶', cur:14, safe:15, unit:'盒', status:'low', processed:false}
-  ];
+  // 库存预警：基于 items 实时计算（低于安全库存的物资），数据驱动、无任何演示数据
   function alertStatusBadge(it){
     if(it.processed) return '<span class="status done">已处理</span>';
-    return it.status==='out' ? '<span class="status out">缺货</span>' : '<span class="status low">偏低</span>';
+    const st=it.st||it.status;
+    return st==='out' ? '<span class="status out">缺货</span>' : '<span class="status low">偏低</span>';
+  }
+  function getLowStock(){
+    return items.filter(i=> typeof i.safe==='number' && i.q < i.safe).map(i=>{
+      const [st,txt]=statusOf(i.q,i.safe);
+      return {key:alertKey(i),n:i.n,c:i.c,q:i.q,safe:i.safe,u:i.u,st,txt,processed:alertProcessed.has(alertKey(i))};
+    }).sort((a,b)=> (a.st==='out'?0:1)-(b.st==='out'?0:1));
   }
   function renderAlerts(){
     const body=document.getElementById('alertBody'); if(!body) return;
-    body.innerHTML=alertItems.map((it,idx)=>{
+    const list=getLowStock();
+    body.innerHTML=list.length? list.map((it,idx)=>{
+      const m=catMeta[it.c];
       return '<tr class="'+(it.processed?'row-done':'')+'" data-alert="'+idx+'">'
-        +'<td>'+it.name+'</td>'
-        +'<td><span class="tag '+it.cat+'"><span class="d" style="background:var(--c-'+it.cat+')"></span>'+it.catName+'</span></td>'
-        +'<td class="num">'+it.cur+' '+it.unit+'</td>'
-        +'<td class="num">'+it.safe+' '+it.unit+'</td>'
+        +'<td>'+it.n+'</td>'
+        +'<td><span class="tag '+m.cls+'"><span class="d" style="background:'+m.col+'"></span>'+m.t+'</span></td>'
+        +'<td class="num">'+it.q+' '+(it.u||'')+'</td>'
+        +'<td class="num">'+it.safe+' '+(it.u||'')+'</td>'
         +'<td>'+alertStatusBadge(it)+'</td>'
         +'</tr>';
-    }).join('');
+    }).join('') : '<tr><td colspan="5" class="empty">暂无库存预警 🎉</td></tr>';
     const btn=document.getElementById('processAllAlertBtn');
-    if(btn){
-      const remaining=alertItems.filter(i=>!i.processed).length;
-      if(remaining===0){ btn.textContent='已全部处理 ✓'; btn.classList.add('done'); }
-      else { btn.textContent='全部处理'; btn.classList.remove('done'); }
-    }
+    if(btn){ const remaining=list.filter(i=>!i.processed).length; if(remaining===0){ btn.textContent='已全部处理 ✓'; btn.classList.add('done'); } else { btn.textContent='全部处理'; btn.classList.remove('done'); } }
   }
   function openAlertProcess(){
-    const remaining=alertItems.filter(i=>!i.processed);
+    const remaining=getLowStock().filter(i=>!i.processed);
     if(remaining.length===0){ toast('所有预警均已处理','info','无需重复处理'); return; }
     const body=document.getElementById('alertProcessBody');
     let totalQty=0;
     body.innerHTML=remaining.map(it=>{
-      const sug=Math.max(0, it.safe-it.cur); totalQty+=sug;
-      const st=it.status==='out'?'<span class="status out">缺货</span>':'<span class="status low">偏低</span>';
+      const sug=Math.max(0, it.safe-it.q); totalQty+=sug;
+      const st=it.st==='out'?'<span class="status out">缺货</span>':'<span class="status low">偏低</span>';
+      const m=catMeta[it.c];
       return '<tr>'
-        +'<td>'+it.name+'</td>'
-        +'<td><span class="tag '+it.cat+'"><span class="d" style="background:var(--c-'+it.cat+')"></span>'+it.catName+'</span></td>'
-        +'<td class="num">'+it.cur+' '+it.unit+'</td>'
-        +'<td class="num">'+it.safe+' '+it.unit+'</td>'
-        +'<td class="num"><b style="color:var(--accent)">'+sug+' '+it.unit+'</b></td>'
+        +'<td>'+it.n+'</td>'
+        +'<td><span class="tag '+m.cls+'"><span class="d" style="background:'+m.col+'"></span>'+m.t+'</span></td>'
+        +'<td class="num">'+it.q+' '+(it.u||'')+'</td>'
+        +'<td class="num">'+it.safe+' '+(it.u||'')+'</td>'
+        +'<td class="num"><b style="color:var(--accent)">'+sug+' '+(it.u||'')+'</b></td>'
         +'<td>'+st+'</td>'
         +'</tr>';
     }).join('');
@@ -3460,18 +3444,19 @@
     document.getElementById('alertProcessModal').classList.add('show');
   }
   function confirmAlertProcess(){
-    alertItems.forEach(it=>{ it.processed=true; });
+    getLowStock().forEach(it=> alertProcessed.add(it.key));
     renderAlerts();
     document.getElementById('alertProcessModal').classList.remove('show');
-    toast('已处理全部预警','ok','已生成补货建议单（'+alertItems.length+' 项），预警标记完成');
+    toast('已处理全部预警','ok','已生成补货建议单（'+getLowStock().length+' 项），预警标记完成');
   }
   function exportReplenishOrder(){
+    const list=getLowStock();
     const now=new Date();
     const p=n=>String(n).padStart(2,'0');
     const ts=now.getFullYear()+'-'+p(now.getMonth()+1)+'-'+p(now.getDate());
     const rows=[['库存预警 · 补货建议单'],['生成日期', ts],['状态','待采购'],['物资名称','分类','当前库存','安全库存','建议补货','单位']];
     let total=0;
-    alertItems.forEach(it=>{ const sug=Math.max(0,it.safe-it.cur); total+=sug; rows.push([it.name,it.catName,it.cur,it.safe,sug,it.unit]); });
+    list.forEach(it=>{ const sug=Math.max(0,it.safe-it.q); total+=sug; const m=catMeta[it.c]; rows.push([it.n, m?m.t:it.c, it.q, it.safe, sug, it.u||'']); });
     rows.push(['合计','','','',''+total,'件']);
     exportXLSX(rows,'补货建议单_'+ts+'.xlsx',{titleMerge:true,headerAt:3});
     toast('已导出补货单','ok','补货建议单.xlsx 已生成');
@@ -3483,7 +3468,9 @@
   const _apcon=document.getElementById('alertProcessConfirm'); if(_apcon) _apcon.addEventListener('click',confirmAlertProcess);
   const _ape=document.getElementById('alertProcessExport'); if(_ape) _ape.addEventListener('click',exportReplenishOrder);
   const _apm=document.getElementById('alertProcessModal'); if(_apm) _apm.addEventListener('click',e=>{ if(e.target.id==='alertProcessModal') _apm.classList.remove('show'); });
-  renderAlerts();
+  // 启动：恢复持久化业务数据并渲染仪表盘（含库存预警/最近动态/图表），空数据则显示占位
+  hydrateAll();
+  renderDashboard();
 
 </script>
 <script>
@@ -3492,10 +3479,15 @@
   // 已被旧缓存卡住的用户也能借此拿到最新 SW 并自我更新。部署新版本时同步把 ?v=N 递增。
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('./sw.js?v=3').then(function () {
+      navigator.serviceWorker.register('./sw.js?v=3').then(function (reg) {
+        // 若已有等待中的新版本，立即让其接管（配合 sw.js 的 skipWaiting 消息）
+        if (reg && reg.waiting) { try { reg.waiting.postMessage('skipWaiting'); } catch (e) {} }
         // 新版本 SW 接管页面时自动刷新一次，加载最新 HTML/JS（避免停留在旧缓存）
         var reloaded = false;
         navigator.serviceWorker.addEventListener('controllerchange', function () {
+          // 已登录（app 进入就绪态）则不打断用户操作：避免登录成功后被 SW 接管刷新踢回登录页
+          var app = document.querySelector('.app');
+          if (app && app.classList.contains('ready')) return;
           if (!reloaded) { reloaded = true; location.reload(); }
         });
       }).catch(function () {});
