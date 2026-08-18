@@ -1096,7 +1096,7 @@
             <div class="plan-meta" style="margin-top:6px">支持 .xlsx / .xls，自动读取公式计算结果</div>
             <input type="file" id="fileInput" accept=".xlsx,.xls" hidden />
           </div>
-          <div class="note">智能抓取规则：扫描表头，按关键词自动匹配——「品名 / 名称 → 物资名称」「类别 / 分类 → 分类」「现存量 / 库存 → 库存数量」「安全库存 / 下限 → 安全库存」；含公式的单元格直接抓取计算后的数值。映射可调，未识别列可手动指定或忽略。</div>
+          <div class="note">智能抓取规则：① 自动选取「库存总表」生成物资（兼容 规格/规格·型号、物品/用品名称 等列名变体，分类按文件名判定，品牌同步收录）；② 若文件含「出入库明细表」，进一步解析主行/分号子行/结余行，将子行流水生成为入库/出库记录（申购单号→入库单号、审批编号→出库单号、含日期/经办人）。无明细表时按期末数量作为当前库存；含明细表时以期初数量为基准、叠加流水，使库存 q=期初+入−出=期末，与表格完全自洽。映射可调，未识别列可手动指定或忽略。</div>
         </div>
 
         <div id="importResult" style="display:none">
@@ -1114,6 +1114,15 @@
               <thead><tr><th>物资名称</th><th>分类</th><th>品牌</th><th>规格(含类别)</th><th>单位</th><th>期末库存</th><th>校验</th></tr></thead>
               <tbody id="prevBody"></tbody>
             </table>
+            <div id="detailPreview" style="margin-top:18px;display:none">
+              <div class="panel-head"><div><h3>出入库明细流水（将从明细表生成）</h3><div class="sub" id="detailInfo"></div></div></div>
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead><tr><th>类型</th><th>单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>数量</th><th>经办人</th></tr></thead>
+                  <tbody id="detailBody"></tbody>
+                </table>
+              </div>
+            </div>
             <div style="padding:0 20px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
               <button class="btn btn-primary" id="confirmImport" data-perm="data">✓ 确认导入 <span id="importCount"></span> 条</button>
               <span class="plan-meta" id="importMsg"></span>
@@ -2247,14 +2256,74 @@
     reader.onload=e=>{
       try{
         const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
-        // 智能选表：优先选取「库存总表 / 总览」（名称含 总/览/库存 且不含 出入/明细），明细表不导入
-        const sheetName=(wb.SheetNames.find(s=>/(总|览|库存)/.test(s)&&!/(出入|明细)/.test(s)))||wb.SheetNames[0];
-        const ws=wb.Sheets[sheetName];
-        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,blankrows:false});
-        buildImport(rows,sheetName,file.name);
+        // 智能选表：优先选取「库存总表 / 总览」（名称含 总/览/库存 且不含 出入/明细）
+        const totalName=(wb.SheetNames.find(s=>/(总|览|库存)/.test(s)&&!/(出入|明细)/.test(s)))||wb.SheetNames[0];
+        const detailName=wb.SheetNames.find(s=>/(出入|明细)/.test(s));
+        const totalRows=XLSX.utils.sheet_to_json(wb.Sheets[totalName],{header:1,defval:null,blankrows:false});
+        buildImport(totalRows,totalName,file.name);
+        // 第二层：若含「出入库明细表」，解析主行/分号子行/结余行，生成入库/出库流水
+        if(detailName){
+          const dRows=XLSX.utils.sheet_to_json(wb.Sheets[detailName],{header:1,defval:null,blankrows:false});
+          importState.detail=parseDetail(dRows,file.name);
+          importState.hasDetail=importState.detail.count>0;
+        }else{
+          importState.detail={count:0,records:[],samples:[]};
+          importState.hasDetail=false;
+        }
+        renderPreview();
+        const dInfo=importState.hasDetail?` · 同步解析「${detailName}」：将从 ${importState.detail.count} 笔流水生成入库/出库记录`:'';
+        document.getElementById('sheetInfo').textContent=`库存总表：${totalName}${detailName?` · 明细表：${detailName}`:''} · 共 ${importState.dataRows.length} 项物资${dInfo}`;
       }catch(err){ alert('解析失败：'+err.message); }
     };
     reader.readAsArrayBuffer(file);
+  }
+  // 解析「出入库明细表」：主行建物资上下文、分号子行=真实流水、结余行=汇总(跳过)
+  // 主行入库数量=上年结余=期初，与库存总表期初重复，不生成记录；仅子行生成入库/出库流水
+  function parseDetail(rows,fileName){
+    let hdrIdx=-1;
+    for(let i=0;i<Math.min(rows.length,20);i++){
+      const r=rows[i]||[]; const txt=r.map(c=>c==null?'':String(c)).join(' ');
+      if(/申购单号/.test(txt)&&/入库数量/.test(txt)&&/出库数量/.test(txt)){ hdrIdx=i; break; }
+    }
+    if(hdrIdx<0) return {count:0,records:[],samples:[]};
+    const headers=(rows[hdrIdx]||[]).map(h=>h==null?'':String(h).trim());
+    const col=role=>{ const map={groupId:['讯号','序号'],subMark:['分号'],purchaseNo:['申购单号'],name:['用品名称','物品名称'],catSub:['类别'],brand:['品牌'],spec:['规格'],unit:['单位'],date:['日期'],opening:['上年结余数量'],inQty:['入库数量'],outQty:['出库数量'],operator:['经办人'],approvalNo:['审批编号'],balance:['库存数量','期末数量']};
+      const kws=map[role]||[];
+      for(let i=0;i<headers.length;i++){ if(kws.some(k=>headers[i]===k||headers[i].includes(k))) return i; }
+      return -1; };
+    const C={groupId:col('groupId'),subMark:col('subMark'),purchaseNo:col('purchaseNo'),name:col('name'),catSub:col('catSub'),brand:col('brand'),spec:col('spec'),unit:col('unit'),date:col('date'),opening:col('opening'),inQty:col('inQty'),outQty:col('outQty'),operator:col('operator'),approvalNo:col('approvalNo'),balance:col('balance')};
+    const cat=detectCatFromName(fileName)||'';
+    const toNum=v=>{ if(v==null) return NaN; const s=String(v).trim(); if(s==='/'||s==='—'||s==='') return NaN; const n=parseFloat(s); return isNaN(n)?NaN:n; };
+    const toDate=v=>{ if(v==null) return ''; const s=String(v).trim(); const m=s.match(/(\d{4})-(\d{2})-(\d{2})/); if(m) return `${m[1]}-${m[2]}-${m[3]}`; const y=s.match(/(\d{4})/); if(y) return `${y[1]}-01-01`; return ''; };
+    const records=[]; let cur=null;
+    for(const r of rows.slice(hdrIdx+1)){
+      if(!r||!r.some(c=>c!=null&&String(c).trim()!=='')) continue;
+      const gid=C.groupId>=0?r[C.groupId]:null;
+      const sub=C.subMark>=0?r[C.subMark]:null;
+      if(gid!=null&&/结余/.test(String(gid))) continue; // 结余汇总行跳过
+      const hasGid=gid!=null&&String(gid).trim()!==''&&!/回到顶部|最后一条/.test(String(gid));
+      const isSub=sub!=null&&/^\d+-\d+$/.test(String(sub).trim());
+      if(hasGid&&!isSub){ // 主行：建立物资上下文（不生成记录）
+        const nm=C.name>=0?r[C.name]:null;
+        if(nm!=null&&String(nm).trim()!==''){
+          const cs=C.catSub>=0&&r[C.catSub]!=null?String(r[C.catSub]).trim():'';
+          const sp=C.spec>=0&&r[C.spec]!=null?String(r[C.spec]).trim():'';
+          cur={name:String(nm).trim(),brand:C.brand>=0&&r[C.brand]!=null?String(r[C.brand]).trim():'—',spec:[cs,sp].filter(Boolean).join(' · '),unit:C.unit>=0&&r[C.unit]!=null?String(r[C.unit]).trim():'件',category:cat};
+        }
+        continue;
+      }
+      const inV=C.inQty>=0?toNum(r[C.inQty]):NaN;
+      const outV=C.outQty>=0?toNum(r[C.outQty]):NaN;
+      if(isNaN(inV)&&isNaN(outV)) continue; // 空分号行(如 " | 5-1")跳过
+      if(!cur) continue;
+      const date=C.date>=0?toDate(r[C.date]):'';
+      const operator=C.operator>=0&&r[C.operator]!=null?String(r[C.operator]).trim():'';
+      const purchaseNo=C.purchaseNo>=0&&r[C.purchaseNo]!=null?String(r[C.purchaseNo]).trim():'';
+      const approvalNo=C.approvalNo>=0&&r[C.approvalNo]!=null?String(r[C.approvalNo]).trim():'';
+      if(!isNaN(inV)&&inV>0) records.push({type:'in',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:inV,date,operator,orderNo:purchaseNo,category:cur.category});
+      if(!isNaN(outV)&&outV>0) records.push({type:'out',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:outV,date,operator,orderNo:approvalNo,applicant:operator,category:cur.category});
+    }
+    return {count:records.length,records,samples:records.slice(0,12)};
   }
   function buildImport(rows,sheetName,fileName){
     let hdrIdx=0;
@@ -2267,10 +2336,10 @@
     const mapping=headers.map(h=>({orig:h,field:matchField(h)}));
     // 数据行清洗：剔除空行 + 合计/总计/小计/回到顶部/最后一条 等表尾/导航垃圾行
     const dataRows=rows.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&String(c).trim()!=='')&&!r.some(c=>c!=null&&/合计|总计|小计|平均|回到顶部|最后一条/.test(String(c))));
-    importState={headers,mapping,dataRows,sheetName,fileName:fileName||''};
+    importState={headers,mapping,dataRows,sheetName,fileName:fileName||'',detail:{count:0,records:[],samples:[]},hasDetail:false};
     renderMapping();renderPreview();
     document.getElementById('importResult').style.display='block';
-    document.getElementById('sheetInfo').textContent=`工作表：${sheetName} · 表头第 ${hdrIdx+1} 行 · 共 ${dataRows.length} 行（已自动选取库存总表，出入库明细表不导入）`;
+    document.getElementById('sheetInfo').textContent=`工作表：${sheetName} · 表头第 ${hdrIdx+1} 行 · 共 ${dataRows.length} 行物资`;
     document.getElementById('importMsg').textContent='';
   }
   function renderMapping(){
@@ -2309,17 +2378,38 @@
       </tr>`;
     }).join('');
     const total=importState.dataRows.length;
-    document.getElementById('prevInfo').textContent=`预览前 ${rows.length} 行（共 ${total} 行），其中 ${valid} 行校验通过`;
+    document.getElementById('prevInfo').textContent=`预览前 ${rows.length} 行（共 ${total} 行），其中 ${valid} 行校验通过`+(importState.hasDetail?'（含明细表时，库存以期初数量为基准、叠加明细流水）':'');
     document.getElementById('importCount').textContent=valid;
+    // 第二层：明细流水预览
+    const dp=document.getElementById('detailPreview');
+    if(dp){
+      if(importState.hasDetail&&importState.detail.count>0){
+        dp.style.display='block';
+        const recs=importState.detail.records;
+        const inN=recs.filter(x=>x.type==='in').length, outN=recs.filter(x=>x.type==='out').length;
+        document.getElementById('detailInfo').textContent=`共 ${recs.length} 笔（入库 ${inN} / 出库 ${outN}），以下为前 12 条样本`;
+        document.getElementById('detailBody').innerHTML=recs.slice(0,12).map(r=>{
+          const m=catMeta[r.category]||{t:r.category};
+          return `<tr><td>${r.type==='in'?'<span class="status ok">入库</span>':'<span class="status low">出库</span>'}</td><td class="code">${r.orderNo||'—'}</td><td>${r.date||'—'}</td><td>${r.name}</td><td>${m.t||r.category}</td><td class="num">${r.qty}</td><td>${r.operator||'—'}</td></tr>`;
+        }).join('');
+      }else{
+        dp.style.display='none';
+      }
+    }
   }
   document.getElementById('confirmImport').addEventListener('click',()=>{
     const get=(row,f)=>{ const i=importState.mapping.findIndex(m=>m.field===f); return i>=0?row[i]:null; };
     const catOf=row=>detectCatFromName(importState.fileName)||normCat(get(row,'category'))||'';
+    const useDetail=!!importState.hasDetail;
     let added=0,updated=0;
     importState.dataRows.forEach(r=>{
-      const name=get(r,'name'),brand=get(r,'brand'),spec=get(r,'spec'),catRaw=get(r,'category'),unit=get(r,'unit'),stock=get(r,'stock'),safe=get(r,'safe');
-      const cat=catOf(r); const stockNum=parseFloat(stock);
-      if(!(name&&cat&&!isNaN(stockNum))) return; // 跳过名称/分类/库存缺失的脏行
+      const name=get(r,'name'),brand=get(r,'brand'),spec=get(r,'spec'),catRaw=get(r,'category'),unit=get(r,'unit'),safe=get(r,'safe');
+      const cat=catOf(r);
+      // initQty 来源：含明细表→期初数量(真正期初，叠加流水后 q=期末)；否则→期末数量(=当前库存)
+      let initFinal;
+      if(useDetail){ const a=parseFloat(get(r,'initQty')); initFinal=isNaN(a)?parseFloat(get(r,'stock')):a; }
+      else { initFinal=parseFloat(get(r,'stock')); }
+      if(!(name&&cat&&!isNaN(initFinal))) return; // 跳过名称/分类/库存缺失的脏行
       // 规格列合并「类别」子类型；顶层分类由文件名决定
       const subSpec=[catRaw,spec].filter(v=>v!=null&&String(v).trim()!=='').join(' · ');
       const exist=items.find(it=>it.c===cat && it.n===String(name));
@@ -2327,21 +2417,39 @@
         if(brand) exist.b=String(brand);
         if(subSpec) exist.s=subSpec;
         if(unit) exist.u=String(unit);
-        exist.q=stockNum; exist.initQty=stockNum; // 期末数量 = 当前库存 = 期初结存
+        exist.initQty=initFinal; // 期初结存（明细模式下为真正期初，非年末期末）
         if(safe!=null&&!isNaN(parseFloat(safe))) exist.safe=parseFloat(safe);
         updated++;
       }else{
         items.push({c:cat,n:String(name),b:brand?String(brand):'—',s:subSpec||'—',u:unit?String(unit):'件',
-          q:stockNum, initQty:stockNum,
-          safe:(safe!=null&&!isNaN(parseFloat(safe)))?parseFloat(safe):(catDefault[cat]||Math.ceil(stockNum*0.3))});
+          q:initFinal, initQty:initFinal,
+          safe:(safe!=null&&!isNaN(parseFloat(safe)))?parseFloat(safe):(catDefault[cat]||Math.ceil(initFinal*0.3))});
         added++;
       }
     });
-    recomputeStocks(); // 统一重算，确保 q 与 initQty/流水一致
+    // 第二层：明细表流水 → 入库/出库记录（带申购单号/审批编号/日期/经办人）
+    let inN=0,outN=0;
+    if(useDetail&&importState.detail&&importState.detail.records.length){
+      importState.detail.records.forEach(rec=>{
+        if(rec.type==='in'){
+          const recId=rec.orderNo||genId('RK');
+          if(inboundRecords.some(x=>x.inNo===recId)) return; // 防重复导入
+          inboundRecords.unshift({id:recId,inNo:recId,date:rec.date,name:rec.name,category:rec.category,brand:rec.brand,spec:rec.spec,unit:rec.unit,qty:rec.qty,price:0,amount:0,supplier:'—',handler:rec.operator||'—',warehouse:'—',status:'已入库',warranty:0});
+          inN++;
+        }else{
+          const recId=rec.orderNo||genId('CK');
+          if(outboundRecords.some(x=>x.outNo===recId)) return; // 防重复导入
+          outboundRecords.unshift({id:recId,outNo:recId,date:rec.date,applicant:rec.applicant||rec.operator||'—',dept:'—',name:rec.name,category:rec.category,qty:rec.qty,unit:rec.unit,purpose:'—',handler:rec.operator||'admin',status:'已出库'});
+          outN++;
+        }
+      });
+    }
+    recomputeStocks(); // 统一重算，确保 q 与 initQty/流水一致（q=期初+入-出=期末）
     document.querySelectorAll('#invChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.cat==='all'));
     renderInv('all');
-    document.getElementById('importMsg').textContent=`✓ 已成功导入 ${added} 条新物资、更新 ${updated} 条已有物资，已并入「库存管理」。`;
-    toast('批量导入完成','ok',`已成功并入库存 ${added+updated} 条物资`);
+    const flowMsg=useDetail?`，并生成入库 ${inN} 笔、出库 ${outN} 笔历史流水`:'';
+    document.getElementById('importMsg').textContent=`✓ 已成功导入 ${added} 条新物资、更新 ${updated} 条已有物资${flowMsg}，已并入「库存管理」。`;
+    toast('批量导入完成','ok',`已并入库存 ${added+updated} 条物资${useDetail?`、流水 ${inN+outN} 笔`:''}`);
     wmsSave();
     document.querySelector('.nav-item[data-view="inventory"]').click();
   });
