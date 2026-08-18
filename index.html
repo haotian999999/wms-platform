@@ -428,11 +428,13 @@
   .lnk.dl{color:#ffb088}
   .lnk+.lnk{margin-left:10px}
   /* 数据管理/库存表格：表头加大、单元格居中、字号统一、比例协调 */
-  .table-scroll{overflow-x:auto;padding:0 18px 6px;-webkit-overflow-scrolling:touch;position:relative}
-  .table-scroll::-webkit-scrollbar{height:8px}
+  .table-scroll{overflow:auto;max-height:calc(100vh - 300px);padding:0 18px 6px;-webkit-overflow-scrolling:touch;position:relative}
+  .table-scroll::-webkit-scrollbar{width:8px;height:8px}
   .table-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.22);border-radius:8px}
   .table-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.35)}
   [data-theme="light"] .table-scroll::-webkit-scrollbar-thumb{background:rgba(20,30,60,.22)}
+  [data-theme="light"] .data-table thead th{background:linear-gradient(180deg,rgba(255,255,255,.99),rgba(245,248,255,.97));color:#33405c}
+  [data-theme="light"] .plan-table thead th{background:linear-gradient(180deg,rgba(255,255,255,.99),rgba(245,248,255,.97));color:#33405c}
   .table-scroll.has-overflow::after{content:'';position:absolute;top:0;right:0;bottom:8px;width:40px;background:linear-gradient(90deg,transparent,rgba(0,0,0,.35));pointer-events:none;border-top-right-radius:10px}
   [data-theme="light"] .table-scroll.has-overflow::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.55))}
   .scroll-hint{font-size:11px;color:var(--ink-3);text-align:center;padding:8px 18px 0;display:none}
@@ -443,7 +445,7 @@
   /* 盘点计划 / 实盘核对表格：紧凑、单行、斑马纹、悬停高亮 */
   #view-check .plan-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;line-height:1.45}
   #view-check .plan-table th,#view-check .plan-table td{white-space:nowrap;text-align:center;vertical-align:middle;padding:9px 13px;border-bottom:1px solid var(--line-2)}
-  #view-check .plan-table thead th{position:sticky;top:0;z-index:2;padding:8px 9px;font-size:12px;font-weight:700;color:#cdd6ed;background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.05));border-top:1px solid var(--line);border-bottom:1px solid var(--line);letter-spacing:.4px;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+  #view-check .plan-table thead th{position:sticky;top:0;z-index:2;padding:8px 9px;font-size:12px;font-weight:700;color:#cdd6ed;background:linear-gradient(180deg,rgba(30,38,62,.98),rgba(20,28,50,.96));border-top:1px solid var(--line);border-bottom:1px solid var(--line);letter-spacing:.4px;text-shadow:0 1px 2px rgba(0,0,0,.2);box-shadow:0 2px 6px rgba(0,0,0,.28)}
   #view-check .plan-table thead th:first-child{border-top-left-radius:10px}
   #view-check .plan-table thead th:last-child{border-top-right-radius:10px}
   #view-check .plan-table tbody td{font-size:12px;color:var(--ink)}
@@ -455,9 +457,10 @@
   .data-table thead th{
     position:sticky;top:0;z-index:2;
     padding:12px 14px;font-size:12px;font-weight:700;color:#cdd6ed;
-    background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.05));
+    background:linear-gradient(180deg,rgba(30,38,62,.98),rgba(20,28,50,.96));
     border-top:1px solid var(--line);border-bottom:1px solid var(--line);
     letter-spacing:.4px;text-shadow:0 1px 2px rgba(0,0,0,.2);
+    box-shadow:0 2px 6px rgba(0,0,0,.28);
   }
   .data-table thead th:first-child{border-top-left-radius:10px}
   .data-table thead th:last-child{border-top-right-radius:10px}
@@ -572,6 +575,9 @@
   .carryover-preview .co-row{display:flex;justify-content:space-between;align-items:center;padding:7px 2px;border-bottom:1px dashed var(--line)}
   .carryover-preview .co-row:last-child{border-bottom:none}
   .carryover-preview .co-row b{color:var(--ink-1);font-weight:500}
+  .carryover-preview .co-row.warn b{color:#ffb088;font-weight:600}
+  .btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.35);box-shadow:none!important}
+  .note.ok{color:var(--success)}
   .tabs{padding:3px;border-radius:10px}
   .tab{padding:6px 14px;border-radius:7px;font-size:12px}
   #dataTabs{align-self:stretch;display:flex;align-items:center}
@@ -947,7 +953,7 @@
               <tbody id="invBody"></tbody>
             </table>
           </div>
-          <div class="scroll-hint">← 左右滑动查看完整信息 →</div>
+          <div class="scroll-hint">← 左右滑动 · 上下滚动查看全部 →</div>
         </div>
       </section>
 
@@ -1059,7 +1065,7 @@
                   <tbody id="planQuarterBody"></tbody>
                 </table>
               </div>
-              <div class="scroll-hint">← 左右滑动查看完整信息 →</div>
+              <div class="scroll-hint">← 左右滑动 · 上下滚动查看全部 →</div>
             </div>
 
             <!-- 年度盘点 -->
@@ -1071,7 +1077,7 @@
                   <tbody id="planYearBody"></tbody>
                 </table>
               </div>
-              <div class="scroll-hint">← 左右滑动查看完整信息 →</div>
+              <div class="scroll-hint">← 左右滑动 · 上下滚动查看全部 →</div>
             </div>
           </div>
 
@@ -1157,7 +1163,7 @@
                 <tbody id="inBody"></tbody>
               </table>
             </div>
-            <div class="scroll-hint">← 左右滑动查看完整信息 →</div>
+            <div class="scroll-hint">← 左右滑动 · 上下滚动查看全部 →</div>
           </div>
 
           <!-- 出库记录 -->
@@ -1168,40 +1174,40 @@
                 <tbody id="outBody"></tbody>
               </table>
             </div>
-            <div class="scroll-hint">← 左右滑动查看完整信息 →</div>
+            <div class="scroll-hint">← 左右滑动 · 上下滚动查看全部 →</div>
           </div>
 
           <!-- 历史归档 -->
           <div class="tabpane" id="pane-data-archive">
+            <!-- 年度结转：归档的前置操作，置于归档列表之上，逻辑与展示同源 -->
+            <div class="card form-card" id="carryoverCard">
+              <div class="section-title">📆 年度数据结转</div>
+              <div class="section-sub" id="carryoverSub">将上一年度出入库流水归档封存，并把该年度末库存冻结为本年期初结存</div>
+              <div id="carryoverPreview" class="carryover-preview"></div>
+              <div style="display:flex;gap:12px;align-items:center;margin-top:14px">
+                <button class="btn btn-primary" id="btnCarryover" data-perm="login">执行年度结转</button>
+                <span class="plan-meta" id="carryoverMsg"></span>
+              </div>
+            </div>
             <div class="archive-toolbar">
               <label>选择年度：</label>
               <select id="archiveYear"></select>
               <span class="plan-meta" id="archiveMeta"></span>
             </div>
-            <div class="archive-section">
-              <h4>年度结存快照</h4>
+            <div class="card mt">
+              <div class="panel-head"><div><h3>年度结存快照</h3><div class="sub">该年度末冻结的库存结存</div></div></div>
               <div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th>年末结存</th><th>单位</th><th>结存金额(元)</th></tr></thead><tbody id="snapBody"></tbody></table></div>
             </div>
-            <div class="archive-section">
-              <h4>归档入库流水</h4>
+            <div class="card mt">
+              <div class="panel-head"><div><h3>归档入库流水</h3><div class="sub">该年度全部入库记录</div></div></div>
               <div class="table-scroll"><table class="data-table"><thead><tr><th>入库单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>数量</th><th>金额(元)</th><th>供应商</th></tr></thead><tbody id="archInBody"></tbody></table></div>
             </div>
-            <div class="archive-section">
-              <h4>归档出库流水</h4>
+            <div class="card mt">
+              <div class="panel-head"><div><h3>归档出库流水</h3><div class="sub">该年度全部出库记录</div></div></div>
               <div class="table-scroll"><table class="data-table"><thead><tr><th>出库单号</th><th>日期</th><th>领用人</th><th>物资名称</th><th>分类</th><th>数量</th><th>用途</th></tr></thead><tbody id="archOutBody"></tbody></table></div>
             </div>
           </div>
         </div>
-          <!-- 年度结转 -->
-          <div class="card form-card" id="carryoverCard">
-            <div class="section-title">📆 年度数据结转</div>
-            <div class="section-sub" id="carryoverSub">将上一年度出入库流水归档，并把年末库存冻结为本年期初结存</div>
-            <div id="carryoverPreview" class="carryover-preview"></div>
-            <div style="display:flex;gap:12px;align-items:center;margin-top:14px">
-              <button class="btn btn-primary" id="btnCarryover" data-perm="login">执行年度结转</button>
-              <span class="plan-meta" id="carryoverMsg"></span>
-            </div>
-          </div>
       </section>
 
       <!-- ============ REPORTS ============ -->
@@ -1395,6 +1401,7 @@
       <div class="modal-body">
         <dl class="rec-detail" id="recModalBody"></dl>
         <div style="margin-top:18px;display:flex;gap:12px">
+          <button class="btn btn-ghost" id="recModalEdit" style="flex:1;justify-content:center">✏️ 编辑记录</button>
           <button class="btn btn-primary" id="recModalDownload" style="flex:1;justify-content:center" data-perm="data">⬇ 下载此记录</button>
         </div>
       </div>
@@ -1411,6 +1418,7 @@
       <div class="modal-body">
         <dl class="rec-detail" id="invModalBody"></dl>
         <div style="margin-top:18px;display:flex;gap:12px">
+          <button class="btn btn-primary" id="invModalEdit" style="flex:1;justify-content:center">✏️ 编辑物资</button>
           <button class="btn btn-ghost" id="invModalCloseBtn" style="flex:1;justify-content:center">关闭</button>
         </div>
       </div>
@@ -1556,7 +1564,7 @@
             <tbody id="checkBody"></tbody>
           </table>
         </div>
-        <div class="scroll-hint">← 左右滑动查看完整信息 →</div>
+        <div class="scroll-hint">← 左右滑动 · 上下滚动查看全部 →</div>
         <div class="note">差异为负 = 盘亏（实物少于账面），为正 = 盘盈（实物多于账面）；0 表示账实相符。差异项需仓库管理员与财务共同复核后调整账面。</div>
         <div style="display:flex;gap:12px;align-items:center;justify-content:center;padding:8px 0 4px;flex-wrap:wrap">
           <button class="btn btn-primary" id="downloadCheck" style="justify-content:center">⬇ 下载盘点单（线下核账）</button>
@@ -1719,7 +1727,7 @@
         ${warrantyMonthsCell(i)}
         ${warrantyCell(i)}
         <td><span class="status ${st}">${txt}</span></td>
-        <td><span class="cell-act"><button type="button" data-edit-inv="${oi}">编辑</button></span></td>
+        <td><span class="cell-act"><button type="button" class="del" data-del-inv="${oi}">删除</button></span></td>
       </tr>`;
     }).join('');
     if(!list.length){ body.innerHTML='<tr><td colspan="16" class="empty">暂无库存物资，请通过「入库管理 · 入库登记」或「数据导入」添加</td></tr>'; }
@@ -1741,13 +1749,13 @@
     body.innerHTML=checkItems.map((i,idx)=>{
       const m=catMeta[i.c];
       const real=(i.real!==undefined?i.real:i.sys);
-      return `<tr>
+      return `<tr data-row-check-item="${idx}">
         <td>${i.n}</td>
         <td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td>
         <td class="num">${i.sys} ${i.u}</td>
         <td><input class="real-input" type="number" value="${real}" data-sys="${i.sys}" data-idx="${idx}" /></td>
         <td class="num"><span class="diff ${(real-i.sys)===0?'zero':(real-i.sys)>0?'up':'down'}" id="diff-${idx}">${(real-i.sys)>0?'+':''}${real-i.sys}</span></td>
-        <td><span class="cell-act"><button type="button" class="btn-mini edit" data-edit-check-item="${idx}">编辑</button><button type="button" class="btn-mini del" data-del-check-item="${idx}">删除</button></span></td>
+        <td><span class="cell-act"><button type="button" class="btn-mini del" data-del-check-item="${idx}">删除</button></span></td>
       </tr>`;
     }).join('');
     body.querySelectorAll('.real-input').forEach(inp=>{
@@ -1881,27 +1889,27 @@
   function renderPlanQuarter(){
     const tb=document.getElementById('planQuarterBody'); if(!tb) return;
     if(!checkPlansQuarter.length){ tb.innerHTML='<tr><td colspan="7" class="empty">暂无季度盘点计划，系统将按每季度月底自动生成</td></tr>'; return; }
-    tb.innerHTML=checkPlansQuarter.map((p,i)=>`<tr>
+    tb.innerHTML=checkPlansQuarter.map((p,i)=>`<tr data-row-plan-q="${i}">
       <td>${p.period||'—'}</td>
       <td class="code">${p.time||'—'}</td>
       <td>${p.person||'—'}</td>
       <td><span class="pill self">🧑‍💼 自盘</span></td>
       <td><span class="status ${p.status}">${planStatusText[p.status]}</span></td>
       <td class="num">${p.diff!=null?p.diff:'—'}</td>
-      <td><span class="cell-act"><button type="button" class="btn-mini start" data-start-check-q="${i}">开始盘点</button><button type="button" class="btn-mini edit" data-edit-plan-q="${i}">编辑</button></span></td>
+      <td><span class="cell-act"><button type="button" class="btn-mini start" data-start-check-q="${i}">开始盘点</button></span></td>
     </tr>`).join('');
   }
   function renderPlanYear(){
     const tb=document.getElementById('planYearBody'); if(!tb) return;
     if(!checkPlansYear.length){ tb.innerHTML='<tr><td colspan="7" class="empty">暂无年度盘点计划，系统将按 6 月底、12 月底自动生成</td></tr>'; return; }
-    tb.innerHTML=checkPlansYear.map((p,i)=>`<tr>
+    tb.innerHTML=checkPlansYear.map((p,i)=>`<tr data-row-plan-y="${i}">
       <td>${p.name||'—'}</td>
       <td class="code">${p.time||'—'}</td>
       <td>${p.lead||'—'}</td>
       <td>${p.watch||'—'}</td>
       <td><span class="pill join">🤝 全面</span></td>
       <td><span class="status ${p.status}">${planStatusText[p.status]}</span></td>
-      <td><span class="cell-act"><button type="button" class="btn-mini start" data-start-check-y="${i}">开始盘点</button><button type="button" class="btn-mini edit" data-edit-plan-y="${i}">编辑</button></span></td>
+      <td><span class="cell-act"><button type="button" class="btn-mini start" data-start-check-y="${i}">开始盘点</button></span></td>
     </tr>`).join('');
   }
   function renderCheckKpi(){
@@ -2046,11 +2054,11 @@
   const checkView=document.getElementById('view-check');
   if(checkView){
     checkView.addEventListener('click',e=>{
-      const eq=e.target.closest('[data-edit-plan-q]'); if(eq){ openPlanEdit('q',+eq.dataset.editPlanQ); return; }
+      const rq=e.target.closest('[data-row-plan-q]'); if(rq){ openPlanEdit('q',+rq.dataset.rowPlanQ); return; }
       const sq=e.target.closest('[data-start-check-q]'); if(sq){ openStartCheck('q',+sq.dataset.startCheckQ); return; }
-      const ey=e.target.closest('[data-edit-plan-y]'); if(ey){ openPlanEdit('y',+ey.dataset.editPlanY); return; }
+      const ry=e.target.closest('[data-row-plan-y]'); if(ry){ openPlanEdit('y',+ry.dataset.rowPlanY); return; }
       const sy=e.target.closest('[data-start-check-y]'); if(sy){ openStartCheck('y',+sy.dataset.startCheckY); return; }
-      const ei=e.target.closest('[data-edit-check-item]'); if(ei){ openCheckItemEdit(+ei.dataset.editCheckItem); return; }
+      const ri=e.target.closest('[data-row-check-item]'); if(ri && e.target.tagName!=='INPUT'){ openCheckItemEdit(+ri.dataset.rowCheckItem); return; }
       const di=e.target.closest('[data-del-check-item]'); if(di){ deleteCheckItem(+di.dataset.delCheckItem); return; }
       const tl=e.target.closest('.tl-item'); if(tl){ openRecAction(+tl.dataset.recIdx); return; }
     });
@@ -2448,10 +2456,10 @@
     document.querySelectorAll('#invChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.cat==='all'));
     renderInv('all');
     const flowMsg=useDetail?`，并生成入库 ${inN} 笔、出库 ${outN} 笔历史流水`:'';
-    document.getElementById('importMsg').textContent=`✓ 已成功导入 ${added} 条新物资、更新 ${updated} 条已有物资${flowMsg}，已并入「库存管理」。`;
     toast('批量导入完成','ok',`已并入库存 ${added+updated} 条物资${useDetail?`、流水 ${inN+outN} 笔`:''}`);
     wmsSave();
-    document.querySelector('.nav-item[data-view="inventory"]').click();
+    const _ir=document.getElementById('importResult'); if(_ir) _ir.style.display='none';
+    const _fi=document.getElementById('fileInput'); if(_fi) _fi.value='';
   });
   const dropzone=document.getElementById('dropzone'), fileInput=document.getElementById('fileInput');
   dropzone.addEventListener('click',()=>fileInput.click());
@@ -2771,7 +2779,7 @@
         const v=r[c.k]; return `<td>${v==null||v===''?'—':v}</td>`;
       }).join('');
       const codeVal = type==='in' ? (r.inNo||r.id) : (r.outNo||r.id);
-      return `<tr data-row-rec="${type}:${i}"><td class="code">${codeVal}</td>${cells}<td><span class="cell-act"><button type="button" class="btn-mini edit" data-edit-rec="${type}:${i}">编辑</button></span></td></tr>`;
+      return `<tr data-row-rec="${type}:${i}"><td class="code">${codeVal}</td>${cells}<td><span class="cell-act"><button type="button" class="btn-mini del" data-del-rec="${type}:${i}">删除</button></span></td></tr>`;
     }).join('');
     return list.length;
   }
@@ -2920,6 +2928,7 @@
     toast('正在下载记录','ok','已导出当前筛选的全部记录');
   }
   let currentRec=null;
+  let currentInvIdx=-1;
   function openRec(type,idx){
     const rec=(type==='in'?inboundRecords:outboundRecords)[idx];
     if(!rec) return;
@@ -2986,6 +2995,7 @@
   renderWarranty();
   function openInv(idx){
     const i=items[idx]; if(!i) return;
+    currentInvIdx=idx;
     const m=catMeta[i.c]; const[st,txt]=statusOf(i.q,i.safe);
     const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
     const rows=[
@@ -3013,7 +3023,7 @@
     document.querySelectorAll('#view-data .tabpane').forEach(p=>p.classList.remove('active'));
     document.getElementById('pane-data-'+t.dataset.tab).classList.add('active');
     activeDataTab=t.dataset.tab;
-    if(activeDataTab==='archive') renderArchive(); else renderDataTables();
+    if(activeDataTab==='archive'){ renderArchive(); renderCarryoverCard(); } else renderDataTables();
   }));
   document.getElementById('dataSearch').addEventListener('input',renderDataTables);
   document.getElementById('downloadAll').addEventListener('click',downloadAll);
@@ -3023,11 +3033,13 @@
   document.getElementById('invModalClose').addEventListener('click',()=>document.getElementById('invModal').classList.remove('show'));
   document.getElementById('invModalCloseBtn').addEventListener('click',()=>document.getElementById('invModal').classList.remove('show'));
   document.getElementById('invModal').addEventListener('click',e=>{ if(e.target.id==='invModal') document.getElementById('invModal').classList.remove('show'); });
+  document.getElementById('invModalEdit').addEventListener('click',()=>{ document.getElementById('invModal').classList.remove('show'); if(currentInvIdx>=0) openInvEdit(currentInvIdx); });
+  document.getElementById('recModalEdit').addEventListener('click',()=>{ document.getElementById('recModal').classList.remove('show'); if(currentRec) openRecEdit(currentRec.type,currentRec.idx); });
   document.addEventListener('click',e=>{
-    const edi=e.target.closest('[data-edit-inv]');
-    if(edi){ openInvEdit(+edi.dataset.editInv); e.stopPropagation(); return; }
-    const edr=e.target.closest('[data-edit-rec]');
-    if(edr){ const p=edr.dataset.editRec.split(':'); openRecEdit(p[0],+p[1]); e.stopPropagation(); return; }
+    const dei=e.target.closest('[data-del-inv]');
+    if(dei){ deleteInv(+dei.dataset.delInv); e.stopPropagation(); return; }
+    const der=e.target.closest('[data-del-rec]');
+    if(der){ const p=der.dataset.delRec.split(':'); deleteRec(p[0],+p[1]); e.stopPropagation(); return; }
     const r=e.target.closest('[data-row-rec]');
     if(r){ const p=r.dataset.rowRec.split(':'); openRec(p[0],+p[1]); return; }
     const iv=e.target.closest('[data-row-inv]');
@@ -3037,64 +3049,76 @@
   renderCarryoverCard();
 
   // ============ 年度结转 / 历史归档 ============
+  // 稳健地解析记录所属年份（兼容 YYYY-MM-DD / YYYY/MM/DD / 纯数字等多种日期格式）
+  function yearOf(r){ const m=String(r.date||'').match(/(19|20)\d{2}/); return m? +m[0] : NaN; }
   function carryoverStats(){
     const cur=new Date().getFullYear();
-    const inH=inboundRecords.filter(r=>String(r.date||'').slice(0,4)<String(cur));
-    const outH=outboundRecords.filter(r=>String(r.date||'').slice(0,4)<String(cur));
+    const inH=inboundRecords.filter(r=>yearOf(r)<cur);
+    const outH=outboundRecords.filter(r=>yearOf(r)<cur);
     return {cur,inH:inH.length,outH:outH.length,items:items.length};
   }
   function carryoverYearsLabel(){
     const cur=new Date().getFullYear();
-    const yrs=[...new Set([...inboundRecords,...outboundRecords].filter(r=>String(r.date||'').slice(0,4)<String(cur)).map(r=>+String(r.date||'').slice(0,4)))].sort((a,b)=>a-b);
+    const yrs=[...new Set([...inboundRecords,...outboundRecords].map(yearOf).filter(y=>!isNaN(y)&&y<cur))].sort((a,b)=>a-b);
     if(!yrs.length) return null;
     return yrs[0]===yrs[yrs.length-1]? String(yrs[0]) : (yrs[0]+'–'+yrs[yrs.length-1]);
   }
   function renderCarryoverCard(){
     const el=document.getElementById('carryoverPreview'); if(!el) return;
-    const s=carryoverStats(); const label=carryoverYearsLabel();
     const btn=document.getElementById('btnCarryover'); const msg=document.getElementById('carryoverMsg');
+    const s=carryoverStats(); const label=carryoverYearsLabel();
+    // 已结转且无可结转数据：给出明确「最新」状态，禁用按钮防止重复操作
     if(!label || (!s.inH && !s.outH)){
-      el.innerHTML='<div class="note">当前没有上一年度（&lt; '+s.cur+' 年）的出入库流水，无需结转。</div>';
-      if(btn) btn.disabled=true; if(msg) msg.textContent='已是最新年度';
+      const done=lastCarryoverYear>=s.cur-1;
+      el.innerHTML='<div class="note'+(done?' ok':'')+'">'+(done
+        ? '✅ 本会计年度（'+s.cur+' 年）期初已为最新，历史流水全部归档完成。'
+        : '当前没有上一年度（&lt; '+s.cur+' 年）的出入库流水，无需结转。')+'</div>';
+      if(btn) btn.disabled=true; if(msg) msg.textContent=done?'已无需结转':'已是最新年度';
       return;
     }
     el.innerHTML=
       '<div class="co-row"><span>结转年度</span><b>'+label+' 年</b></div>'+
       '<div class="co-row"><span>将归档入库流水</span><b>'+s.inH+' 笔</b></div>'+
       '<div class="co-row"><span>将归档出库流水</span><b>'+s.outH+' 笔</b></div>'+
-      '<div class="co-row"><span>期末库存物资</span><b>'+s.items+' 种（结存转为本期初）</b></div>';
+      '<div class="co-row"><span>期末库存物资</span><b>'+s.items+' 种 → 结存冻结为本期初</b></div>'+
+      '<div class="co-row warn"><span>本年（'+s.cur+' 年）数据</span><b>保留为本期流水，不受影响</b></div>';
     if(btn) btn.disabled=false; if(msg) msg.textContent='';
   }
   function doCarryover(){
     const cur=new Date().getFullYear();
-    const inArch=inboundRecords.filter(r=>String(r.date||'').slice(0,4)<String(cur));
-    const outArch=outboundRecords.filter(r=>String(r.date||'').slice(0,4)<String(cur));
-    if(!inArch.length && !outArch.length){ toast('无历史年度数据可结转','warn'); return; }
+    const inArch=inboundRecords.filter(r=>yearOf(r)<cur);
+    const outArch=outboundRecords.filter(r=>yearOf(r)<cur);
+    const label=carryoverYearsLabel();
+    if(!label || (!inArch.length && !outArch.length)){ toast('没有可结转的历史年度数据','warn'); return; }
+    // 单价：优先取物资自身单价，缺省时回退到最近一笔入库流水单价
     const priceOf={}; inboundRecords.forEach(r=>{ if(r.name&&r.price) priceOf[r.name+'|'+r.category]=r.price; });
-    const snapshot=items.map(i=>({n:i.n,c:i.c,u:i.u,q:i.q,amount:+(((i.q||0)*(priceOf[i.n+'|'+i.c]||0))).toFixed(2)}));
-    // 冻结期初：把上一年度净变化（入−出）并入期初，再移除上一年流水，库存数值保持不变
-    items.forEach(i=>{
-      const inLast=inboundRecords.filter(r=>r.name===i.n&&r.category===i.c&&String(r.date||'').slice(0,4)<String(cur)).reduce((s,r)=>s+(+r.qty||0),0);
-      const outLast=outboundRecords.filter(r=>r.name===i.n&&r.category===i.c&&String(r.date||'').slice(0,4)<String(cur)).reduce((s,r)=>s+(+r.qty||0),0);
-      const base=(typeof i.initQty==='number'&&!isNaN(i.initQty))? i.initQty : (+i.q||0);
-      i.initQty=base+inLast-outLast;
+    const snapshot=items.map(i=>{
+      const unitPrice=(typeof i.price==='number'&&i.price)? i.price : (priceOf[i.n+'|'+i.c]||0);
+      return {n:i.n,c:i.c,u:i.u,q:i.q,amount:+(((i.q||0)*(unitPrice||0)).toFixed(2))};
     });
-    const years=[...new Set([...inArch,...outArch].map(r=>+String(r.date||'').slice(0,4)))].sort((a,b)=>a-b);
-    const label=years[0]===years[years.length-1]? String(years[0]) : (years[0]+'–'+years[years.length-1]);
-    archivedRecords.unshift({label,year:(years[years.length-1]||cur-1),inbound:inArch,outbound:outArch,snapshot,carriedAt:new Date().toISOString().slice(0,10)});
-    // 先筛选留存，再清空回填，避免清空后筛选得到空数组
-    const keepIn=inboundRecords.filter(r=>String(r.date||'').slice(0,4)>=String(cur));
-    const keepOut=outboundRecords.filter(r=>String(r.date||'').slice(0,4)>=String(cur));
+    // 冻结期初：期初 = 原期初 + 上年净入 − 上年净出；现存数值保持不变，结转前后不跳变
+    items.forEach(i=>{
+      const inLast=inboundRecords.filter(r=>r.name===i.n&&r.category===i.c&&yearOf(r)<cur).reduce((s,r)=>s+(+r.qty||0),0);
+      const outLast=outboundRecords.filter(r=>r.name===i.n&&r.category===i.c&&yearOf(r)<cur).reduce((s,r)=>s+(+r.qty||0),0);
+      const base=(typeof i.initQty==='number'&&!isNaN(i.initQty))? i.initQty : (+i.q||0);
+      i.initQty=+(base+inLast-outLast).toFixed(2);
+    });
+    const years=[...new Set([...inArch,...outArch].map(yearOf).filter(y=>!isNaN(y)))].sort((a,b)=>a-b);
+    const yLabel=years[0]===years[years.length-1]? String(years[0]) : (years[0]+'–'+years[years.length-1]);
+    archivedRecords.unshift({label:yLabel,year:(years[years.length-1]||cur-1),inbound:inArch,outbound:outArch,snapshot,carriedAt:new Date().toISOString().slice(0,10)});
+    // 先筛选「本年及以后」留存，再清空回填，避免清空后筛选得到空数组
+    const keepIn=inboundRecords.filter(r=>yearOf(r)>=cur);
+    const keepOut=outboundRecords.filter(r=>yearOf(r)>=cur);
     inboundRecords.length=0; inboundRecords.push(...keepIn);
     outboundRecords.length=0; outboundRecords.push(...keepOut);
-    lastCarryoverYear=cur-1;
-    recomputeStocks(); // 库存数值应与原 q 一致，不跳变
-    checkPlansQuarter.length=0; checkPlansYear.length=0; seedCheckPlans(); // 新一年空计划
+    lastCarryoverYear=years[years.length-1]||(cur-1);
+    recomputeStocks(); // 现存数值应与原 q 完全一致，不发生跳变
+    checkPlansQuarter.length=0; checkPlansYear.length=0; seedCheckPlans(); // 新一年清空计划，重新生成
     wmsSave();
     if(activeDataTab==='archive') renderArchive(); else renderDataTables();
     renderInv('all'); renderWarranty(); renderRecentOut(); updateDataNote();
     renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCarryoverCard();
-    toast('年度结转完成','ok',`已归档 ${inArch.length+outArch.length} 笔历史流水，${label} 年库存已转为本期初`);
+    toast('年度结转完成','ok',`已归档 ${inArch.length+outArch.length} 笔历史流水（${yLabel} 年），年末库存已冻结为本年期初`);
   }
   function renderArchive(){
     const sel=document.getElementById('archiveYear'); if(!sel) return;
