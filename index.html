@@ -289,6 +289,7 @@
   .field textarea{height:auto;padding:12px 14px;resize:vertical;min-height:84px}
   .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.2),0 0 14px rgba(91,140,255,.25)}
   .field select option{background:#0e1526;color:var(--ink)}
+  .field-note{grid-column:1/-1;font-size:11.5px;line-height:1.5;color:var(--ink-3);background:rgba(91,140,255,.08);border:1px solid rgba(91,140,255,.18);border-radius:10px;padding:9px 12px}
   .rec-list{padding:8px 20px 18px;display:flex;flex-direction:column;gap:10px}
   .rec{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   .rec .ri{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:18px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
@@ -1407,6 +1408,7 @@
           <div class="field"><label>规格</label><input id="invEditSpec" placeholder="如：500张/包" /></div>
           <div class="field"><label>单位</label><input id="invEditUnit" list="unitOptions" placeholder="件/箱/个…" autocomplete="off" /></div>
           <div class="field"><label>库存数量</label><input id="invEditQty" type="number" min="0" placeholder="0" /></div>
+          <div class="field-note">当前数量 = 期初结存 + 累计入库 − 累计出库，与「数据管理」出入库流水自动联动同步（修改库存将作为新的期初结存）。</div>
           <div class="field"><label>安全库存</label><input id="invEditSafe" type="number" min="0" placeholder="0" /></div>
           <div class="field"><label>入库日期</label><input id="invEditInDate" type="date" /></div>
           <div class="field"><label>质保期(月) <span style="color:var(--ink-3);font-weight:400">选填</span></label><input id="invEditWarranty" type="number" min="0" placeholder="如：12" /></div>
@@ -2506,17 +2508,27 @@
   const outboundRecords=[];
   function inTotalOf(name,cat){ return inboundRecords.filter(r=>r.name===name && r.category===cat).reduce((s,r)=>s+(+r.qty||0),0); }
   function outTotalOf(name,cat){ return outboundRecords.filter(r=>r.name===name && r.category===cat).reduce((s,r)=>s+(+r.qty||0),0); }
-  // 库存联动：按 名称+分类 调整系统库存（sign=+1 增加 / -1 减少），最低为 0
-  function adjustInventory(name,cat,qty,sign){
-    const it=items.find(i=>i.n===name && i.c===cat);
-    if(it) it.q=Math.max(0, it.q + sign*(+qty||0));
+  // 单一事实来源（SSOT）：当前库存 = 期初结存 + 累计入库 − 累计出库
+  // 所有增删改只动 records / initQty，统一由 recomputeStocks() 派生 item.q，杜绝「双写库存」漂移
+  function recomputeStocks(){
+    items.forEach(i=>{
+      if(typeof i.initQty!=='number' || isNaN(i.initQty)){
+        // 旧数据无期初字段：以当前 q 为基准反推期初，冻结现状，避免线上数据跳变
+        i.initQty = (+i.q||0) - inTotalOf(i.n,i.c) + outTotalOf(i.n,i.c);
+      }
+      const derived = i.initQty + inTotalOf(i.n,i.c) - outTotalOf(i.n,i.c);
+      i.q = Math.max(0, derived); // 库存不为负
+    });
   }
+  // 兼容旧调用点（编辑/删除单条出入库记录后刷新库存）：统一走 recompute
+  function adjustInventory(name,cat,qty,sign){ recomputeStocks(); }
   // ---- 从 localStorage 恢复已保存数据（覆盖种子，实现真实持久化） ----
   if(_wmsData){
     [['items',items],['inboundRecords',inboundRecords],['outboundRecords',outboundRecords],['checkRecords',checkRecords],['checkPlansQuarter',checkPlansQuarter],['checkPlansYear',checkPlansYear]].forEach(([k,arr])=>{
       if(Array.isArray(_wmsData[k])){ arr.length=0; _wmsData[k].forEach(x=>arr.push(x)); }
     });
     // 盘点明细从最新库存重建，确保各模块数据一致
+    recomputeStocks();
     checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
   } else { wmsSave(); } // 首次运行：写入种子，保证后续刷新一致
   renderInv('all');
@@ -2836,9 +2848,10 @@
     inboundRecords.unshift(rec);
     updateDataNote();
     const exist=items.find(i=>i.n===name && i.c===cat);
-    if(exist){ exist.q+=qty; if(brand) exist.b=brand; if(spec!=='—') exist.s=spec; if(safe) exist.safe=safe; if(warranty&&!exist.warranty){exist.warranty=warranty; exist.inDate=date; exist.expire=addMonths(date,warranty);} }
-    else { const ni={c:cat,n:name,b:brand,s:spec,u:unit,q:qty,safe:safe||catDefault[cat]||10,warranty:warranty||undefined,inDate:date}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
+    if(exist){ if(brand) exist.b=brand; if(spec!=='—') exist.s=spec; if(safe) exist.safe=safe; if(warranty&&!exist.warranty){exist.warranty=warranty; exist.inDate=date; exist.expire=addMonths(date,warranty);} }
+    else { const ni={c:cat,n:name,b:brand,s:spec,u:unit,safe:safe||catDefault[cat]||10,initQty:0,warranty:warranty||undefined,inDate:date}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
     const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all');
+    recomputeStocks();
     renderDataTables(); renderWarranty(); wmsSave();
     const rl=document.querySelector('#view-inbound .rec-list');
     if(rl){ rl.insertAdjacentHTML('afterbegin', `<div class="rec"><div class="ri">${ICON[cat]}</div><div><div class="rt">${name} ×${qty} ${unit}</div><div class="rs">${catMeta[cat].t} · ${supplier||'—'} · ${handler}</div></div><div class="rq in">+${qty}</div></div>`); }
@@ -2860,8 +2873,9 @@
     const rec={id:genId('CK'),date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit:'件',purpose,handler:approver,status:'已出库'};
     outboundRecords.unshift(rec);
     const exist=items.find(i=>i.n===name && i.c===cat);
-    if(exist){ exist.q=Math.max(0,exist.q-qty); } else { items.push({c:cat,n:name,s:'—',u:'件',q:0,safe:catDefault[cat]||10}); }
+    if(!exist){ items.push({c:cat,n:name,s:'—',u:'件',safe:catDefault[cat]||10,initQty:0}); }
     renderRecentOut();
+    recomputeStocks();
     renderDataTables(); renderInv('all'); wmsSave();
     resetOutbound();
     toast('出库成功','ok',`${applicant} 的 ${name} ×${qty} 已出库并更新库存`);
@@ -2917,14 +2931,18 @@
     if(!n){ toast('请填写物资名称','warn'); return; }
     if(isNaN(q)||q<0){ toast('库存数量无效','warn'); return; }
     if(invEditIdx>=0){ const i=items[invEditIdx];
-      i.c=c;i.n=n;i.b=b;i.s=s;i.u=u;i.q=q;i.safe=safe;i.inDate=inDate;i.warranty=warranty||undefined;
+      i.c=c;i.n=n;i.b=b;i.s=s;i.u=u;i.safe=safe;i.inDate=inDate;i.warranty=warranty||undefined;
       if(warranty){ i.expire=addMonths(inDate||'2026-01-01',warranty); } else { i.expire=undefined; }
+      // 「库存数量」作为目标库存：反推期初，使其与出入库流水保持自洽（改名/改分类时以目标值作为新期初）
+      i.initQty = q - inTotalOf(i.n,i.c) + outTotalOf(i.n,i.c);
+      i.q=q;
     } else {
-      const ni={c,n,b,s,u,q,safe,inDate,warranty:warranty||undefined};
+      const ni={c,n,b,s,u,safe,initQty:q,inDate,warranty:warranty||undefined};
       if(warranty) ni.expire=addMonths(inDate||'2026-01-01',warranty);
       items.push(ni);
     }
     closeInvEdit();
+    recomputeStocks();
     const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); renderWarranty(); wmsSave();
     toast(invEditIdx>=0?'已更新物资':'已新增物资','ok',n);
   }
@@ -2937,6 +2955,7 @@
     for(let k=inboundRecords.length-1;k>=0;k--){ const r=inboundRecords[k]; if(r.name===i.n && r.category===i.c) inboundRecords.splice(k,1); }
     for(let k=outboundRecords.length-1;k>=0;k--){ const r=outboundRecords[k]; if(r.name===i.n && r.category===i.c) outboundRecords.splice(k,1); }
     items.splice(idx,1);
+    recomputeStocks();
     checkItems=items.map(x=>({n:x.n,c:x.c,u:x.u,sys:x.q,real:x.q}));
     const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); renderWarranty(); renderDataTables(); renderRecentOut(); renderDashboard(); wmsSave();
     closeInvEdit();
@@ -3004,8 +3023,9 @@
     const arr=(type==='in'?inboundRecords:outboundRecords);
     const rec=arr[idx]; if(!rec) return;
     if(!confirm('确定删除该记录「'+rec.id+'」吗？此操作不可撤销。')) return;
-    if(type==='in'){ adjustInventory(rec.name,rec.category,rec.qty,-1); inboundRecords.splice(idx,1); }
-    else { adjustInventory(rec.name,rec.category,rec.qty,+1); outboundRecords.splice(idx,1); }
+    if(type==='in'){ inboundRecords.splice(idx,1); }
+    else { outboundRecords.splice(idx,1); }
+    adjustInventory(rec.name,rec.category,rec.qty, type==='in'?-1:1); // 先删记录再统一重算，确保库存与流水同步
     renderDataTables(); renderInv('all'); renderRecentOut(); wmsSave();
     updateDataNote();
     closeRecEdit();
@@ -3091,6 +3111,7 @@
     [['items',items],['inboundRecords',inboundRecords],['outboundRecords',outboundRecords],['checkRecords',checkRecords],['checkPlansQuarter',checkPlansQuarter],['checkPlansYear',checkPlansYear]].forEach(([k,arr])=>{
       if(Array.isArray(o[k])){ arr.length=0; o[k].forEach(x=>arr.push(x)); }
     });
+    recomputeStocks();
     checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
     seedCheckPlans(); normalizeCheckPlans(); wmsSave();
     renderInv('all'); renderDataTables(); renderWarranty(); renderRecentOut();
