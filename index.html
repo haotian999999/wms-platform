@@ -1111,7 +1111,7 @@
           <div class="card mt">
             <div class="panel-head"><div><h3>抓取数据预览</h3><div class="sub" id="prevInfo"></div></div></div>
             <table>
-              <thead><tr><th>物资名称</th><th>分类</th><th>规格</th><th>单位</th><th>库存数量</th><th>安全库存</th><th>校验</th></tr></thead>
+              <thead><tr><th>物资名称</th><th>分类</th><th>品牌</th><th>规格(含类别)</th><th>单位</th><th>期末库存</th><th>校验</th></tr></thead>
               <tbody id="prevBody"></tbody>
             </table>
             <div style="padding:0 20px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
@@ -2206,20 +2206,33 @@
 
   // ---- XLSX 批量数据录入 ----
   const FIELDS={
-    name:['物资名称','品名','名称','物品','物资','货物','name'],
+    name:['物资名称','品名','名称','物品','用品名称','货物','商品','物资','name'],
     category:['分类','类别','类型','品类','category'],
-    spec:['规格','型号','标准','spec'],
+    spec:['规格','规格/型号','型号','标准','spec'],
     unit:['单位','计量单位','unit'],
-    stock:['库存','库存数量','现存','现存量','数量','结存','stock','qty'],
+    brand:['品牌','牌子','brand'],
+    // 注意：stock 关键词刻意不含裸「数量」，否则会与「期初数量/出库数量」撞车；
+    // 目标表统一用「期末数量 / 结存 / 库存」表达当前库存，故以「期末」优先命中。
+    stock:['期末','期末数量','结存','存货','现存量','库存','库存数量','现存','qty','stock'],
+    initQty:['期初','期初数量','期初结存','初期','起始'],
     safe:['安全库存','安全量','预警','下限','safe']
   };
-  const FIELD_LABEL={name:'物资名称',category:'分类',spec:'规格',unit:'单位',stock:'库存数量',safe:'安全库存','':'(未识别 / 忽略)'};
+  const FIELD_LABEL={name:'物资名称',category:'分类/类别',spec:'规格',unit:'单位',brand:'品牌',stock:'期末数量(当前库存)',initQty:'期初数量(历史)',safe:'安全库存','':'(未识别 / 忽略)'};
   let importState=null;
   function normCat(v){
     if(v==null) return '';
     const s=String(v);
     if(/办公/.test(s)) return 'office';
-    if(/烟酒/.test(s)) return 'tobacco';
+    if(/烟|酒|茶|招待/.test(s)) return 'tobacco'; // 烟酒茶 / 招待用品 统一归为「烟酒茶」
+    if(/礼/.test(s)) return 'gift';
+    return '';
+  }
+  // 分类优先按【文件名】判定（与用户约定）：办公→办公用品，烟酒/茶/招待→烟酒茶，礼→礼品
+  function detectCatFromName(fn){
+    if(!fn) return '';
+    const s=String(fn);
+    if(/办公/.test(s)) return 'office';
+    if(/烟|酒|茶|招待/.test(s)) return 'tobacco';
     if(/礼/.test(s)) return 'gift';
     return '';
   }
@@ -2234,28 +2247,30 @@
     reader.onload=e=>{
       try{
         const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
-        const sheetName=wb.SheetNames[0];
+        // 智能选表：优先选取「库存总表 / 总览」（名称含 总/览/库存 且不含 出入/明细），明细表不导入
+        const sheetName=(wb.SheetNames.find(s=>/(总|览|库存)/.test(s)&&!/(出入|明细)/.test(s)))||wb.SheetNames[0];
         const ws=wb.Sheets[sheetName];
         const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,blankrows:false});
-        buildImport(rows,sheetName);
+        buildImport(rows,sheetName,file.name);
       }catch(err){ alert('解析失败：'+err.message); }
     };
     reader.readAsArrayBuffer(file);
   }
-  function buildImport(rows,sheetName){
+  function buildImport(rows,sheetName,fileName){
     let hdrIdx=0;
-    for(let i=0;i<Math.min(rows.length,12);i++){
+    for(let i=0;i<Math.min(rows.length,15);i++){
       const r=rows[i]||[];
       const hit=r.filter(c=>c!=null&&matchField(c)).length;
       if(hit>=2){ hdrIdx=i; break; }
     }
     const headers=(rows[hdrIdx]||[]).map(h=>h==null?'':String(h));
     const mapping=headers.map(h=>({orig:h,field:matchField(h)}));
-    const dataRows=rows.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&String(c).trim()!==''));
-    importState={headers,mapping,dataRows,sheetName};
+    // 数据行清洗：剔除空行 + 合计/总计/小计/回到顶部/最后一条 等表尾/导航垃圾行
+    const dataRows=rows.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&String(c).trim()!=='')&&!r.some(c=>c!=null&&/合计|总计|小计|平均|回到顶部|最后一条/.test(String(c))));
+    importState={headers,mapping,dataRows,sheetName,fileName:fileName||''};
     renderMapping();renderPreview();
     document.getElementById('importResult').style.display='block';
-    document.getElementById('sheetInfo').textContent=`工作表：${sheetName} · 表头位于第 ${hdrIdx+1} 行 · 共 ${dataRows.length} 行数据`;
+    document.getElementById('sheetInfo').textContent=`工作表：${sheetName} · 表头第 ${hdrIdx+1} 行 · 共 ${dataRows.length} 行（已自动选取库存总表，出入库明细表不导入）`;
     document.getElementById('importMsg').textContent='';
   }
   function renderMapping(){
@@ -2272,18 +2287,24 @@
   function renderPreview(){
     const body=document.getElementById('prevBody');
     const get=(row,f)=>{ const i=importState.mapping.findIndex(m=>m.field===f); return i>=0?row[i]:null; };
+    const catOf=row=>detectCatFromName(importState.fileName)||normCat(get(row,'category'))||'';
     const rows=importState.dataRows.slice(0,50);
     let valid=0;
     body.innerHTML=rows.map(r=>{
-      const name=get(r,'name'),catRaw=get(r,'category'),spec=get(r,'spec'),unit=get(r,'unit'),stock=get(r,'stock'),safe=get(r,'safe');
-      const cat=normCat(catRaw); const stockNum=parseFloat(stock);
+      const name=get(r,'name'),brand=get(r,'brand'),spec=get(r,'spec'),catRaw=get(r,'category'),unit=get(r,'unit'),stock=get(r,'stock');
+      const cat=catOf(r);
+      // 规格列合并「类别」子类型（如 白酒 · 53°/500ml），顶层分类仍由文件名决定
+      const subSpec=[catRaw,spec].filter(v=>v!=null&&String(v).trim()!=='').join(' · ');
+      const stockNum=parseFloat(stock);
       const ok=name&&cat&&!isNaN(stockNum); if(ok) valid++;
       const m=cat?catMeta[cat]:null;
       return `<tr>
         <td>${name||'—'}</td>
         <td>${m?`<span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span>`:`<span class="status out">未识别</span>`}</td>
-        <td>${spec??'—'}</td><td>${unit??'—'}</td>
-        <td class="num">${stock??'—'}</td><td class="num">${safe??'—'}</td>
+        <td>${brand??'—'}</td>
+        <td>${subSpec||'—'}</td>
+        <td>${unit??'—'}</td>
+        <td class="num">${stock??'—'}</td>
         <td>${ok?'<span class="status ok">可导入</span>':'<span class="status low">待修正</span>'}</td>
       </tr>`;
     }).join('');
@@ -2293,20 +2314,34 @@
   }
   document.getElementById('confirmImport').addEventListener('click',()=>{
     const get=(row,f)=>{ const i=importState.mapping.findIndex(m=>m.field===f); return i>=0?row[i]:null; };
-    let added=0;
+    const catOf=row=>detectCatFromName(importState.fileName)||normCat(get(row,'category'))||'';
+    let added=0,updated=0;
     importState.dataRows.forEach(r=>{
-      const name=get(r,'name'),catRaw=get(r,'category'),spec=get(r,'spec'),unit=get(r,'unit'),stock=get(r,'stock'),safe=get(r,'safe');
-      const cat=normCat(catRaw); const stockNum=parseFloat(stock);
-      if(name&&cat&&!isNaN(stockNum)){
-        items.push({c:cat,n:String(name),s:spec?String(spec):'—',u:unit?String(unit):'件',q:stockNum,
-          safe:(safe!=null&&!isNaN(parseFloat(safe)))?parseFloat(safe):Math.ceil(stockNum*0.3)});
+      const name=get(r,'name'),brand=get(r,'brand'),spec=get(r,'spec'),catRaw=get(r,'category'),unit=get(r,'unit'),stock=get(r,'stock'),safe=get(r,'safe');
+      const cat=catOf(r); const stockNum=parseFloat(stock);
+      if(!(name&&cat&&!isNaN(stockNum))) return; // 跳过名称/分类/库存缺失的脏行
+      // 规格列合并「类别」子类型；顶层分类由文件名决定
+      const subSpec=[catRaw,spec].filter(v=>v!=null&&String(v).trim()!=='').join(' · ');
+      const exist=items.find(it=>it.c===cat && it.n===String(name));
+      if(exist){ // 同名同分类：更新而非重复新增
+        if(brand) exist.b=String(brand);
+        if(subSpec) exist.s=subSpec;
+        if(unit) exist.u=String(unit);
+        exist.q=stockNum; exist.initQty=stockNum; // 期末数量 = 当前库存 = 期初结存
+        if(safe!=null&&!isNaN(parseFloat(safe))) exist.safe=parseFloat(safe);
+        updated++;
+      }else{
+        items.push({c:cat,n:String(name),b:brand?String(brand):'—',s:subSpec||'—',u:unit?String(unit):'件',
+          q:stockNum, initQty:stockNum,
+          safe:(safe!=null&&!isNaN(parseFloat(safe)))?parseFloat(safe):(catDefault[cat]||Math.ceil(stockNum*0.3))});
         added++;
       }
     });
+    recomputeStocks(); // 统一重算，确保 q 与 initQty/流水一致
     document.querySelectorAll('#invChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.cat==='all'));
     renderInv('all');
-    document.getElementById('importMsg').textContent=`✓ 已成功导入 ${added} 条物资，已并入「库存管理」。`;
-    toast('批量导入完成','ok',`已成功并入库存 ${added} 条物资`);
+    document.getElementById('importMsg').textContent=`✓ 已成功导入 ${added} 条新物资、更新 ${updated} 条已有物资，已并入「库存管理」。`;
+    toast('批量导入完成','ok',`已成功并入库存 ${added+updated} 条物资`);
     wmsSave();
     document.querySelector('.nav-item[data-view="inventory"]').click();
   });
