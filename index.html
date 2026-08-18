@@ -1584,7 +1584,7 @@
     if(v==='reports') renderReports();
     if(v==='settings') renderSafe();
     if(v==='maintenance') renderMaintenance();
-    if(v==='check') setTimeout(()=>checkTableOverflow(),60);
+    if(v==='check'){ seedCheckPlans(); normalizeCheckPlans(); if(refreshPlanWindowStatus()) wmsSave(); renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCheckTimeline(); setTimeout(()=>checkTableOverflow(),60); }
     if(charts[v]) setTimeout(()=>Object.values(charts[v]).forEach(c=>c.resize()),60);
   }));
 
@@ -1701,7 +1701,7 @@
   function planStatusByKey(key){
     if(!key) return null;
     const all=checkPlansQuarter.concat(checkPlansYear);
-    const p=all.find(x=>(x.period||x.name)===key);
+    const p=all.find(x=>x.key===key);
     return p? p.status : null;
   }
   function renderCheckTimeline(){
@@ -1768,6 +1768,49 @@
   // 盘点计划：默认空（不含演示数据）；用户可通过「＋ 新增计划」自行建立
   const checkPlansQuarter=[];
   const checkPlansYear=[];
+  const QUARTER_SLOTS=[{t:'03-31',q:1},{t:'06-30',q:2},{t:'09-30',q:3},{t:'12-31',q:4}];
+  const YEAR_SLOTS=[{t:'06-30',label:'年中'},{t:'12-31',label:'年末'}];
+  function refreshPlanWindowStatus(){
+    const today=new Date(); today.setHours(0,0,0,0); const y=today.getFullYear(); let changed=false;
+    const test=p=>{
+      if(!p.time) return; const parts=String(p.time).split('-'); if(parts.length!==2) return;
+      const plan=new Date(y,+parts[0]-1,+parts[1]);
+      const diff=Math.abs((today-plan)/86400000);
+      if(diff<=5 && p.status==='out'){ p.status='low'; changed=true; }
+    };
+    checkPlansQuarter.forEach(test); checkPlansYear.forEach(test);
+    return changed;
+  }
+  function seedCheckPlans(){
+    const y=new Date().getFullYear();
+    if(!checkPlansQuarter.length){
+      QUARTER_SLOTS.forEach(s=>checkPlansQuarter.push({period:`${y} Q${s.q}`,time:s.t,person:'',status:'out',diff:'—',key:`${y}-Q${s.q}`}));
+    }
+    if(!checkPlansYear.length){
+      YEAR_SLOTS.forEach(s=>checkPlansYear.push({name:`${y} ${s.label}全面盘点`,time:s.t,lead:'',watch:'',status:'out',key:`${y}-${s.t==='06-30'?'mid':'year-end'}`}));
+    }
+  }
+  function normalizeCheckPlans(){
+    const y=new Date().getFullYear(); const keyMap={};
+    const ensureKey=p=>{ if(!p.key) p.key=(p.period||p.name||('plan-'+Math.random().toString(36).slice(2))); };
+    const qCanon={};
+    checkPlansQuarter.forEach(p=>{ ensureKey(p); const t=String(p.time||''); if(QUARTER_SLOTS.some(s=>s.t===t) && !qCanon[t]) qCanon[t]=p; });
+    checkPlansQuarter.length=0;
+    QUARTER_SLOTS.forEach(s=>{
+      const p=qCanon[s.t]; if(!p) return;
+      const old=p.key; p.period=`${y} Q${s.q}`; p.time=s.t; p.key=`${y}-Q${s.q}`;
+      if(old!==p.key) keyMap[old]=p.key; checkPlansQuarter.push(p);
+    });
+    const yCanon={};
+    checkPlansYear.forEach(p=>{ ensureKey(p); const t=String(p.time||''); if(YEAR_SLOTS.some(s=>s.t===t) && !yCanon[t]) yCanon[t]=p; });
+    checkPlansYear.length=0;
+    YEAR_SLOTS.forEach(s=>{
+      const p=yCanon[s.t]; if(!p) return;
+      const old=p.key; p.name=`${y} ${s.label}全面盘点`; p.time=s.t; p.key=`${y}-${s.t==='06-30'?'mid':'year-end'}`;
+      if(old!==p.key) keyMap[old]=p.key; checkPlansYear.push(p);
+    });
+    if(Object.keys(keyMap).length) checkRecords.forEach(r=>{ if(r.planKey && keyMap[r.planKey]) r.planKey=keyMap[r.planKey]; });
+  }
   let activeCheckPlan=null; // 当前正在盘点的计划（用于存档记录与计划状态双向呼应）
   function renderPlanQuarter(){
     const tb=document.getElementById('planQuarterBody'); if(!tb) return;
@@ -1854,13 +1897,26 @@
     document.getElementById('planEditModal').classList.add('show');
   }
   function addPlan(type){
-    const arr=type==='q'?checkPlansQuarter:checkPlansYear;
-    const idx=arr.length;
-    if(type==='q'){ arr.push({period:'新季度盘点 '+(idx+1),time:'03-31',person:'',status:'out',diff:'—'}); }
-    else { arr.push({name:'新年度盘点 '+(idx+1),time:'06-30',lead:'',watch:'',status:'out'}); }
-    renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); wmsSave();
-    planEditCtx={type,idx,isNew:true};
-    openPlanEdit(type,idx);
+    const y=new Date().getFullYear();
+    if(type==='q'){
+      const slots=[{t:'03-31',n:`${y} Q1`,k:`${y}-Q1`},{t:'06-30',n:`${y} Q2`,k:`${y}-Q2`},{t:'09-30',n:`${y} Q3`,k:`${y}-Q3`},{t:'12-31',n:`${y} Q4`,k:`${y}-Q4`}];
+      const used=new Set(checkPlansQuarter.map(p=>String(p.time||'')));
+      const slot=slots.find(s=>!used.has(s.t));
+      if(!slot){ toast('季度盘点计划已达上限','warn','每年最多 4 次季度盘点，分别位于每季度月底'); return; }
+      checkPlansQuarter.push({period:slot.n,time:slot.t,person:'',status:'out',diff:'—',key:slot.k});
+      renderPlanQuarter(); renderCheckKpi(); wmsSave();
+      planEditCtx={type:'q',idx:checkPlansQuarter.length-1,isNew:true};
+      openPlanEdit('q',checkPlansQuarter.length-1);
+    } else {
+      const slots=[{t:'06-30',n:`${y} 年中全面盘点`,k:`${y}-mid`},{t:'12-31',n:`${y} 年末全面盘点`,k:`${y}-year-end`}];
+      const used=new Set(checkPlansYear.map(p=>String(p.time||'')));
+      const slot=slots.find(s=>!used.has(s.t));
+      if(!slot){ toast('年度盘点计划已达上限','warn','每年最多 2 次年度盘点，分别为 6 月底和 12 月底'); return; }
+      checkPlansYear.push({name:slot.n,time:slot.t,lead:'',watch:'',status:'out',key:slot.k});
+      renderPlanYear(); renderCheckKpi(); wmsSave();
+      planEditCtx={type:'y',idx:checkPlansYear.length-1,isNew:true};
+      openPlanEdit('y',checkPlansYear.length-1);
+    }
   }
   function savePlanEdit(){
     if(!planEditCtx) return;
@@ -2076,7 +2132,7 @@
         if(p){
           p.status='ok';
           planLabel = activeCheckPlan.type==='q' ? (p.period+' 季度盘点已完成') : (p.name+' 已完成');
-          planKey  = activeCheckPlan.type==='q' ? p.period : p.name;
+          planKey  = p.key || (activeCheckPlan.type==='q' ? p.period : p.name);
           synced=true; renderPlanQuarter(); renderPlanYear();
         }
       }
@@ -2213,6 +2269,8 @@
 
   // ---- Charts ----
   const C={office:'#5b8cff',tobacco:'#ff8a4c',gift:'#c08bff',ink:'#aeb9d4',grid:'rgba(255,255,255,.08)',fillOffice:'rgba(91,140,255,.16)',fillTobacco:'rgba(255,138,76,.10)'};
+  // Chart.js 无法直接解析 CSS 变量，读取当前主题下的实际颜色值用于 canvas 图表
+  function catColor(key){ const v=getComputedStyle(document.documentElement).getPropertyValue('--c-'+key).trim(); return v || C[key] || '#999'; }
   // 防御：本地 chart 库若因任何原因未加载，也不影响登录/导航/主题等核心功能
   const CHART_OK = (typeof window.Chart !== 'undefined');
   if(CHART_OK){
@@ -2285,13 +2343,13 @@
   function last6Months(){ const arr=[]; const d=new Date(); d.setDate(1); for(let i=5;i>=0;i--){ const t=new Date(d.getFullYear(),d.getMonth()-i,1); arr.push({key:monthKey(t),label:monthLabel(monthKey(t))}); } return arr; }
   function sumByMonth(records, months, qtyKey){ return months.map(m=> records.filter(r=>String(r.date).startsWith(m.key)).reduce((s,r)=>s+(+r[qtyKey]||0),0)); }
   function buildTrendData(){ const months=last6Months(); return { labels:months.map(m=>m.label), inbound:sumByMonth(inboundRecords,months,'qty'), outbound:sumByMonth(outboundRecords,months,'qty') }; }
-  function buildCatData(){ const total=items.reduce((s,i)=>s+(+i.q||0),0)||1; const list=Object.keys(catMeta).map(k=>{ const q=items.filter(i=>i.c===k).reduce((s,i)=>s+(+i.q||0),0); return {key:k,label:catMeta[k].t,q,pct:Math.round(q/total*100),color:catMeta[k].col}; }).filter(x=>x.q>0); return {total,list}; }
+  function buildCatData(){ const total=items.reduce((s,i)=>s+(+i.q||0),0)||1; const list=Object.keys(catMeta).map(k=>{ const q=items.filter(i=>i.c===k).reduce((s,i)=>s+(+i.q||0),0); return {key:k,label:catMeta[k].t,q,pct:Math.round(q/total*100),color:catColor(k)}; }).filter(x=>x.q>0); return {total,list}; }
 
   function renderCatLegend(){
     const el=document.getElementById('catLegend'); if(!el) return;
     const data=buildCatData();
     if(!data.list.length){ el.innerHTML='<div class="li" style="justify-content:center"><span class="ln" style="color:var(--ink-3)">暂无库存分类数据</span></div>'; return; }
-    el.innerHTML=data.list.map(x=>`<div class="li"><span class="sw" style="background:${x.color}"></span><span class="ln">${x.label}</span><span class="lq">${fmtNum(x.q)} 件</span><span class="pct">${x.pct}%</span></div>`).join('');
+    el.innerHTML=data.list.map(x=>`<div class="li"><span class="sw" style="background:${catMeta[x.key].col}"></span><span class="ln">${x.label}</span><span class="lq">${fmtNum(x.q)} 件</span><span class="pct">${x.pct}%</span></div>`).join('');
   }
   function renderRecentIn(){
     const list=inboundRecords.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
@@ -2375,7 +2433,7 @@
     const catVal=Object.keys(catMeta).map(k=> Math.round(items.filter(i=>i.c===k).reduce((s,i)=>s+i.q*(priceMap[i.n+'|'+i.c]||0),0))/10000 );
     if(charts.reports.value){ charts.reports.value.data.labels=Object.keys(catMeta).map(k=>catMeta[k].t); charts.reports.value.data.datasets[0].data=catVal; charts.reports.value.update(); }
     const months=last6Months();
-    const ds=Object.keys(catMeta).map(k=>({label:catMeta[k].t,borderColor:catMeta[k].col,backgroundColor:catMeta[k].col,tension:.4,pointRadius:3,fill:false,data:months.map(m=> outboundRecords.filter(r=>r.category===k&&String(r.date).startsWith(m.key)).reduce((s,r)=>s+(+r.qty||0),0) )}));
+    const ds=Object.keys(catMeta).map(k=>({label:catMeta[k].t,borderColor:catColor(k),backgroundColor:catColor(k),tension:.4,pointRadius:3,fill:false,data:months.map(m=> outboundRecords.filter(r=>r.category===k&&String(r.date).startsWith(m.key)).reduce((s,r)=>s+(+r.qty||0),0) )}));
     if(charts.reports.rank){ charts.reports.rank.data.labels=months.map(m=>m.label); charts.reports.rank.data.datasets=ds; charts.reports.rank.update(); }
   }
   function renderDashboard(){
@@ -2398,7 +2456,7 @@
       });
       charts.dashboard.cat=new Chart(document.getElementById('catChart'),{
         type:'doughnut',
-        data:{labels:cd.list.map(x=>x.label)||['暂无数据'],datasets:[{data:cd.list.map(x=>x.q)||[0],backgroundColor:cd.list.map(x=>x.color)||['var(--ink-3)'],borderWidth:0,hoverOffset:6}]},
+        data:{labels:cd.list.map(x=>x.label)||['暂无数据'],datasets:[{data:cd.list.map(x=>x.q)||[0],backgroundColor:cd.list.map(x=>catColor(x.key))||['var(--ink-3)'],borderWidth:0,hoverOffset:6}]},
         options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false}}}
       });
     }
@@ -2410,7 +2468,7 @@
       const priceMap={}; inboundRecords.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(r=>{ const k=r.name+'|'+r.category; if(r.price!=null) priceMap[k]=+r.price; });
       const catVal=Object.keys(catMeta).map(k=> Math.round(items.filter(i=>i.c===k).reduce((s,i)=>s+i.q*(priceMap[i.n+'|'+i.c]||0),0))/10000 );
       const months=last6Months();
-      const ds=Object.keys(catMeta).map(k=>({label:catMeta[k].t,borderColor:catMeta[k].col,backgroundColor:catMeta[k].col,tension:.4,pointRadius:3,fill:false,data:months.map(m=> outboundRecords.filter(r=>r.category===k&&String(r.date).startsWith(m.key)).reduce((s,r)=>s+(+r.qty||0),0) )}));
+      const ds=Object.keys(catMeta).map(k=>({label:catMeta[k].t,borderColor:catColor(k),backgroundColor:catColor(k),tension:.4,pointRadius:3,fill:false,data:months.map(m=> outboundRecords.filter(r=>r.category===k&&String(r.date).startsWith(m.key)).reduce((s,r)=>s+(+r.qty||0),0) )}));
       charts.reports={};
       charts.reports.dept=new Chart(document.getElementById('deptChart'),{
         type:'bar',
@@ -2880,11 +2938,16 @@
   function closeInvEdit(){ document.getElementById('invEditModal').classList.remove('show'); }
   function deleteInv(idx){
     const i=items[idx]; if(!i) return;
-    if(!confirm('确定删除该物资「'+i.n+'」吗？\n（联动的出入库记录仍会保留）')) return;
+    const inRel=inboundRecords.filter(r=>r.name===i.n && r.category===i.c);
+    const outRel=outboundRecords.filter(r=>r.name===i.n && r.category===i.c);
+    if(!confirm('确定删除该物资「'+i.n+'」吗？\n（将同步删除关联入库 '+inRel.length+' 条 / 出库 '+outRel.length+' 条记录）')) return;
+    for(let k=inboundRecords.length-1;k>=0;k--){ const r=inboundRecords[k]; if(r.name===i.n && r.category===i.c) inboundRecords.splice(k,1); }
+    for(let k=outboundRecords.length-1;k>=0;k--){ const r=outboundRecords[k]; if(r.name===i.n && r.category===i.c) outboundRecords.splice(k,1); }
     items.splice(idx,1);
-    const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); renderWarranty(); wmsSave();
+    checkItems=items.map(x=>({n:x.n,c:x.c,u:x.u,sys:x.q,real:x.q}));
+    const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); renderWarranty(); renderDataTables(); renderRecentOut(); renderDashboard(); wmsSave();
     closeInvEdit();
-    toast('已删除物资','ok',i.n);
+    toast('已删除物资','ok','已同步清理 '+i.n+' 的 '+inRel.length+' 条入库 / '+outRel.length+' 条出库记录');
   }
 
   // ============ 数据管理：记录 编辑 / 删除 ============
@@ -3036,6 +3099,7 @@
       if(Array.isArray(o[k])){ arr.length=0; o[k].forEach(x=>arr.push(x)); }
     });
     checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
+    seedCheckPlans(); normalizeCheckPlans(); wmsSave();
     renderInv('all'); renderDataTables(); renderWarranty(); renderRecentOut();
     updateDataNote();
     return true;
