@@ -1037,7 +1037,6 @@
                 <button class="tab active" data-tab="quarter">季度盘点</button>
                 <button class="tab" data-tab="year">年度盘点</button>
               </div>
-              <button class="btn-mini add" id="btnAddPlan" type="button" style="margin-left:auto" title="新增盘点计划">＋ 新增计划</button>
             </div>
 
             <!-- 季度盘点 -->
@@ -1765,7 +1764,7 @@
 
   /* ============ 盘点计划：数据驱动 + 编辑/删除 ============ */
   const planStatusText={ok:'已完成',low:'进行中',out:'待开始'};
-  // 盘点计划：默认空（不含演示数据）；用户可通过「＋ 新增计划」自行建立
+  // 盘点计划：默认空（不含演示数据）；进入盘点视图时按规则自动生成
   const checkPlansQuarter=[];
   const checkPlansYear=[];
   const QUARTER_SLOTS=[{t:'03-31',q:1},{t:'06-30',q:2},{t:'09-30',q:3},{t:'12-31',q:4}];
@@ -1814,7 +1813,7 @@
   let activeCheckPlan=null; // 当前正在盘点的计划（用于存档记录与计划状态双向呼应）
   function renderPlanQuarter(){
     const tb=document.getElementById('planQuarterBody'); if(!tb) return;
-    if(!checkPlansQuarter.length){ tb.innerHTML='<tr><td colspan="7" class="empty">暂无盘点计划，点击右上角「＋ 新增计划」建立季度盘点安排</td></tr>'; return; }
+    if(!checkPlansQuarter.length){ tb.innerHTML='<tr><td colspan="7" class="empty">暂无季度盘点计划，系统将按每季度月底自动生成</td></tr>'; return; }
     tb.innerHTML=checkPlansQuarter.map((p,i)=>`<tr>
       <td>${p.period||'—'}</td>
       <td class="code">${p.time||'—'}</td>
@@ -1827,7 +1826,7 @@
   }
   function renderPlanYear(){
     const tb=document.getElementById('planYearBody'); if(!tb) return;
-    if(!checkPlansYear.length){ tb.innerHTML='<tr><td colspan="7" class="empty">暂无盘点计划，点击右上角「＋ 新增计划」建立年度盘点安排</td></tr>'; return; }
+    if(!checkPlansYear.length){ tb.innerHTML='<tr><td colspan="7" class="empty">暂无年度盘点计划，系统将按 6 月底、12 月底自动生成</td></tr>'; return; }
     tb.innerHTML=checkPlansYear.map((p,i)=>`<tr>
       <td>${p.name||'—'}</td>
       <td class="code">${p.time||'—'}</td>
@@ -2019,12 +2018,6 @@
     document.getElementById('pane-'+t.dataset.tab).classList.add('active');
     checkTableOverflow();
   }));
-  const addPlanBtn=document.getElementById('btnAddPlan');
-  if(addPlanBtn) addPlanBtn.addEventListener('click',()=>{
-    const active=document.querySelector('#checkTabs .tab.active');
-    addPlan(active&&active.dataset.tab==='year'?'y':'q');
-  });
-
   // ---- 盘点记录：快照 + 归档（保存/下载共用，防止重复归档） ----
   let checkExportData=null;
   let checkArchived=false;
