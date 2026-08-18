@@ -928,14 +928,14 @@
               <div class="chip c-tobacco" data-cat="tobacco"><span class="d" style="background:var(--c-tobacco)"></span>烟酒茶</div>
               <div class="chip c-gift" data-cat="gift"><span class="d" style="background:var(--c-gift)"></span>礼品</div>
             </div>
-            <div class="search inv-search" id="invSearchWrap">🔍<input id="invSearch" placeholder="搜索编号 / 物资名称 / 规格 / 状态…" /></div>
+            <div class="search inv-search" id="invSearchWrap">🔍<input id="invSearch" placeholder="搜索讯号 / 物资名称 / 规格 / 状态…" /></div>
             <div class="spacer"></div>
             <button class="btn btn-ghost" id="invExport" data-perm="data">⬇ 导出</button>
             <button class="btn btn-primary" id="invAdd" data-perm="data">＋ 新增物资</button>
           </div>
           <div class="table-scroll">
             <table class="data-table">
-              <thead><tr><th>编号</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格</th><th>单位</th><th>库存数量</th><th>安全库存</th><th>入库累计</th><th>出库累计</th><th>质保期(月)</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
+              <thead><tr><th>讯号</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格</th><th>单位</th><th>库存数量</th><th>安全库存</th><th>入库单号（申购单号）</th><th>入库累计</th><th>出库单号（审批编号）</th><th>出库累计</th><th>质保期(月)</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
               <tbody id="invBody"></tbody>
             </table>
           </div>
@@ -950,6 +950,7 @@
             <div class="section-title">入库登记</div>
             <div class="section-sub">登记新到货物资，系统自动更新库存</div>
             <div class="form-grid">
+              <div class="field"><label>入库单号（申购单号） <span style="color:var(--ink-3);font-weight:400">选填</span></label><input id="inNo" placeholder="如：CG-2026-001（留空自动生成）" /></div>
               <div class="field"><label>物资分类</label><select id="inCat"><option>办公用品</option><option>烟酒茶</option><option>礼品</option></select></div>
               <div class="field"><label>物资名称</label><input id="inName" placeholder="如：A4 复印纸 70g" /></div>
               <div class="field"><label>品牌 <span style="color:var(--ink-3);font-weight:400">选填</span></label><input id="inBrand" placeholder="如：晨光 / 得力" /></div>
@@ -985,6 +986,7 @@
           <div class="card form-card">
             <div class="section-title">领用申请</div>
             <div class="form-grid">
+              <div class="field"><label>出库单号（审批编号） <span style="color:var(--ink-3);font-weight:400">选填</span></label><input id="outNo" placeholder="如：SP-2026-001（留空自动生成）" /></div>
               <div class="field"><label>领用人</label><input id="outApplicant" placeholder="如：张伟" /></div>
               <div class="field"><label>所属部门</label><select id="outDept"><option>总经理</option><option>财务总监</option><option>项目经理</option><option>办公室</option><option>财务部</option><option>海外事业部</option><option>销售部</option><option>采购部</option><option>人力资源部</option><option>法务/董办</option></select></div>
               <div class="field"><label>物资分类</label><select id="outCat"><option>办公用品</option><option>烟酒茶</option><option>礼品</option></select></div>
@@ -1124,7 +1126,7 @@
               <button class="tab active" data-tab="in">入库记录</button>
               <button class="tab" data-tab="out">出库记录</button>
             </div>
-            <div class="search">🔍<input id="dataSearch" placeholder="搜索单号 / 物资名称 / 供应商 / 领用人 / 部门…" /></div>
+            <div class="search">🔍<input id="dataSearch" placeholder="搜索入库/出库单号 / 物资名称 / 供应商 / 领用人 / 部门…" /></div>
             <span class="plan-meta" id="dataCount"></span>
             <button class="btn btn-ghost" id="downloadAll" data-perm="data">⬇ 下载全部（当前筛选）</button>
           </div>
@@ -1133,7 +1135,7 @@
           <div class="tabpane active" id="pane-data-in">
             <div class="table-scroll">
               <table class="data-table">
-                <thead><tr><th>单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格</th><th>单位</th><th>数量</th><th>单价</th><th>金额</th><th>供应商</th><th>经办人</th><th>仓库</th><th>质保期</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
+                <thead><tr><th>入库单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格</th><th>单位</th><th>数量</th><th>单价</th><th>金额</th><th>供应商</th><th>经办人</th><th>仓库</th><th>质保期</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
                 <tbody id="inBody"></tbody>
               </table>
             </div>
@@ -1144,7 +1146,7 @@
           <div class="tabpane" id="pane-data-out">
             <div class="table-scroll">
               <table class="data-table">
-                <thead><tr><th>单号</th><th>日期</th><th>领用人</th><th>部门</th><th>物资名称</th><th>分类</th><th>数量</th><th>单位</th><th>用途</th><th>经办人</th><th>状态</th><th>操作</th></tr></thead>
+                <thead><tr><th>出库单号</th><th>日期</th><th>领用人</th><th>部门</th><th>物资名称</th><th>分类</th><th>数量</th><th>单位</th><th>用途</th><th>经办人</th><th>状态</th><th>操作</th></tr></thead>
                 <tbody id="outBody"></tbody>
               </table>
             </div>
@@ -1650,14 +1652,14 @@
         <td>${i.b||'—'}</td>
         <td>${i.s}</td><td>${i.u}</td>
         <td class="num">${i.q} ${i.u}</td><td class="num">${i.safe} ${i.u}</td>
-        <td class="num">${inT} ${i.u}</td><td class="num">${outT} ${i.u}</td>
+        <td class="code">${latestInNo(i)}</td><td class="num">${inT} ${i.u}</td><td class="code">${latestOutNo(i)}</td><td class="num">${outT} ${i.u}</td>
         ${warrantyMonthsCell(i)}
         ${warrantyCell(i)}
         <td><span class="status ${st}">${txt}</span></td>
         <td><span class="cell-act"><button type="button" data-edit-inv="${oi}">编辑</button></span></td>
       </tr>`;
     }).join('');
-    if(!list.length){ body.innerHTML='<tr><td colspan="14" class="empty">暂无库存物资，请通过「入库管理 · 入库登记」或「数据导入」添加</td></tr>'; }
+    if(!list.length){ body.innerHTML='<tr><td colspan="16" class="empty">暂无库存物资，请通过「入库管理 · 入库登记」或「数据导入」添加</td></tr>'; }
     checkTableOverflow();
   }
   document.querySelectorAll('#invChips .chip').forEach(ch=>ch.addEventListener('click',()=>{
@@ -2508,6 +2510,21 @@
   const outboundRecords=[];
   function inTotalOf(name,cat){ return inboundRecords.filter(r=>r.name===name && r.category===cat).reduce((s,r)=>s+(+r.qty||0),0); }
   function outTotalOf(name,cat){ return outboundRecords.filter(r=>r.name===name && r.category===cat).reduce((s,r)=>s+(+r.qty||0),0); }
+  // 库存档案关联单据号：取该物资最新一笔入库/出库记录的单号（多笔时标注 +N），实现库存↔出入库记录接洽同步
+  function latestInNo(item){
+    const rs=inboundRecords.filter(r=>r.name===item.n && r.category===item.c);
+    if(!rs.length) return '—';
+    rs.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    const t=rs[0].inNo||rs[0].id;
+    return rs.length>1 ? t+' (+'+(rs.length-1)+')' : t;
+  }
+  function latestOutNo(item){
+    const rs=outboundRecords.filter(r=>r.name===item.n && r.category===item.c);
+    if(!rs.length) return '—';
+    rs.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    const t=rs[0].outNo||rs[0].id;
+    return rs.length>1 ? t+' (+'+(rs.length-1)+')' : t;
+  }
   // 单一事实来源（SSOT）：当前库存 = 期初结存 + 累计入库 − 累计出库
   // 所有增删改只动 records / initQty，统一由 recomputeStocks() 派生 item.q，杜绝「双写库存」漂移
   function recomputeStocks(){
@@ -2552,7 +2569,8 @@
         if(c.k==='expire') return warrantyCell(r);
         const v=r[c.k]; return `<td>${v==null||v===''?'—':v}</td>`;
       }).join('');
-      return `<tr data-row-rec="${type}:${i}"><td class="code">${r.id}</td>${cells}<td><span class="cell-act"><button type="button" class="btn-mini edit" data-edit-rec="${type}:${i}">编辑</button></span></td></tr>`;
+      const codeVal = type==='in' ? (r.inNo||r.id) : (r.outNo||r.id);
+      return `<tr data-row-rec="${type}:${i}"><td class="code">${codeVal}</td>${cells}<td><span class="cell-act"><button type="button" class="btn-mini edit" data-edit-rec="${type}:${i}">编辑</button></span></td></tr>`;
     }).join('');
     return list.length;
   }
@@ -2824,7 +2842,7 @@
   }
   const ICON={office:'📄',tobacco:'🍶',gift:'🎁'};
   function resetInbound(){
-    ['inName','inBrand','inSpec','inQty','inSafe','inPrice','inSupplier','inHandler','inNote'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
+    ['inNo','inName','inBrand','inSpec','inQty','inSafe','inPrice','inSupplier','inHandler','inNote'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
     const w=document.getElementById('inWarranty'); if(w) w.value='';
   }
   document.getElementById('confirmInbound').addEventListener('click',()=>{
@@ -2842,8 +2860,10 @@
     const brand=document.getElementById('inBrand').value.trim();
     const spec=document.getElementById('inSpec').value.trim()||'—';
     const safe=parseFloat(document.getElementById('inSafe').value)||0;
+    const inNo=document.getElementById('inNo').value.trim();
+    const recId=inNo||genId('RK');
     const amount=+(qty*price).toFixed(2);
-    const rec={id:genId('RK'),date,name,category:cat,brand,spec,unit,qty,price,amount,supplier,handler,warehouse,status:'已入库',warranty};
+    const rec={id:recId,inNo:inNo||recId,date,name,category:cat,brand,spec,unit,qty,price,amount,supplier,handler,warehouse,status:'已入库',warranty};
     if(warranty) rec.expire=addMonths(date,warranty);
     inboundRecords.unshift(rec);
     updateDataNote();
@@ -2860,7 +2880,7 @@
   });
   document.getElementById('resetInbound').addEventListener('click',resetInbound);
 
-  function resetOutbound(){ ['outApplicant','outName','outQty','outHandler','outPurpose'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';}); }
+  function resetOutbound(){ ['outNo','outApplicant','outName','outQty','outHandler','outPurpose'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';}); }
   document.getElementById('submitOutbound').addEventListener('click',()=>{
     const applicant=document.getElementById('outApplicant').value.trim();
     const dept=document.getElementById('outDept').value;
@@ -2870,7 +2890,9 @@
     const approver=document.getElementById('outHandler').value.trim()||'admin';
     const purpose=document.getElementById('outPurpose').value.trim();
     if(!applicant||!cat||!name||isNaN(qty)||qty<=0){ toast('请完整填写领用人/分类/名称/数量','warn','以上为必填项'); return; }
-    const rec={id:genId('CK'),date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit:'件',purpose,handler:approver,status:'已出库'};
+    const outNo=document.getElementById('outNo').value.trim();
+    const recId=outNo||genId('CK');
+    const rec={id:recId,outNo:outNo||recId,date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit:'件',purpose,handler:approver,status:'已出库'};
     outboundRecords.unshift(rec);
     const exist=items.find(i=>i.n===name && i.c===cat);
     if(!exist){ items.push({c:cat,n:name,s:'—',u:'件',safe:catDefault[cat]||10,initQty:0}); }
@@ -2886,9 +2908,9 @@
   function exportInv(){
     const ac=document.querySelector('#invChips .chip.active'); const cat=ac?ac.dataset.cat:'all';
     const list=cat==='all'?items:items.filter(i=>i.c===cat);
-    const header=['编号','物资名称','分类','品牌','规格','单位','库存数量','安全库存','入库累计','出库累计','质保期(月)','到期日','状态'];
+    const header=['讯号','物资名称','分类','品牌','规格','单位','库存数量','安全库存','入库单号（申购单号）','入库累计','出库单号（审批编号）','出库累计','质保期(月)','到期日','状态'];
     const body=list.map((i,idx)=>{ const m=catMeta[i.c]; const[st]=statusOf(i.q,i.safe); const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
-      return [code+'-'+String(items.indexOf(i)+1).padStart(3,'0'), i.n, m.t, i.b||'—', i.s, i.u, i.q+' '+i.u, i.safe+' '+i.u, inTotalOf(i.n,i.c)+' '+i.u, outTotalOf(i.n,i.c)+' '+i.u, i.warranty?i.warranty+' 个月':'—', i.expire||'—', st]; });
+      return [code+'-'+String(items.indexOf(i)+1).padStart(3,'0'), i.n, m.t, i.b||'—', i.s, i.u, i.q+' '+i.u, i.safe+' '+i.u, latestInNo(i), inTotalOf(i.n,i.c)+' '+i.u, latestOutNo(i), outTotalOf(i.n,i.c)+' '+i.u, i.warranty?i.warranty+' 个月':'—', i.expire||'—', st]; });
     exportXLSX([header].concat(body), '库存管理_'+(cat==='all'?'全部':catMeta[cat].t)+'.xlsx');
     toast('已导出库存','ok','库存清单已生成 .xlsx');
   }
