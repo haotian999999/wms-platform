@@ -184,6 +184,11 @@
   .kpi .top{display:flex;align-items:center;justify-content:flex-start;min-height:26px}
   .kpi .ic{position:absolute;top:16px;right:16px;width:62px;height:62px;border-radius:16px;display:grid;place-items:center;font-size:30px;background:linear-gradient(135deg,rgba(91,140,255,.24),rgba(91,140,255,.1));box-shadow:0 8px 22px rgba(91,140,255,.28),inset 0 1px 0 rgba(255,255,255,.22);opacity:.95;transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
   .kpi:hover .ic{transform:translateY(-3px) scale(1.06);box-shadow:0 14px 30px rgba(91,140,255,.42),inset 0 1px 0 rgba(255,255,255,.3)}
+  .kpi[role="button"]{cursor:pointer;transition:transform .25s var(--ease),box-shadow .25s var(--ease),border-color .25s var(--ease)}
+  .kpi[role="button"]:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(91,140,255,.16)}
+  .kpi[role="button"]:active{transform:translateY(-1px) scale(.99)}
+  .kpi[role="button"]::after{content:"查看当年详情 ↗";position:absolute;right:16px;bottom:12px;font-size:11px;color:var(--ink-3);opacity:0;transition:opacity .25s var(--ease)}
+  .kpi[role="button"]:hover::after{opacity:1}
   .kpi .val{font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;color:#fff;text-shadow:0 2px 18px rgba(91,140,255,.25)}
   .kpi .lbl{font-size:13px;color:var(--ink-2)}
   .trend{font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:3px}
@@ -218,6 +223,12 @@
   .chip.active.c-office{background:var(--c-office);border-color:var(--c-office);box-shadow:0 0 14px rgba(91,140,255,.5)}
   .chip.active.c-tobacco{background:var(--c-tobacco);border-color:var(--c-tobacco);box-shadow:0 0 14px rgba(255,138,76,.5)}
   .chip.active.c-gift{background:var(--c-gift);border-color:var(--c-gift);box-shadow:0 0 14px rgba(192,139,255,.5)}
+  .trend-switch{display:flex;gap:4px;padding:3px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  .trend-switch .ts{padding:4px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--ink-3);transition:all .18s}
+  .trend-switch .ts:hover{color:var(--ink)}
+  .trend-switch .ts.active{background:var(--primary);color:#fff;box-shadow:0 2px 10px rgba(91,140,255,.4)}
+  [data-theme="light"] .trend-switch{background:rgba(91,140,255,.06);border-color:#e4eaf5}
+  [data-theme="light"] .trend-switch .ts.active{background:var(--primary-deep)}
   .btn{
     height:40px;padding:0 18px;border-radius:11px;border:none;cursor:pointer;
     font-family:var(--font);font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:7px;transition:all .18s;color:#fff;
@@ -454,6 +465,7 @@
   #view-check .plan-table td:last-child{min-width:104px}
   .data-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;line-height:1.45}
   .data-table th,.data-table td{white-space:nowrap;vertical-align:middle;overflow:visible;text-align:center;padding:9px 13px}
+  .data-table td.down{color:var(--danger);font-weight:600}
   .data-table thead th{
     position:sticky;top:0;z-index:2;
     padding:12px 14px;font-size:12px;font-weight:700;color:#cdd6ed;
@@ -576,6 +588,25 @@
   .carryover-preview .co-row:last-child{border-bottom:none}
   .carryover-preview .co-row b{color:var(--ink-1);font-weight:500}
   .carryover-preview .co-row.warn b{color:#ffb088;font-weight:600}
+  .archive-overview{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:14px}
+  .archive-overview .ao-card{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;transition:all .2s var(--ease)}
+  .archive-overview .ao-card:hover{transform:translateY(-2px);border-color:rgba(91,140,255,.5);box-shadow:0 10px 24px rgba(91,140,255,.12)}
+  .archive-overview .ao-card.active{border-color:var(--primary);background:rgba(91,140,255,.1);box-shadow:0 0 0 1px var(--primary)}
+  .archive-overview .ao-card .ao-year{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+  .archive-overview .ao-card .ao-year::after{content:"›";color:var(--ink-3);font-weight:400}
+  .archive-overview .ao-card .ao-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+  .archive-overview .ao-card .ao-grid>div{display:flex;flex-direction:column;gap:2px}
+  .archive-overview .ao-card .ao-grid b{font-size:14px;font-weight:700;color:var(--ink)}
+  .archive-overview .ao-card .ao-grid span{font-size:11px;color:var(--ink-3)}
+  .archive-overview .ao-card .ao-foot{margin-top:10px;font-size:11px;color:var(--ink-3);border-top:1px dashed var(--line);padding-top:8px}
+  .archive-overview .ao-empty{grid-column:1/-1;text-align:center;color:var(--ink-3);font-size:13px;padding:22px 0;border:1px dashed var(--line);border-radius:14px}
+  .arch-foot .arch-total td,.arch-total td{background:rgba(91,140,255,.06);font-weight:700;color:var(--ink-2)}
+  .arch-foot{display:table-footer-group}
+  [data-theme="light"] .archive-overview .ao-card{background:rgba(91,140,255,.04);border-color:#e4eaf5}
+  [data-theme="light"] .archive-overview .ao-card.active{background:rgba(91,140,255,.1);border-color:var(--primary-deep)}
+  [data-theme="light"] .arch-total td{background:rgba(91,140,255,.08);color:#3a5bf0}
+  .archive-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .archive-toolbar label{font-size:13px;color:var(--ink-3)}
   .btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.35);box-shadow:none!important}
   .note.ok{color:var(--success)}
   .tabs{padding:3px;border-radius:10px}
@@ -608,6 +639,16 @@
   .rec-detail{display:grid;grid-template-columns:108px 1fr;gap:13px 16px;margin-top:6px}
   .rec-detail dt{color:var(--ink-3);font-size:13px;margin:0}
   .rec-detail dd{margin:0;font-size:14px;font-weight:400;color:var(--ink)}
+  .kpi-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .kpi-sum>div{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+  .kpi-sum b{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .kpi-sum b.down{color:#ff7a7a}
+  .kpi-sum span{font-size:12px;color:var(--ink-3)}
+  .kpi-sec-title{font-size:13px;font-weight:600;color:var(--ink-2);margin:16px 0 8px;display:flex;align-items:center;gap:8px}
+  .kpi-sec-title::before{content:"";width:3px;height:12px;border-radius:2px;background:var(--primary)}
+  [data-theme="light"] .kpi-sum>div{background:rgba(91,140,255,.05);border-color:#e4eaf5}
+  [data-theme="light"] .kpi-sum b{color:#1d2433}
+  [data-theme="light"] .kpi-sum b.down{color:#e05060}
   .modal-tag{display:inline-block;padding:3px 10px;border-radius:7px;font-size:12px;font-weight:600;color:#fff}
 
   /* ===== 动画反馈增强 ===== */
@@ -868,22 +909,22 @@
       <!-- ============ DASHBOARD ============ -->
       <section class="view active" id="view-dashboard">
         <div class="grid kpi-row">
-          <div class="card kpi">
+          <div class="card kpi" data-kpi="cat" role="button" tabindex="0" title="点击查看当年品类明细">
             <div class="top"><div class="lbl">物资品类</div><div class="ic">📚</div></div>
             <div class="val" id="kpiCatCount">0 类 / 0 项</div>
             <div class="trend" id="kpiCatTrend">— 暂无数据</div>
           </div>
-          <div class="card kpi">
+          <div class="card kpi" data-kpi="qty" role="button" tabindex="0" title="点击查看当年库存变动">
             <div class="top"><div class="lbl">库存总量</div><div class="ic">📦</div></div>
             <div class="val" id="kpiTotalQty" data-count="0">0</div>
             <div class="trend" id="kpiTotalTrend">— 暂无数据</div>
           </div>
-          <div class="card kpi">
+          <div class="card kpi" data-kpi="in" role="button" tabindex="0" title="点击查看当年入库明细">
             <div class="top"><div class="lbl">本月入库</div><div class="ic">⬇️</div></div>
             <div class="val" id="kpiMonthIn" data-count="0">0</div>
             <div class="trend" id="kpiMonthInTrend">— 暂无数据</div>
           </div>
-          <div class="card kpi">
+          <div class="card kpi" data-kpi="out" role="button" tabindex="0" title="点击查看当年领用明细">
             <div class="top"><div class="lbl">本月领用</div><div class="ic">⬆️</div></div>
             <div class="val" id="kpiMonthOut" data-count="0">0</div>
             <div class="trend" id="kpiMonthOutTrend">— 暂无数据</div>
@@ -892,7 +933,7 @@
 
         <div class="grid row-2 mt">
           <div class="card">
-            <div class="panel-head"><div><h3>近 6 个月出入库趋势</h3><div class="sub">单位：件</div></div><span class="more" id="exportTrendBtn" role="button" tabindex="0">导出报表</span></div>
+            <div class="panel-head"><div><h3>近 6 个月出入库趋势</h3><div class="sub" id="trendSub">单位：件</div></div><div style="display:flex;align-items:center;gap:8px"><div class="trend-switch" id="trendSwitch"><button class="ts active" data-range="month">本月</button><button class="ts" data-range="quarter">季度</button><button class="ts" data-range="year">年度</button></div><span class="more" id="exportTrendBtn" role="button" tabindex="0">导出报表</span></div></div>
             <div class="chart-box"><canvas id="trendChart"></canvas></div>
           </div>
           <div class="card">
@@ -1198,18 +1239,22 @@
               <label>选择年度：</label>
               <select id="archiveYear"></select>
               <span class="plan-meta" id="archiveMeta"></span>
+              <span style="flex:1"></span>
+              <button class="btn btn-ghost" id="exportArchiveBtn">⬇ 导出该年度归档</button>
+              <button class="btn btn-danger" id="delArchiveBtn">🗑 删除该年度归档</button>
             </div>
+            <div class="archive-overview" id="archiveOverview"></div>
             <div class="card mt">
               <div class="panel-head"><div><h3>年度结存快照</h3><div class="sub">该年度末冻结的库存结存</div></div></div>
               <div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th>年末结存</th><th>单位</th><th>结存金额(元)</th></tr></thead><tbody id="snapBody"></tbody></table></div>
             </div>
             <div class="card mt">
               <div class="panel-head"><div><h3>归档入库流水</h3><div class="sub">该年度全部入库记录</div></div></div>
-              <div class="table-scroll"><table class="data-table"><thead><tr><th>入库单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>数量</th><th>金额(元)</th><th>供应商</th></tr></thead><tbody id="archInBody"></tbody></table></div>
+              <div class="table-scroll"><table class="data-table"><thead><tr><th>入库单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>数量</th><th>金额(元)</th><th>供应商</th></tr></thead><tbody id="archInBody"></tbody><tfoot id="archInFoot" class="arch-foot"></tfoot></table></div>
             </div>
             <div class="card mt">
               <div class="panel-head"><div><h3>归档出库流水</h3><div class="sub">该年度全部出库记录</div></div></div>
-              <div class="table-scroll"><table class="data-table"><thead><tr><th>出库单号</th><th>日期</th><th>领用人</th><th>物资名称</th><th>分类</th><th>数量</th><th>用途</th></tr></thead><tbody id="archOutBody"></tbody></table></div>
+              <div class="table-scroll"><table class="data-table"><thead><tr><th>出库单号</th><th>日期</th><th>领用人</th><th>物资名称</th><th>分类</th><th>数量</th><th>用途</th></tr></thead><tbody id="archOutBody"></tbody><tfoot id="archOutFoot" class="arch-foot"></tfoot></table></div>
             </div>
           </div>
         </div>
@@ -1217,14 +1262,22 @@
 
       <!-- ============ REPORTS ============ -->
       <section class="view" id="view-reports">
+        <div class="panel-head" style="margin-bottom:14px"><div><h3>统计分析</h3><div class="sub" id="repRangeSub">按时间范围聚合出入库与库存数据</div></div>
+          <div class="chips" id="repRangeTabs">
+            <button class="chip active" data-range="month"><span class="d" style="background:var(--c-office)"></span>本月</button>
+            <button class="chip" data-range="quarter"><span class="d" style="background:var(--c-tobacco)"></span>本季度</button>
+            <button class="chip" data-range="year"><span class="d" style="background:var(--c-gift)"></span>本年度</button>
+            <button class="chip" data-range="all"><span class="d" style="background:#4b5563"></span>全部</button>
+          </div>
+        </div>
         <div class="grid row-3">
           <div class="card kpi"><div class="top"><div class="lbl">库存总金额</div><div class="ic">💰</div></div><div class="val" id="repTotalValue">¥ 0</div><div class="trend" id="repValueTrend">— 暂无数据</div></div>
-          <div class="card kpi"><div class="top"><div class="lbl">本月领用次数</div><div class="ic">🧾</div></div><div class="val" id="repMonthOutCount">0</div><div class="trend" id="repOutTrend">— 暂无数据</div></div>
+          <div class="card kpi"><div class="top"><div class="lbl">期间领用次数</div><div class="ic">🧾</div></div><div class="val" id="repMonthOutCount">0</div><div class="trend" id="repOutTrend">— 暂无数据</div></div>
           <div class="card kpi"><div class="top"><div class="lbl">周转天数</div><div class="ic">🔄</div></div><div class="val" id="repTurnover">—</div><div class="trend" id="repTurnTrend">暂无数据</div></div>
         </div>
         <div class="grid row-2 mt">
           <div class="card">
-            <div class="panel-head"><div><h3>各部门领用占比</h3><div class="sub">本月 Top 部门</div></div></div>
+            <div class="panel-head"><div><h3>各部门领用占比</h3><div class="sub" id="repDeptSub">期间 Top 部门</div></div></div>
             <div class="chart-box"><canvas id="deptChart"></canvas></div>
           </div>
           <div class="card">
@@ -1233,8 +1286,18 @@
           </div>
         </div>
         <div class="card mt">
-          <div class="panel-head"><div><h3>分类领用排行</h3><div class="sub">本月各分类领用件数</div></div></div>
+          <div class="panel-head"><div><h3>分类领用排行</h3><div class="sub" id="repRankSub">期间各分类领用件数</div></div></div>
           <div class="chart-box"><canvas id="rankChart"></canvas></div>
+        </div>
+        <div class="grid row-2 mt">
+          <div class="card">
+            <div class="panel-head"><div><h3>部门领用明细</h3><div class="sub" id="repDeptTableSub">期间部门领用汇总</div></div></div>
+            <div class="table-scroll"><table class="data-table"><thead><tr><th>部门</th><th class="num">领用次数</th><th class="num">领用件数</th><th class="num">占比</th></tr></thead><tbody id="repDeptTable"></tbody></table></div>
+          </div>
+          <div class="card">
+            <div class="panel-head"><div><h3>物资领用排行 Top10</h3><div class="sub" id="repItemSub">期间领用最多的物资</div></div></div>
+            <div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th class="num">领用件数</th></tr></thead><tbody id="repItemTable"></tbody></table></div>
+          </div>
         </div>
       </section>
 
@@ -1265,7 +1328,7 @@
               <button class="chip c-tobacco" data-cat="tobacco"><span class="d" style="background:var(--c-tobacco)"></span>烟酒茶</button>
               <button class="chip c-gift" data-cat="gift"><span class="d" style="background:var(--c-gift)"></span>礼品</button>
             </div>
-            <div style="margin-top:12px;overflow-x:auto;border:1px solid var(--line);border-radius:12px">
+            <div id="safeTableWrap" style="margin-top:12px;overflow-x:auto;border:1px solid var(--line);border-radius:12px">
               <table class="safe-table">
                 <thead><tr><th>物资名称</th><th class="num">现存量</th><th class="num">默认值</th><th>单独预警</th><th>状态</th></tr></thead>
                 <tbody id="safeBody"></tbody>
@@ -1273,9 +1336,10 @@
             </div>
             <div style="display:flex;gap:12px;align-items:center;margin-top:14px">
               <button class="btn btn-primary" id="saveSettings">保存设置</button>
+              <button class="btn btn-ghost" id="safeReopen" style="display:none">✏️ 重新编辑单独预警</button>
               <span class="plan-meta" id="safeMsg"></span>
             </div>
-            <div class="note" style="padding-left:0;padding-right:0;font-size:11px;margin-top:8px">提示：单品「单独预警」留空时沿用分类默认值；填写数值则单独设定。保存后库存管理 / 预警同步更新。</div>
+            <div class="note" style="padding-left:0;padding-right:0;font-size:11px;margin-top:8px">提示：单品「单独预警」留空时沿用分类默认值；填写数值则单独设定。保存后库存管理 / 预警同步更新，预警表格自动收起，如需再次调整可点击「重新编辑单独预警」。</div>
           </div>
         </div>
 
@@ -1396,6 +1460,13 @@
       </div>
     </div>
   </div>
+  <!-- 工作台 KPI 详情弹窗（当年数据口径） -->
+  <div class="modal-mask" id="kpiModal">
+    <div class="modal" style="--mw:720px">
+      <div class="modal-head"><h3 id="kpiModalTitle">数据详情</h3><button class="modal-close" id="kpiModalClose">✕</button></div>
+      <div class="modal-body"><div id="kpiModalBody"></div></div>
+    </div>
+  </div>
   <!-- 记录查看弹窗 -->
   <div class="modal-mask" id="recModal">
     <div class="modal">
@@ -1510,7 +1581,6 @@
       </div>
       <div class="modal-body"><div class="form-grid" id="recEditBody"></div></div>
       <div class="modal-foot">
-        <button class="btn btn-ghost" id="recEditDelete" style="color:#ff7a7a;border-color:rgba(255,90,90,.5)">🗑️ 删除</button>
         <button class="btn btn-ghost" id="recEditCancel">取消</button>
         <button class="btn btn-primary" id="recEditSave">保存</button>
       </div>
@@ -2543,7 +2613,25 @@
   function monthLabel(ym){ return +ym.split('-')[1]+'月'; }
   function last6Months(){ const arr=[]; const d=new Date(); d.setDate(1); for(let i=5;i>=0;i--){ const t=new Date(d.getFullYear(),d.getMonth()-i,1); arr.push({key:monthKey(t),label:monthLabel(monthKey(t))}); } return arr; }
   function sumByMonth(records, months, qtyKey){ return months.map(m=> records.filter(r=>String(r.date).startsWith(m.key)).reduce((s,r)=>s+(+r[qtyKey]||0),0)); }
-  function buildTrendData(){ const months=last6Months(); return { labels:months.map(m=>m.label), inbound:sumByMonth(inboundRecords,months,'qty'), outbound:sumByMonth(outboundRecords,months,'qty') }; }
+  // 季度 / 年度粒度聚合（trendChart 切换用）
+  function qKeyOf(d){ const y=d.getFullYear(), q=Math.floor(d.getMonth()/3)+1; return y+'-Q'+q; }
+  function last6Quarters(){ const arr=[]; const d=new Date(); for(let i=5;i>=0;i--){ const t=new Date(d.getFullYear(), d.getMonth()-3*i, 1); arr.push({key:qKeyOf(t),label:qKeyOf(t).replace('-Q',' Q')}); } return arr; }
+  function last6Years(){ const cur=new Date().getFullYear(); return Array.from({length:6},(_,i)=>{ const y=cur-5+i; return {key:String(y),label:String(y)+'年'}; }); }
+  function sumByPeriod(records, periods, qtyKey, matchFn){ return periods.map(p=> records.filter(r=>matchFn(r,p.key)).reduce((s,r)=>s+(+r[qtyKey]||0),0)); }
+  function buildTrendData(range){
+    range=range||'month';
+    if(range==='quarter'){
+      const qs=last6Quarters();
+      const inMatch=(r,p)=>{ const d=r.date?new Date(String(r.date).slice(0,10)):null; return d&&!isNaN(d)&&qKeyOf(d)===p; };
+      return { range:'quarter', title:'近 6 个季度出入库趋势', labels:qs.map(q=>q.label), inbound:sumByPeriod(inboundRecords,qs,'qty',inMatch), outbound:sumByPeriod(outboundRecords,qs,'qty',inMatch) };
+    }
+    if(range==='year'){
+      const ys=last6Years();
+      const yMatch=(r,p)=>String(r.date||'').startsWith(p);
+      return { range:'year', title:'近 6 年出入库趋势', labels:ys.map(y=>y.label), inbound:sumByPeriod(inboundRecords,ys,'qty',yMatch), outbound:sumByPeriod(outboundRecords,ys,'qty',yMatch) };
+    }
+    const months=last6Months(); return { range:'month', title:'近 6 个月出入库趋势', labels:months.map(m=>m.label), inbound:sumByMonth(inboundRecords,months,'qty'), outbound:sumByMonth(outboundRecords,months,'qty') };
+  }
   function buildCatData(){ const total=items.reduce((s,i)=>s+(+i.q||0),0)||1; const list=Object.keys(catMeta).map(k=>{ const q=items.filter(i=>i.c===k).reduce((s,i)=>s+(+i.q||0),0); return {key:k,label:catMeta[k].t,q,pct:Math.round(q/total*100),color:catColor(k)}; }).filter(x=>x.q>0); return {total,list}; }
 
   function renderCatLegend(){
@@ -2594,53 +2682,181 @@
     setCount('kpiMonthIn',monthInCur); setTrend('kpiMonthInTrend',monthInCur,monthInPrev);
     setCount('kpiMonthOut',monthOutCur); setTrend('kpiMonthOutTrend',monthOutCur,monthOutPrev);
   }
+  // ---- 工作台 KPI 详情弹窗（当年口径：仅统计当前自然年） ----
+  function openKpiModal(kpi){
+    const year=new Date().getFullYear();
+    const titleMap={cat:'物资品类 · '+year+' 年',qty:'库存总量 · '+year+' 年',in:'本月入库 · '+year+' 年',out:'本月领用 · '+year+' 年'};
+    const t=document.getElementById('kpiModalTitle'); if(t) t.textContent=titleMap[kpi]||'数据详情';
+    const body=document.getElementById('kpiModalBody'); if(!body) return;
+    const isYear=r=>String(r.date||'').startsWith(String(year));
+    const inY=inboundRecords.filter(isYear), outY=outboundRecords.filter(isYear);
+    const inYQty=inY.reduce((s,r)=>s+(+r.qty||0),0), outYQty=outY.reduce((s,r)=>s+(+r.qty||0),0);
+    const monthKeys=Array.from({length:12},(_,i)=>year+'-'+String(i+1).padStart(2,'0'));
+    const monthLabel=m=>+m.split('-')[1]+'月';
+    const inByMonth=monthKeys.map(m=>inY.filter(r=>String(r.date).startsWith(m)).reduce((s,r)=>s+(+r.qty||0),0));
+    const outByMonth=monthKeys.map(m=>outY.filter(r=>String(r.date).startsWith(m)).reduce((s,r)=>s+(+r.qty||0),0));
+    const monthRows=monthKeys.map((m,i)=>`<tr><td>${monthLabel(m)}</td><td class="num">${fmtNum(inByMonth[i])}</td><td class="num">${fmtNum(outByMonth[i])}</td><td class="num ${inByMonth[i]-outByMonth[i]>=0?'':'down'}">${(inByMonth[i]-outByMonth[i])>=0?'+':''}${fmtNum(inByMonth[i]-outByMonth[i])}</td></tr>`).join('');
+    const catRows=Object.keys(catMeta).map(k=>{
+      const m=catMeta[k];
+      const q=items.filter(i=>i.c===k).reduce((s,i)=>s+(+i.q||0),0);
+      const iQ=inY.filter(r=>r.category===k).reduce((s,r)=>s+(+r.qty||0),0);
+      const oQ=outY.filter(r=>r.category===k).reduce((s,r)=>s+(+r.qty||0),0);
+      return `<tr><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="num">${fmtNum(iQ)}</td><td class="num">${fmtNum(oQ)}</td><td class="num">${fmtNum(q)}</td></tr>`;
+    }).join('')||'<tr><td colspan="4" class="empty">暂无分类数据</td></tr>';
+    const inRows=inY.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8)
+      .map(r=>`<tr><td class="code">${r.inNo||r.id||'—'}</td><td>${r.date||'—'}</td><td>${r.name}</td><td class="num">${r.qty}${r.unit||''}</td></tr>`).join('')
+      ||'<tr><td colspan="4" class="empty">本年暂无入库记录</td></tr>';
+    const outRows=outY.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8)
+      .map(r=>`<tr><td class="code">${r.outNo||r.id||'—'}</td><td>${r.date||'—'}</td><td>${r.name}</td><td>${r.applicant||'—'}</td><td class="num">${r.qty}${r.unit||''}</td></tr>`).join('')
+      ||'<tr><td colspan="5" class="empty">本年暂无领用记录</td></tr>';
+    let html='';
+    if(kpi==='cat'){
+      html=`<div class="kpi-sum"><div><b>${fmtNum(new Set(items.map(i=>i.c)).size)}</b><span>在库品类</span></div><div><b>${fmtNum(items.length)}</b><span>在库物资</span></div><div><b>${fmtNum(inY.length)}</b><span>本年入库笔数</span></div><div><b>${fmtNum(outY.length)}</b><span>本年领用笔数</span></div></div>
+        <div class="kpi-sec-title">分类一览（${year} 年）</div>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>分类</th><th class="num">本年入库(件)</th><th class="num">本年领用(件)</th><th class="num">当前库存(件)</th></tr></thead><tbody>${catRows}</tbody></table></div>`;
+    } else if(kpi==='qty'){
+      html=`<div class="kpi-sum"><div><b>${fmtNum(items.reduce((s,i)=>s+(+i.q||0),0))}</b><span>当前库存(件)</span></div><div><b>${fmtNum(inYQty)}</b><span>本年入库(件)</span></div><div><b>${fmtNum(outYQty)}</b><span>本年领用(件)</span></div><div><b class="${inYQty-outYQty>=0?'':'down'}">${(inYQty-outYQty)>=0?'+':''}${fmtNum(inYQty-outYQty)}</b><span>净变化(件)</span></div></div>
+        <div class="kpi-sec-title">年度入库 / 领用（${year} 年）</div>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>月份</th><th class="num">入库(件)</th><th class="num">领用(件)</th><th class="num">净变化(件)</th></tr></thead><tbody>${monthRows}</tbody></table></div>`;
+    } else if(kpi==='in'){
+      html=`<div class="kpi-sum"><div><b>${fmtNum(inYQty)}</b><span>本年累计入库(件)</span></div><div><b>${fmtNum(inY.length)}</b><span>本年入库笔数</span></div></div>
+        <div class="kpi-sec-title">年度入库分布（${year} 年）</div>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>月份</th><th class="num">入库(件)</th><th class="num">领用(件)</th><th class="num">净变化(件)</th></tr></thead><tbody>${monthRows}</tbody></table></div>
+        <div class="kpi-sec-title">最近入库记录</div>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>单号</th><th>日期</th><th>物资名称</th><th class="num">数量</th></tr></thead><tbody>${inRows}</tbody></table></div>`;
+    } else {
+      html=`<div class="kpi-sum"><div><b>${fmtNum(outYQty)}</b><span>本年累计领用(件)</span></div><div><b>${fmtNum(outY.length)}</b><span>本年领用笔数</span></div></div>
+        <div class="kpi-sec-title">年度领用分布（${year} 年）</div>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>月份</th><th class="num">入库(件)</th><th class="num">领用(件)</th><th class="num">净变化(件)</th></tr></thead><tbody>${monthRows}</tbody></table></div>
+        <div class="kpi-sec-title">最近领用记录</div>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>单号</th><th>日期</th><th>物资名称</th><th>领用人</th><th class="num">数量</th></tr></thead><tbody>${outRows}</tbody></table></div>`;
+    }
+    body.innerHTML=html;
+    document.getElementById('kpiModal').classList.add('show');
+  }
+  document.querySelectorAll('.kpi[data-kpi]').forEach(el=>{
+    el.addEventListener('click',()=>openKpiModal(el.dataset.kpi));
+    el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openKpiModal(el.dataset.kpi); } });
+  });
+  const kpiClose=document.getElementById('kpiModalClose'); if(kpiClose) kpiClose.addEventListener('click',()=>document.getElementById('kpiModal').classList.remove('show'));
+  const kpiModal=document.getElementById('kpiModal'); if(kpiModal) kpiModal.addEventListener('click',e=>{ if(e.target.id==='kpiModal') e.target.classList.remove('show'); });
+  let repRange='month';
+  function repPeriodFilter(range){
+    const now=new Date();
+    if(range==='month'){ const k=monthKey(now); return r=>String(r.date||'').startsWith(k); }
+    if(range==='quarter'){
+      const y=now.getFullYear(), q=Math.floor(now.getMonth()/3)+1;
+      return r=>{ const d=String(r.date||''); const yy=+d.slice(0,4), mm=+d.slice(5,7); return yy===y && Math.floor((mm-1)/3)+1===q; };
+    }
+    if(range==='year'){ const y=now.getFullYear(); return r=>String(r.date||'').startsWith(String(y)); }
+    return ()=>true;
+  }
+  function repPeriodDays(range){
+    const now=new Date();
+    if(range==='month') return new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    if(range==='quarter'){ const m=now.getMonth(); const qs=[0,3,6,9][Math.floor(m/3)]; return Math.round((new Date(now.getFullYear(), qs+3, 0) - new Date(now.getFullYear(), qs, 1))/86400000); }
+    if(range==='year') return ((now.getFullYear()%4===0&&now.getFullYear()%100!==0)||now.getFullYear()%400===0)?366:365;
+    return Math.max(1, Math.round((now - new Date(now.getFullYear(),0,1))/86400000));
+  }
+  function repPrevFilter(range){
+    const now=new Date();
+    if(range==='month'){ const d=new Date(now.getFullYear(), now.getMonth()-1, 1); const k=monthKey(d); return r=>String(r.date||'').startsWith(k); }
+    if(range==='quarter'){
+      const q=new Date(now.getFullYear(), now.getMonth()-3, 1);
+      const y=q.getFullYear(), qq=Math.floor(q.getMonth()/3)+1;
+      return r=>{ const d=String(r.date||''); const yy=+d.slice(0,4), mm=+d.slice(5,7); return yy===y && Math.floor((mm-1)/3)+1===qq; };
+    }
+    if(range==='year'){ const y=now.getFullYear()-1; return r=>String(r.date||'').startsWith(String(y)); }
+    return ()=>true;
+  }
   function renderReportsKPIs(){
     const priceMap={}; inboundRecords.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(r=>{ const k=r.name+'|'+r.category; if(r.price!=null) priceMap[k]=+r.price; });
     const totalValue=items.reduce((s,i)=>{ const p=priceMap[i.n+'|'+i.c]||0; return s+i.q*p; },0);
-    const cur=monthKey(new Date()); const prev=prevMonthKey(cur);
-    const outCountCur=outboundRecords.filter(r=>String(r.date).startsWith(cur)).length;
-    const outCountPrev=outboundRecords.filter(r=>String(r.date).startsWith(prev)).length;
+    const filter=repPeriodFilter(repRange), prevFilter=repPrevFilter(repRange);
+    const outCur=outboundRecords.filter(filter), outPrev=outboundRecords.filter(prevFilter);
+    const outCountCur=outCur.length, outCountPrev=outPrev.length;
+    const outQtyCur=outCur.reduce((s,r)=>s+(+r.qty||0),0);
     const elV=document.getElementById('repTotalValue'); if(elV) elV.textContent='¥ '+fmtNum(totalValue);
     const tV=document.getElementById('repValueTrend'); if(tV){ tV.textContent=totalValue?'— 基于入库单价估算':'— 暂无数据'; tV.className='trend'; }
-    const elO=document.getElementById('repMonthOutCount'); if(elO) elO.textContent=outCountCur;
+    const elO=document.getElementById('repMonthOutCount'); if(elO) elO.textContent=fmtNum(outCountCur);
     const tO=document.getElementById('repOutTrend'); if(tO){ if(outCountPrev===0){ tO.textContent='— 暂无环比'; tO.className='trend'; } else { const pct=((outCountCur-outCountPrev)/outCountPrev*100).toFixed(1); const up=+pct>=0; tO.textContent=(up?'▲ ':'▼ ')+Math.abs(pct)+'%'; tO.className='trend '+(up?'up':'down'); } }
     const elT=document.getElementById('repTurnover'); const tT=document.getElementById('repTurnTrend');
     if(elT&&tT){
       const totalQty=items.reduce((s,i)=>s+(+i.q||0),0);
-      const avgDailyOut=(outboundRecords.filter(r=>String(r.date).startsWith(cur)).reduce((s,r)=>s+(+r.qty||0),0))/30;
-      if(avgDailyOut>0 && totalQty>0){ const days=Math.round(totalQty/avgDailyOut); elT.textContent=days+' 天'; tT.textContent='— 估算'; tT.className='trend'; }
+      const days=repPeriodDays(repRange);
+      const avgDailyOut=outQtyCur/Math.max(1,days);
+      if(avgDailyOut>0 && totalQty>0){ const dd=Math.round(totalQty/avgDailyOut); elT.textContent=dd+' 天'; tT.textContent='— 按期间日均估算'; tT.className='trend'; }
       else { elT.textContent='—'; tT.textContent='暂无数据'; tT.className='trend'; }
     }
+    const rangeLabel={month:'本月',quarter:'本季度',year:'本年度',all:'全部期间'}[repRange];
+    const sub=document.getElementById('repRangeSub'); if(sub) sub.textContent='当前统计范围：'+rangeLabel+'（领用 '+outCountCur+' 次 / '+fmtNum(outQtyCur)+' 件）';
+    const deptSub=document.getElementById('repDeptSub'); if(deptSub) deptSub.textContent=rangeLabel+' Top 部门';
+    const rankSub=document.getElementById('repRankSub'); if(rankSub) rankSub.textContent=rangeLabel+' 各分类领用件数';
   }
   function renderSettingsCats(){
     const listEl=document.getElementById('settingsCatList'); if(!listEl) return;
     const subEl=document.getElementById('settingsCatSub'); if(subEl) subEl.textContent='系统当前启用 '+Object.keys(catMeta).length+' 个物资分类';
     listEl.innerHTML=Object.keys(catMeta).map(k=>{ const m=catMeta[k]; const cnt=items.filter(i=>i.c===k).length; return `<div class="rec"><div class="ri" style="color:${m.col}">${m.icon||'📦'}</div><div><div class="rt">${m.t}</div><div class="rs">${m.desc||''} · ${cnt} 项</div></div><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>启用</span></div>`; }).join('');
   }
+  let trendRange='month';
   function updateDashboardCharts(){
     if(typeof window.Chart==='undefined' || !charts.dashboard) return;
-    const td=buildTrendData(); const cd=buildCatData();
+    const td=buildTrendData(trendRange); const cd=buildCatData();
     if(charts.dashboard.trend){ charts.dashboard.trend.data.labels=td.labels; charts.dashboard.trend.data.datasets[0].data=td.inbound; charts.dashboard.trend.data.datasets[1].data=td.outbound; charts.dashboard.trend.update(); }
     if(charts.dashboard.cat){ charts.dashboard.cat.data.labels=cd.list.map(x=>x.label); charts.dashboard.cat.data.datasets[0].data=cd.list.map(x=>x.q); charts.dashboard.cat.data.datasets[0].backgroundColor=cd.list.map(x=>x.color); charts.dashboard.cat.update(); }
+    const sub=document.getElementById('trendSub'); if(sub) sub.textContent=td.title.replace('趋势','')+' · 单位：件';
+  }
+  function setTrendRange(range){
+    trendRange=range;
+    document.querySelectorAll('#trendSwitch .ts').forEach(b=>b.classList.toggle('active',b.dataset.range===range));
+    const td=buildTrendData(trendRange);
+    const sub=document.getElementById('trendSub'); if(sub) sub.textContent=td.title.replace('趋势','')+' · 单位：件';
+    if(typeof window.Chart!=='undefined' && charts.dashboard && charts.dashboard.trend) updateDashboardCharts();
+  }
+  document.querySelectorAll('#trendSwitch .ts').forEach(b=>b.addEventListener('click',()=>setTrendRange(b.dataset.range)));
+  function renderReportsDetailTables(){
+    const filter=repPeriodFilter(repRange);
+    const outSel=outboundRecords.filter(filter);
+    const deptMap={};
+    outSel.forEach(r=>{ const d=r.dept||'未分类'; if(!deptMap[d]) deptMap[d]={cnt:0,qty:0}; deptMap[d].cnt++; deptMap[d].qty+=(+r.qty||0); });
+    const totalQty=Object.values(deptMap).reduce((s,x)=>s+x.qty,0)||1;
+    const deptRows=Object.keys(deptMap).sort((a,b)=>deptMap[b].qty-deptMap[a].qty).map(d=>`<tr><td>${d}</td><td class="num">${fmtNum(deptMap[d].cnt)}</td><td class="num">${fmtNum(deptMap[d].qty)}</td><td class="num">${Math.round(deptMap[d].qty/totalQty*100)}%</td></tr>`).join('');
+    const dt=document.getElementById('repDeptTable');
+    if(dt) dt.innerHTML=deptRows||'<tr><td colspan="4" class="empty">该期间暂无领用记录</td></tr>';
+    const itemMap={};
+    outSel.forEach(r=>{ const k=r.name+'|'+(r.category||''); if(!itemMap[k]) itemMap[k]={n:r.name,c:r.category||'',qty:0}; itemMap[k].qty+=(+r.qty||0); });
+    const itemRows=Object.values(itemMap).sort((a,b)=>b.qty-a.qty).slice(0,10).map(x=>{
+      const m=catMeta[x.c];
+      return `<tr><td>${x.n}</td><td>${m?`<span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span>`:x.c}</td><td class="num">${fmtNum(x.qty)}</td></tr>`;
+    }).join('');
+    const it=document.getElementById('repItemTable');
+    if(it) it.innerHTML=itemRows||'<tr><td colspan="3" class="empty">该期间暂无领用记录</td></tr>';
   }
   function updateReportsCharts(){
     if(typeof window.Chart==='undefined' || !charts.reports) return;
-    const cur=monthKey(new Date());
-    const monthOut=outboundRecords.filter(r=>String(r.date).startsWith(cur));
+    const filter=repPeriodFilter(repRange);
+    const monthOut=outboundRecords.filter(filter);
     const deptMap={}; monthOut.forEach(r=>{ deptMap[r.dept||'未分类']=(deptMap[r.dept||'未分类']||0)+(+r.qty||0); });
     const deptLabels=Object.keys(deptMap), deptData=Object.values(deptMap);
     if(charts.reports.dept){ charts.reports.dept.data.labels=deptLabels.length?deptLabels:['暂无数据']; charts.reports.dept.data.datasets[0].data=deptLabels.length?deptData:[0]; charts.reports.dept.update(); }
     const priceMap={}; inboundRecords.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(r=>{ const k=r.name+'|'+r.category; if(r.price!=null) priceMap[k]=+r.price; });
     const catVal=Object.keys(catMeta).map(k=> Math.round(items.filter(i=>i.c===k).reduce((s,i)=>s+i.q*(priceMap[i.n+'|'+i.c]||0),0))/10000 );
     if(charts.reports.value){ charts.reports.value.data.labels=Object.keys(catMeta).map(k=>catMeta[k].t); charts.reports.value.data.datasets[0].data=catVal; charts.reports.value.update(); }
-    const months=last6Months();
-    const ds=Object.keys(catMeta).map(k=>({label:catMeta[k].t,borderColor:catColor(k),backgroundColor:catColor(k),tension:.4,pointRadius:3,fill:false,data:months.map(m=> outboundRecords.filter(r=>r.category===k&&String(r.date).startsWith(m.key)).reduce((s,r)=>s+(+r.qty||0),0) )}));
-    if(charts.reports.rank){ charts.reports.rank.data.labels=months.map(m=>m.label); charts.reports.rank.data.datasets=ds; charts.reports.rank.update(); }
+    const catRank=Object.keys(catMeta).map(k=>({k,qty:monthOut.filter(r=>r.category===k).reduce((s,r)=>s+(+r.qty||0),0)})).sort((a,b)=>b.qty-a.qty);
+    if(charts.reports.rank){ charts.reports.rank.data.labels=catRank.map(x=>catMeta[x.k].t); charts.reports.rank.data.datasets[0].data=catRank.map(x=>x.qty); charts.reports.rank.update(); }
+    renderReportsDetailTables();
   }
   function renderDashboard(){
     renderDashboardKPIs(); renderCatLegend(); renderAlertsFromItems(); renderRecentActivity(); renderRecentIn(); renderRecentOut(); updateDashboardCharts();
   }
-  function renderReports(){ renderReportsKPIs(); updateReportsCharts(); }
+  function renderReports(){
+    if(typeof window.Chart!=='undefined' && !charts.reports) initCharts('reports');
+    renderReportsKPIs(); updateReportsCharts();
+  }
+  document.querySelectorAll('#repRangeTabs .chip').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('#repRangeTabs .chip').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); repRange=b.dataset.range; renderReports();
+  }));
 
   function initCharts(v){
     if(typeof window.Chart === 'undefined') return;
@@ -2668,8 +2884,6 @@
       const deptLabels=Object.keys(deptMap), deptData=Object.values(deptMap);
       const priceMap={}; inboundRecords.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(r=>{ const k=r.name+'|'+r.category; if(r.price!=null) priceMap[k]=+r.price; });
       const catVal=Object.keys(catMeta).map(k=> Math.round(items.filter(i=>i.c===k).reduce((s,i)=>s+i.q*(priceMap[i.n+'|'+i.c]||0),0))/10000 );
-      const months=last6Months();
-      const ds=Object.keys(catMeta).map(k=>({label:catMeta[k].t,borderColor:catColor(k),backgroundColor:catColor(k),tension:.4,pointRadius:3,fill:false,data:months.map(m=> outboundRecords.filter(r=>r.category===k&&String(r.date).startsWith(m.key)).reduce((s,r)=>s+(+r.qty||0),0) )}));
       charts.reports={};
       charts.reports.dept=new Chart(document.getElementById('deptChart'),{
         type:'bar',
@@ -2682,9 +2896,9 @@
         options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:C.grid},border:{display:false},beginAtZero:true},x:{grid:{display:false},border:{display:false}}}}
       });
       charts.reports.rank=new Chart(document.getElementById('rankChart'),{
-        type:'line',
-        data:{labels:months.map(m=>m.label),datasets:ds},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,boxWidth:8}}},scales:{y:{grid:{color:C.grid},border:{display:false},beginAtZero:true},x:{grid:{display:false},border:{display:false}}}}
+        type:'bar',
+        data:{labels:Object.keys(catMeta).map(k=>catMeta[k].t),datasets:[{label:'领用(件)',data:Object.keys(catMeta).map(()=>0),backgroundColor:[C.office,C.tobacco,C.gift],borderRadius:8}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:C.grid},border:{display:false},beginAtZero:true},x:{grid:{display:false},border:{display:false}}}}
       });
     }
   }
@@ -2693,6 +2907,8 @@
     if(typeof window.Chart === 'undefined'){ setTimeout(initDefaultCharts, 50); return; }
     syncChartTheme();
     initCharts('dashboard');
+    initCharts('reports'); // 预初始化报表图表，避免快速切换时图表缺失
+    if(typeof window.Chart!=='undefined' && !charts.reports) setTimeout(initDefaultCharts,50);
   }
   initDefaultCharts();
 
@@ -3099,51 +3315,111 @@
       i.initQty=+(base+inLast-outLast).toFixed(2);
     });
     const years=[...new Set([...inArch,...outArch].map(yearOf).filter(y=>!isNaN(y)))].sort((a,b)=>a-b);
-    const yLabel=years[0]===years[years.length-1]? String(years[0]) : (years[0]+'–'+years[years.length-1]);
-    archivedRecords.unshift({label:yLabel,year:(years[years.length-1]||cur-1),inbound:inArch,outbound:outArch,snapshot,carriedAt:new Date().toISOString().slice(0,10)});
+    // 按年度拆分归档：每年独立成档，支持「2024 年 / 2025 年」归类查看、导出与删除
+    const lastYear=years[years.length-1]||(cur-1);
+    years.forEach(y=>{
+      archivedRecords.unshift({
+        label:String(y), year:y,
+        inbound:inArch.filter(r=>yearOf(r)===y),
+        outbound:outArch.filter(r=>yearOf(r)===y),
+        // 期末结存快照仅挂载最近结转年度（对应结转时点的年末库存）
+        snapshot:(y===lastYear)?snapshot:[],
+        carriedAt:new Date().toISOString().slice(0,10)
+      });
+    });
     // 先筛选「本年及以后」留存，再清空回填，避免清空后筛选得到空数组
     const keepIn=inboundRecords.filter(r=>yearOf(r)>=cur);
     const keepOut=outboundRecords.filter(r=>yearOf(r)>=cur);
     inboundRecords.length=0; inboundRecords.push(...keepIn);
     outboundRecords.length=0; outboundRecords.push(...keepOut);
-    lastCarryoverYear=years[years.length-1]||(cur-1);
+    lastCarryoverYear=lastYear;
     recomputeStocks(); // 现存数值应与原 q 完全一致，不发生跳变
     checkPlansQuarter.length=0; checkPlansYear.length=0; seedCheckPlans(); // 新一年清空计划，重新生成
     wmsSave();
     if(activeDataTab==='archive') renderArchive(); else renderDataTables();
     renderInv('all'); renderWarranty(); renderRecentOut(); updateDataNote();
     renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCarryoverCard();
-    toast('年度结转完成','ok',`已归档 ${inArch.length+outArch.length} 笔历史流水（${yLabel} 年），年末库存已冻结为本年期初`);
+    toast('年度结转完成','ok',`已按年度归档 ${inArch.length+outArch.length} 笔历史流水（${years.length>1?years[0]+'–'+years[years.length-1]:years[0]} 年），年末库存已冻结为本年期初`);
   }
   function renderArchive(){
     const sel=document.getElementById('archiveYear'); if(!sel) return;
+    const ov=document.getElementById('archiveOverview');
+    const expBtn=document.getElementById('exportArchiveBtn');
+    const delBtn=document.getElementById('delArchiveBtn');
     if(!archivedRecords.length){
       sel.innerHTML='';
       const m=document.getElementById('archiveMeta'); if(m) m.textContent='暂无归档数据';
+      if(ov) ov.innerHTML='<div class="ao-empty">暂无年度归档 · 执行「年度数据结转」后按年度归类展示</div>';
+      if(expBtn) expBtn.disabled=true; if(delBtn) delBtn.disabled=true;
       ['snapBody','archInBody','archOutBody'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML='<tr><td colspan="7" class="empty">暂无归档数据</td></tr>'; });
+      ['archInFoot','archOutFoot'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML=''; });
       return;
     }
     sel.innerHTML=archivedRecords.map((a,i)=>`<option value="${i}">${a.label||a.year||i} 年（${a.inbound.length+a.outbound.length} 笔）</option>`).join('');
+    if(ov){
+      ov.innerHTML=archivedRecords.map((a,i)=>{
+        const inAmt=a.inbound.reduce((s,r)=>s+(+r.amount||0),0);
+        const outQty=a.outbound.reduce((s,r)=>s+(+r.qty||0),0);
+        const snapAmt=(a.snapshot||[]).reduce((s,x)=>s+(+x.amount||0),0);
+        return `<div class="ao-card ${i===0?'active':''}" data-idx="${i}">
+          <div class="ao-year">${a.label||a.year||i} 年</div>
+          <div class="ao-grid">
+            <div><b>${a.inbound.length+a.outbound.length}</b><span>流水笔数</span></div>
+            <div><b>${fmtNum(inAmt)}</b><span>入库金额(元)</span></div>
+            <div><b>${fmtNum(outQty)}</b><span>领用件数</span></div>
+            <div><b>${fmtNum(snapAmt)}</b><span>年末结存(元)</span></div>
+          </div>
+          <div class="ao-foot">结转于 ${a.carriedAt||'—'}</div>
+        </div>`;
+      }).join('');
+      ov.querySelectorAll('.ao-card').forEach(c=>c.addEventListener('click',()=>{
+        const idx=+c.dataset.idx;
+        ov.querySelectorAll('.ao-card').forEach(x=>x.classList.remove('active'));
+        c.classList.add('active');
+        sel.value=String(idx);
+        renderArchiveDetail(idx);
+      }));
+    }
+    if(expBtn) expBtn.disabled=false; if(delBtn) delBtn.disabled=false;
     renderArchiveDetail(+sel.value||0);
   }
   function renderArchiveDetail(idx){
     const a=archivedRecords[idx]; if(!a) return;
+    const ov=document.getElementById('archiveOverview');
+    if(ov){ ov.querySelectorAll('.ao-card').forEach(c=>c.classList.toggle('active',+c.dataset.idx===idx)); }
+    const sel=document.getElementById('archiveYear'); if(sel&&+sel.value!==idx) sel.value=String(idx);
     const m=document.getElementById('archiveMeta'); if(m) m.textContent='结转于 '+a.carriedAt+' · 共 '+(a.inbound.length+a.outbound.length)+' 笔历史流水';
     const sb=document.getElementById('snapBody');
-    sb.innerHTML=(a.snapshot&&a.snapshot.length)?a.snapshot.map(s=>`<tr><td>${s.n}</td><td>${catMeta[s.c]?catMeta[s.c].t:s.c}</td><td class="num">${s.q}</td><td>${s.u||'—'}</td><td class="num">${s.amount!=null?s.amount:'—'}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">无结存记录</td></tr>';
+    const snapAmt=(a.snapshot||[]).reduce((s,x)=>s+(+x.amount||0),0);
+    sb.innerHTML=(a.snapshot&&a.snapshot.length)?a.snapshot.map(s=>`<tr><td>${s.n}</td><td>${catMeta[s.c]?catMeta[s.c].t:s.c}</td><td class="num">${s.q}</td><td>${s.u||'—'}</td><td class="num">${s.amount!=null?s.amount:'—'}</td></tr>`).join('')+'<tr class="arch-total"><td colspan="2">合计</td><td class="num">'+fmtNum((a.snapshot||[]).reduce((s,x)=>s+(+x.q||0),0))+'</td><td></td><td class="num">'+fmtNum(snapAmt)+'</td></tr>':'<tr><td colspan="5" class="empty">无结存记录</td></tr>';
     const ib=document.getElementById('archInBody');
     ib.innerHTML=a.inbound.length?a.inbound.map(r=>`<tr><td class="code">${r.inNo||r.id}</td><td>${r.date}</td><td>${r.name}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td class="num">${r.amount||'—'}</td><td>${r.supplier||'—'}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">无入库归档</td></tr>';
+    const inQty=a.inbound.reduce((s,r)=>s+(+r.qty||0),0);
+    const inAmt=a.inbound.reduce((s,r)=>s+(+r.amount||0),0);
+    const inFoot=document.getElementById('archInFoot');
+    if(inFoot) inFoot.innerHTML=a.inbound.length?`<tr class="arch-total"><td colspan="4">入库合计</td><td class="num">${fmtNum(inQty)}</td><td class="num">${fmtNum(inAmt)}</td><td></td></tr>`:'';
     const ob=document.getElementById('archOutBody');
     ob.innerHTML=a.outbound.length?a.outbound.map(r=>`<tr><td class="code">${r.outNo||r.id}</td><td>${r.date}</td><td>${r.applicant||'—'}</td><td>${r.name}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td>${r.purpose||'—'}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">无出库归档</td></tr>';
+    const outQty=a.outbound.reduce((s,r)=>s+(+r.qty||0),0);
+    const outFoot=document.getElementById('archOutFoot');
+    if(outFoot) outFoot.innerHTML=a.outbound.length?`<tr class="arch-total"><td colspan="5">出库合计</td><td class="num">${fmtNum(outQty)}</td><td></td></tr>`:'';
   }
   const _coBtn=document.getElementById('btnCarryover');
   if(_coBtn) _coBtn.addEventListener('click',()=>{
     const label=carryoverYearsLabel();
     if(!label){ toast('无历史年度数据可结转','warn'); return; }
     const s=carryoverStats();
+    // 按年度列出将归档的流水笔数
+    const cur=new Date().getFullYear();
+    const years=[...new Set([...inboundRecords,...outboundRecords].map(yearOf).filter(y=>!isNaN(y)&&y<cur))].sort((a,b)=>a-b);
+    const yearRows=years.map(y=>{
+      const iN=inboundRecords.filter(r=>yearOf(r)===y).length;
+      const oN=outboundRecords.filter(r=>yearOf(r)===y).length;
+      return '<div class="co-row"><span>'+y+' 年</span><b>入库 '+iN+' 笔 · 出库 '+oN+' 笔</b></div>';
+    }).join('');
     document.getElementById('carryoverConfirmInfo').innerHTML='<div class="co-row"><span>结转年度</span><b>'+label+' 年</b></div>'+
-      '<div class="co-row"><span>归档入库流水</span><b>'+s.inH+' 笔</b></div>'+
-      '<div class="co-row"><span>归档出库流水</span><b>'+s.outH+' 笔</b></div>'+
+      yearRows+
+      '<div class="co-row"><span>合计归档流水</span><b>'+s.inH+' 入库 + '+s.outH+' 出库</b></div>'+
       '<div class="co-row"><span>期末库存物资</span><b>'+s.items+' 种将冻结为期初</b></div>';
     document.getElementById('carryoverModal').classList.add('show');
   });
@@ -3152,6 +3428,33 @@
   document.getElementById('carryoverModal').addEventListener('click',e=>{ if(e.target.id==='carryoverModal') document.getElementById('carryoverModal').classList.remove('show'); });
   document.getElementById('carryoverConfirm').addEventListener('click',()=>{ document.getElementById('carryoverModal').classList.remove('show'); doCarryover(); });
   const _archSel=document.getElementById('archiveYear'); if(_archSel) _archSel.addEventListener('change',()=>renderArchiveDetail(+_archSel.value||0));
+  // 年度归档：导出 / 删除
+  function exportArchiveYear(){
+    const a=archivedRecords[+document.getElementById('archiveYear').value||0]; if(!a) return;
+    const label=(a.label||a.year||'')+' 年';
+    const rows=[[label+' 年度归档报表'],['结转日期',a.carriedAt||'—'],['流水合计',(a.inbound.length+a.outbound.length)+' 笔'],[],
+      ['年度结存快照'],['物资名称','分类','年末结存','单位','结存金额(元)']];
+    (a.snapshot||[]).forEach(s=>rows.push([s.n,catMeta[s.c]?catMeta[s.c].t:s.c,s.q,s.u||'—',s.amount!=null?s.amount:'—']));
+    rows.push([]);
+    rows.push(['年度入库流水'],['入库单号','日期','物资名称','分类','数量','金额(元)','供应商']);
+    a.inbound.forEach(r=>rows.push([r.inNo||r.id,r.date,r.name,catMeta[r.category]?catMeta[r.category].t:r.category,r.qty,r.amount||'—',r.supplier||'—']));
+    rows.push([]);
+    rows.push(['年度出库流水'],['出库单号','日期','领用人','物资名称','分类','数量','用途']);
+    a.outbound.forEach(r=>rows.push([r.outNo||r.id,r.date,r.applicant||'—',r.name,catMeta[r.category]?catMeta[r.category].t:r.category,r.qty,r.purpose||'—']));
+    exportXLSX(rows, label+'年度归档报表.xlsx', {});
+    toast('已导出归档','ok',label+'年度归档报表.xlsx 已生成');
+  }
+  const _expA=document.getElementById('exportArchiveBtn'); if(_expA) _expA.addEventListener('click',exportArchiveYear);
+  const _delA=document.getElementById('delArchiveBtn');
+  if(_delA) _delA.addEventListener('click',()=>{
+    const idx=+document.getElementById('archiveYear').value||0;
+    const a=archivedRecords[idx]; if(!a) return;
+    if(!confirm('确定删除「'+(a.label||a.year||idx)+' 年」的归档数据吗？此操作不可恢复。')) return;
+    archivedRecords.splice(idx,1);
+    wmsSave();
+    renderArchive();
+    toast('已删除归档','ok','该年度归档已删除');
+  });
 
   // ============ 入库 / 出库 真实写入逻辑 ============
   function genId(prefix){
@@ -3400,7 +3703,6 @@
   document.getElementById('recModalDelete').addEventListener('click',()=>{ document.getElementById('recModal').classList.remove('show'); if(currentRec) deleteRec(currentRec.type,currentRec.idx); });
   document.getElementById('checkItemEditDelete').addEventListener('click',()=>{ const idx=checkItemEditIdx; closeCheckItemEdit(); if(idx>=0) deleteCheckItem(idx); });
   document.getElementById('recActionDel').addEventListener('click',()=>{ const i=recActionIdx; closeRecAction(); if(i>=0) deleteRecCheck(i); });
-  document.getElementById('recEditDelete').addEventListener('click',()=>deleteRec(recEditType,recEditIdx));
   document.getElementById('viewAllOut').addEventListener('click',viewAllOut);
   renderRecentOut();
 
@@ -3619,7 +3921,20 @@
     const ov=safeOverrides[idx];
     return (ov!==undefined && ov!=='' && !isNaN(+ov));
   }
+  // 保存设置后自动隐藏预警表格；再次填写时可点「重新编辑单独预警」展开
+  let safeTableHidden=false;
+  function applySafeTableVisibility(){
+    const tabs=document.getElementById('safeTabs');
+    const wrap=document.getElementById('safeTableWrap');
+    const save=document.getElementById('saveSettings');
+    const reopen=document.getElementById('safeReopen');
+    if(tabs) tabs.style.display=safeTableHidden?'none':'';
+    if(wrap) wrap.style.display=safeTableHidden?'none':'';
+    if(save) save.style.display=safeTableHidden?'none':'';
+    if(reopen) reopen.style.display=safeTableHidden?'':'none';
+  }
   function renderSafe(){
+    applySafeTableVisibility();
     document.getElementById('def-office').value=catDefault.office;
     document.getElementById('def-tobacco').value=catDefault.tobacco;
     document.getElementById('def-gift').value=catDefault.gift;
@@ -3670,9 +3985,12 @@
       renderInv(activeChip ? activeChip.dataset.cat : 'all');
       renderSafe();
       const m=document.getElementById('safeMsg'); if(m){ m.textContent='已保存 · 共 '+items.length+' 项物资阈值已更新'; }
+      safeTableHidden=true; applySafeTableVisibility();
       toast('设置已保存','ok','安全库存阈值已更新');
     });
   }
+  const safeReopen=document.getElementById('safeReopen');
+  if(safeReopen) safeReopen.addEventListener('click',()=>{ safeTableHidden=false; applySafeTableVisibility(); });
   const addCat=document.getElementById('addCat');
   if(addCat) addCat.addEventListener('click',()=>toast('新增分类','info','请在正式版中填写分类信息'));
   /* 盘点入口已改为计划行「开始盘点」按钮，触发 startCheckModal（见 openStartCheck） */
@@ -3791,19 +4109,20 @@
 
   // ============ 工作台功能：趋势报表导出 / 库存预警处理 ============
   function exportTrendReport(){
-    const td=buildTrendData();
+    const td=buildTrendData(trendRange);
     const now=new Date();
     const p=n=>String(n).padStart(2,'0');
     const ts=now.getFullYear()+'-'+p(now.getMonth()+1)+'-'+p(now.getDate())+' '+p(now.getHours())+':'+p(now.getMinutes());
     const totalIn=td.inbound.reduce((a,b)=>a+b,0);
     const totalOut=td.outbound.reduce((a,b)=>a+b,0);
     const netTotal=totalIn-totalOut;
+    const unitName=td.range==='month'?'近 6 个月':(td.range==='quarter'?'近 6 个季度':'近 6 年');
     const rows=[
-      ['近 6 个月出入库趋势报表'],
+      [unitName+'出入库趋势报表'],
       ['统计周期', td.labels[0]+' 至 '+td.labels[td.labels.length-1]],
       ['生成时间', ts],
       ['计量单位', '件'],
-      ['月份','入库(件)','出库领用(件)','净变化(件)']
+      ['周期','入库(件)','出库领用(件)','净变化(件)']
     ];
     td.labels.forEach((m,i)=>{
       const net=td.inbound[i]-td.outbound[i];
@@ -3812,8 +4131,8 @@
     rows.push(['合计', totalIn, totalOut, (netTotal>=0?'+':'')+netTotal]);
     rows.push([]);
     rows.push(['报表说明', '入库为各月物资入库总量，出库领用为领用总量；净变化 = 入库 − 出库领用。数据来源于系统真实出入库记录。']);
-    exportXLSX(rows, '近6个月出入库趋势报表.xlsx', {titleMerge:true, headerAt:4});
-    toast('已导出报表','ok','近6个月出入库趋势报表.xlsx 已生成');
+    exportXLSX(rows, unitName+'出入库趋势报表.xlsx', {titleMerge:true, headerAt:4});
+    toast('已导出报表','ok',unitName+'出入库趋势报表.xlsx 已生成');
   }
 
   // 库存预警：基于 items 实时计算（低于安全库存的物资），数据驱动、无任何演示数据
