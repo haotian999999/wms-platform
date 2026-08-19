@@ -385,6 +385,14 @@
   #safeTabs{padding:0;background:none;border:none;backdrop-filter:none}
   #safeTabs .chip{padding:5px 11px;font-size:12px;border-radius:20px}
   #safeTabs .chip .d{width:6px;height:6px}
+  .safe-summary{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:14px;background:rgba(91,140,255,.06);border:1px solid rgba(91,140,255,.22);margin-top:12px;font-size:13px;color:var(--ink-2)}
+  .safe-summary .ss-icon{font-size:17px;display:inline-flex;width:30px;height:30px;align-items:center;justify-content:center;background:rgba(91,140,255,.16);border-radius:9px;flex-shrink:0}
+  .safe-summary .ss-text{flex:1;color:var(--ink-1)}
+  .safe-summary .ss-text b{color:var(--ink);font-weight:700;margin:0 2px}
+  .safe-summary .ss-toggle{padding:6px 14px;font-size:12.5px}
+  .safe-summary:hover{border-color:rgba(91,140,255,.4);background:rgba(91,140,255,.1)}
+  [data-theme="light"] .safe-summary{background:rgba(91,140,255,.06);border-color:rgba(91,140,255,.18)}
+  [data-theme="light"] .safe-summary:hover{background:rgba(91,140,255,.12)}
   .safe-table tbody tr{animation:rowIn .42s ease backwards}
   .safe-table tbody tr:nth-child(1){animation-delay:.02s}
   .safe-table tbody tr:nth-child(2){animation-delay:.05s}
@@ -1356,23 +1364,30 @@
               <div class="field"><label>礼品 · 默认预警线</label><input id="def-gift" type="number" min="0" /></div>
               <div class="field"><label>默认经办人</label><input value="admin" /></div>
             </div>
-            <div class="chips" id="safeTabs" style="margin-top:14px">
-              <button class="chip c-office active" data-cat="office"><span class="d" style="background:var(--c-office)"></span>办公用品</button>
-              <button class="chip c-tobacco" data-cat="tobacco"><span class="d" style="background:var(--c-tobacco)"></span>烟酒茶</button>
-              <button class="chip c-gift" data-cat="gift"><span class="d" style="background:var(--c-gift)"></span>礼品</button>
+            <!-- 单独预警管理：默认仅显示摘要，表格默认收起，按需展开 -->
+            <div id="safeSummary" class="safe-summary">
+              <span class="ss-icon">📋</span>
+              <span class="ss-text">单独预警管理：已为 <b id="safeOverriddenCount">0</b> 项物资单独设置阈值 / 共 <b id="safeTotalCount">0</b> 项物资</span>
+              <button class="btn btn-ghost ss-toggle" id="safeToggleBtn">📝 展开管理</button>
             </div>
-            <div id="safeTableWrap" style="margin-top:12px;overflow-x:auto;border:1px solid var(--line);border-radius:12px">
-              <table class="safe-table">
-                <thead><tr><th>物资名称</th><th class="num">现存量</th><th class="num">默认值</th><th>单独预警</th><th>状态</th></tr></thead>
-                <tbody id="safeBody"></tbody>
-              </table>
+            <div id="safeEditorWrap" style="display:none">
+              <div class="chips" id="safeTabs" style="margin-top:14px">
+                <button class="chip c-office active" data-cat="office"><span class="d" style="background:var(--c-office)"></span>办公用品</button>
+                <button class="chip c-tobacco" data-cat="tobacco"><span class="d" style="background:var(--c-tobacco)"></span>烟酒茶</button>
+                <button class="chip c-gift" data-cat="gift"><span class="d" style="background:var(--c-gift)"></span>礼品</button>
+              </div>
+              <div id="safeTableWrap" style="margin-top:12px;overflow-x:auto;border:1px solid var(--line);border-radius:12px">
+                <table class="safe-table">
+                  <thead><tr><th>物资名称</th><th class="num">现存量</th><th class="num">默认值</th><th>单独预警</th><th>状态</th></tr></thead>
+                  <tbody id="safeBody"></tbody>
+                </table>
+              </div>
+              <div style="display:flex;gap:12px;align-items:center;margin-top:14px">
+                <button class="btn btn-primary" id="saveSettings">保存设置</button>
+                <span class="plan-meta" id="safeMsg"></span>
+              </div>
+              <div class="note" style="padding-left:0;padding-right:0;font-size:11px;margin-top:8px">提示：单品「单独预警」留空时沿用分类默认值；填写数值则单独设定。保存后库存管理 / 预警同步更新，表格自动收起。</div>
             </div>
-            <div style="display:flex;gap:12px;align-items:center;margin-top:14px">
-              <button class="btn btn-primary" id="saveSettings">保存设置</button>
-              <button class="btn btn-ghost" id="safeReopen" style="display:none">✏️ 重新编辑单独预警</button>
-              <span class="plan-meta" id="safeMsg"></span>
-            </div>
-            <div class="note" style="padding-left:0;padding-right:0;font-size:11px;margin-top:8px">提示：单品「单独预警」留空时沿用分类默认值；填写数值则单独设定。保存后库存管理 / 预警同步更新，预警表格自动收起，如需再次调整可点击「重新编辑单独预警」。</div>
           </div>
         </div>
 
@@ -4127,20 +4142,23 @@
     const ov=safeOverrides[idx];
     return (ov!==undefined && ov!=='' && !isNaN(+ov));
   }
-  // 保存设置后自动隐藏预警表格；再次填写时可点「重新编辑单独预警」展开
-  let safeTableHidden=false;
+  // 单独预警管理：默认收起，摘要 + 展开/收起按钮
+  let safeTableHidden=true;
+  function renderSafeSummary(){
+    const cnt=document.getElementById('safeOverriddenCount');
+    const tot=document.getElementById('safeTotalCount');
+    if(cnt) cnt.textContent=Object.values(safeOverrides).filter(v=>v!==undefined && v!=='' && !isNaN(+v)).length;
+    if(tot) tot.textContent=items.length;
+  }
   function applySafeTableVisibility(){
-    const tabs=document.getElementById('safeTabs');
-    const wrap=document.getElementById('safeTableWrap');
-    const save=document.getElementById('saveSettings');
-    const reopen=document.getElementById('safeReopen');
-    if(tabs) tabs.style.display=safeTableHidden?'none':'';
-    if(wrap) wrap.style.display=safeTableHidden?'none':'';
-    if(save) save.style.display=safeTableHidden?'none':'';
-    if(reopen) reopen.style.display=safeTableHidden?'':'none';
+    const editor=document.getElementById('safeEditorWrap');
+    const toggleBtn=document.getElementById('safeToggleBtn');
+    if(editor) editor.style.display=safeTableHidden?'none':'';
+    if(toggleBtn) toggleBtn.innerHTML=safeTableHidden?'📝 展开管理':'⬆ 收起';
   }
   function renderSafe(){
     applySafeTableVisibility();
+    renderSafeSummary();
     document.getElementById('def-office').value=catDefault.office;
     document.getElementById('def-tobacco').value=catDefault.tobacco;
     document.getElementById('def-gift').value=catDefault.gift;
@@ -4168,6 +4186,7 @@
         const def=catDefault[it.c];
         const v=inp.value.trim();
         safeOverrides[idx]=(v==='')?'':v;
+        renderSafeSummary();
         const eff=effSafe(it,idx);
         const[st,txt]=statusOf(it.q,eff);
         const td=inp.closest('tr').lastElementChild;
@@ -4189,14 +4208,17 @@
       try{ localStorage.setItem(SAFE_KEY,JSON.stringify({defs:catDefault,overrides:safeOverrides})); }catch(e){}
       const activeChip=document.querySelector('#invChips .chip.active');
       renderInv(activeChip ? activeChip.dataset.cat : 'all');
-      renderSafe();
+      // 保存后自动收起编辑器 + 更新摘要
+      safeTableHidden=true; applySafeTableVisibility(); renderSafeSummary();
       const m=document.getElementById('safeMsg'); if(m){ m.textContent='已保存 · 共 '+items.length+' 项物资阈值已更新'; }
-      safeTableHidden=true; applySafeTableVisibility();
       toast('设置已保存','ok','安全库存阈值已更新');
     });
   }
-  const safeReopen=document.getElementById('safeReopen');
-  if(safeReopen) safeReopen.addEventListener('click',()=>{ safeTableHidden=false; applySafeTableVisibility(); });
+  // 摘要行的展开/收起按钮
+  const safeToggleBtn=document.getElementById('safeToggleBtn');
+  if(safeToggleBtn) safeToggleBtn.addEventListener('click',()=>{
+    safeTableHidden=!safeTableHidden; applySafeTableVisibility();
+  });
   const addCat=document.getElementById('addCat');
   if(addCat) addCat.addEventListener('click',()=>toast('新增分类','info','请在正式版中填写分类信息'));
   /* 盘点入口已改为计划行「开始盘点」按钮，触发 startCheckModal（见 openStartCheck） */
