@@ -513,7 +513,7 @@
   .card table:not(.data-table):not(.plan-table):not(.safe-table) tbody tr:hover{background:rgba(255,255,255,.07)}
   .modal table:not(.data-table):not(.plan-table):not(.safe-table) tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
   .modal table:not(.data-table):not(.plan-table):not(.safe-table) tbody tr:hover{background:rgba(255,255,255,.07)}
-  /* 操作列（编辑/删除）强制单行、不换行、不裁剪 */
+  /* 操作列强制单行、不换行、不裁剪 */
   .data-table thead th:last-child,.data-table tbody td:last-child{white-space:nowrap;overflow:visible}
   /* 入库记录列宽（百分比，自适应填满卡片；质保期/到期日为新增列） */
   #pane-data-in .data-table th:nth-child(1),#pane-data-in .data-table td:nth-child(1){width:8.0%}
@@ -591,7 +591,12 @@
   .modal-close{cursor:pointer;border:none;background:rgba(255,255,255,.06);width:30px;height:30px;border-radius:9px;font-size:15px;color:var(--ink-2);transition:all .15s}
   .modal-close:hover{background:rgba(255,255,255,.14);color:#fff}
   .modal-body{padding:4px 18px 18px}
-  .modal-foot{display:flex;gap:12px;justify-content:flex-end;align-items:center;padding:16px 22px;border-top:1px solid var(--line);background:rgba(255,255,255,.02);flex-wrap:wrap}
+  .modal-foot{display:flex;gap:12px;justify-content:center;align-items:center;padding:16px 22px;border-top:1px solid var(--line);background:rgba(255,255,255,.02);flex-wrap:wrap}
+  .modal-foot .btn{flex:1;justify-content:center;min-width:110px;max-width:220px}
+  .modal-foot .btn:only-child{max-width:180px}
+  .modal-actions{display:flex;gap:12px;justify-content:center;align-items:center;margin-top:18px;flex-wrap:wrap}
+  .modal-actions .btn{flex:1;justify-content:center;min-width:110px;max-width:220px}
+  .modal-actions .btn:only-child{max-width:180px}
   .modal-mask.show .modal-body > *{animation:riseIn .42s var(--ease) backwards}
   .modal-mask.show .modal-body > *:nth-child(2){animation-delay:.04s}
   .modal-mask.show .modal-body > *:nth-child(3){animation-delay:.08s}
@@ -1400,10 +1405,9 @@
       </div>
       <div class="modal-body">
         <dl class="rec-detail" id="recModalBody"></dl>
-        <div style="margin-top:18px;display:flex;gap:12px">
-          <button class="btn btn-ghost" id="recModalEdit" style="flex:1;justify-content:center">✏️ 编辑记录</button>
-          <button class="btn btn-ghost" id="recModalDelete" style="flex:1;justify-content:center;color:#ff7a7a;border-color:rgba(255,90,90,.5)">🗑️ 删除记录</button>
-          <button class="btn btn-primary" id="recModalDownload" style="flex:1;justify-content:center" data-perm="data">⬇ 下载此记录</button>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="recModalEdit">✏️ 编辑记录</button>
+          <button class="btn btn-primary" id="recModalDownload" data-perm="data">⬇ 下载此记录</button>
         </div>
       </div>
     </div>
@@ -1418,10 +1422,9 @@
       </div>
       <div class="modal-body">
         <dl class="rec-detail" id="invModalBody"></dl>
-        <div style="margin-top:18px;display:flex;gap:12px">
-          <button class="btn btn-primary" id="invModalEdit" style="flex:1;justify-content:center">✏️ 编辑物资</button>
-          <button class="btn btn-ghost" id="invModalDelete" style="flex:1;justify-content:center;color:#ff7a7a;border-color:rgba(255,90,90,.5)">🗑️ 删除物资</button>
-          <button class="btn btn-ghost" id="invModalCloseBtn" style="flex:1;justify-content:center">关闭</button>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="invModalEdit">✏️ 编辑物资</button>
+          <button class="btn btn-ghost" id="invModalCloseBtn">关闭</button>
         </div>
       </div>
     </div>
@@ -1440,8 +1443,8 @@
           <thead><tr><th>物资名称</th><th>分类</th><th>到期日</th><th>剩余天数</th><th>状态</th></tr></thead>
           <tbody id="warModalBody"></tbody>
         </table>
-        <div style="margin-top:18px;display:flex;gap:12px">
-          <button class="btn btn-primary" id="warModalCloseBtn" style="flex:1;justify-content:center">我知道了</button>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="warModalCloseBtn">我知道了</button>
         </div>
       </div>
     </div>
@@ -1460,9 +1463,9 @@
           <thead><tr><th>物资名称</th><th>分类</th><th>当前库存</th><th>安全库存</th><th>建议补货</th><th>状态</th></tr></thead>
           <tbody id="alertProcessBody"></tbody>
         </table>
-        <div style="margin-top:16px;display:flex;gap:12px">
-          <button class="btn btn-ghost" id="alertProcessExport" style="flex:1;justify-content:center">⬇ 导出补货单</button>
-          <button class="btn btn-primary" id="alertProcessConfirm" style="flex:1;justify-content:center">✓ 确认处理</button>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="alertProcessExport">⬇ 导出补货单</button>
+          <button class="btn btn-primary" id="alertProcessConfirm">✓ 确认处理</button>
         </div>
       </div>
     </div>
@@ -1489,12 +1492,9 @@
           <div class="field"><label>质保期(月) <span style="color:var(--ink-3);font-weight:400">选填</span></label><input id="invEditWarranty" type="number" min="0" placeholder="如：12" /></div>
         </form>
       </div>
-      <div class="modal-foot" style="display:flex;align-items:center;gap:12px;padding:16px 22px;border-top:1px solid var(--line)">
-        <button class="btn btn-danger" id="invEditDelete" style="display:none;justify-content:center">🗑️ 删除</button>
-        <div style="display:flex;gap:12px;margin-left:auto">
-          <button class="btn btn-ghost" id="invEditCancel">取消</button>
-          <button class="btn btn-primary" id="invEditSave">保存</button>
-        </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="invEditCancel">取消</button>
+        <button class="btn btn-primary" id="invEditSave">保存</button>
       </div>
     </div>
   </div>
@@ -1507,12 +1507,9 @@
         <button class="modal-close" id="recEditClose">✕</button>
       </div>
       <div class="modal-body"><div class="form-grid" id="recEditBody"></div></div>
-      <div class="modal-foot" style="display:flex;align-items:center;gap:12px;padding:16px 22px;border-top:1px solid var(--line)">
-        <button class="btn btn-danger" id="recEditDelete" style="justify-content:center">🗑️ 删除</button>
-        <div style="display:flex;gap:12px;margin-left:auto">
-          <button class="btn btn-ghost" id="recEditCancel">取消</button>
-          <button class="btn btn-primary" id="recEditSave">保存</button>
-        </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="recEditCancel">取消</button>
+        <button class="btn btn-primary" id="recEditSave">保存</button>
       </div>
     </div>
   </div>
@@ -1534,10 +1531,10 @@
             <tbody id="saveCheckBody"></tbody>
           </table>
         </div>
-        <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:18px;flex-wrap:nowrap">
+        <div class="modal-actions">
           <button class="btn btn-ghost" id="saveCheckCancel">取消</button>
-          <button class="btn btn-accent" id="saveCheckDownload" style="min-width:180px;justify-content:center">⬇ 下载实盘单</button>
-          <button class="btn btn-primary" id="saveCheckConfirm" style="min-width:200px;justify-content:center">✔ 确认保存盘点记录</button>
+          <button class="btn btn-accent" id="saveCheckDownload">⬇ 下载实盘单</button>
+          <button class="btn btn-primary" id="saveCheckConfirm">✔ 确认保存盘点记录</button>
         </div>
       </div>
     </div>
@@ -1568,9 +1565,9 @@
         </div>
         <div class="scroll-hint">← 左右滑动 · 上下滚动查看全部 →</div>
         <div class="note">差异为负 = 盘亏（实物少于账面），为正 = 盘盈（实物多于账面）；0 表示账实相符。差异项需仓库管理员与财务共同复核后调整账面。</div>
-        <div style="display:flex;gap:12px;align-items:center;justify-content:center;padding:8px 0 4px;flex-wrap:wrap">
-          <button class="btn btn-primary" id="downloadCheck" style="justify-content:center">⬇ 下载盘点单（线下核账）</button>
-          <button class="btn btn-primary" id="saveCheck" style="justify-content:center">💾 保存盘点单</button>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="downloadCheck">⬇ 下载盘点单（线下核账）</button>
+          <button class="btn btn-primary" id="saveCheck">💾 保存盘点单</button>
           <span class="plan-meta" id="checkDownMsg"></span>
         </div>
       </div>
@@ -1585,7 +1582,7 @@
         <button class="modal-close" id="planEditClose">✕</button>
       </div>
       <div class="modal-body"><div class="form-grid" id="planEditBody"></div></div>
-      <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line);flex-wrap:wrap">
+      <div class="modal-foot">
         <button class="btn btn-ghost" id="planEditCancel">取消</button>
         <button class="btn btn-accent" id="planReCheck">🔄 重新盘点</button>
         <button class="btn btn-primary" id="planEditSave">保存</button>
@@ -1601,14 +1598,14 @@
         <button class="modal-close" id="recCheckEditClose">✕</button>
       </div>
       <div class="modal-body"><div class="form-grid" id="recCheckEditBody"></div></div>
-      <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line)">
+      <div class="modal-foot">
         <button class="btn btn-ghost" id="recCheckEditCancel">取消</button>
         <button class="btn btn-primary" id="recCheckEditSave">保存</button>
       </div>
     </div>
   </div>
 
-  <!-- 最近盘点记录：行内操作弹窗（隐藏编辑/删除，点击记录行弹出） -->
+  <!-- 最近盘点记录：行内操作弹窗（点击记录行弹出编辑） -->
   <div class="modal-mask" id="recActionModal">
     <div class="modal" style="--mw:380px">
       <div class="modal-head">
@@ -1617,9 +1614,8 @@
       </div>
       <div class="modal-body">
         <div id="recActionTitle" style="font-weight:600;font-size:14px;color:var(--ink-1);padding:2px 0 16px;word-break:break-all"></div>
-        <div style="display:flex;flex-direction:column;gap:12px">
-          <button class="btn btn-primary" id="recActionEdit" style="justify-content:center">✏️ 编辑记录</button>
-          <button class="btn btn-danger" id="recActionDel" style="justify-content:center">🗑️ 删除记录</button>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="recActionEdit">✏️ 编辑记录</button>
         </div>
       </div>
     </div>
@@ -1633,8 +1629,7 @@
         <button class="modal-close" id="checkItemEditClose">✕</button>
       </div>
       <div class="modal-body"><div class="form-grid" id="checkItemEditBody"></div></div>
-      <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line)">
-        <button class="btn btn-ghost" id="checkItemEditDelete" style="margin-right:auto;color:#ff7a7a;border-color:rgba(255,90,90,.5)">🗑️ 删除</button>
+      <div class="modal-foot">
         <button class="btn btn-ghost" id="checkItemEditCancel">取消</button>
         <button class="btn btn-primary" id="checkItemEditSave">保存</button>
       </div>
@@ -1792,7 +1787,7 @@
     }).join('');
   }
 
-  /* ============ 最近盘点记录：编辑/删除 ============ */
+  /* ============ 最近盘点记录：编辑 ============ */
   let recCheckEditIdx=-1;
   function openRecCheckEdit(i){
     recCheckEditIdx=i;
@@ -1817,14 +1812,8 @@
     toast('记录已更新','ok','修改后的盘点记录已保存');
   }
   function closeRecCheckEdit(){ const m=document.getElementById('recCheckEditModal'); if(m) m.classList.remove('show'); }
-  function deleteRecCheck(i){
-    const r=checkRecords[i]; if(!r) return;
-    if(!confirm('确定删除该盘点记录「'+r.title+'」吗？此操作不可撤销。')) return;
-    checkRecords.splice(i,1); renderCheckTimeline(); wmsSave();
-    toast('记录已删除','ok','已移除该条盘点记录');
-  }
 
-  /* ============ 最近盘点记录：行内操作弹窗（隐藏编辑/删除） ============ */
+  /* ============ 最近盘点记录：行内操作弹窗 ============ */
   let recActionIdx=-1;
   function openRecAction(i){
     const r=checkRecords[i]; if(!r) return;
@@ -1836,9 +1825,8 @@
   const recActClose=document.getElementById('recActionClose'); if(recActClose) recActClose.addEventListener('click',closeRecAction);
   const recActMask=document.getElementById('recActionModal'); if(recActMask) recActMask.addEventListener('click',e=>{ if(e.target.id==='recActionModal') closeRecAction(); });
   const recActEdit=document.getElementById('recActionEdit'); if(recActEdit) recActEdit.addEventListener('click',()=>{ const i=recActionIdx; closeRecAction(); if(i>=0) openRecCheckEdit(i); });
-  const recActDel=document.getElementById('recActionDel'); if(recActDel) recActDel.addEventListener('click',()=>{ const i=recActionIdx; closeRecAction(); if(i>=0) deleteRecCheck(i); });
 
-  /* ============ 盘点计划：数据驱动 + 编辑/删除 ============ */
+  /* ============ 盘点计划：数据驱动 + 编辑 ============ */
   const planStatusText={ok:'已完成',low:'进行中',out:'待开始'};
   // 盘点计划：默认空（不含演示数据）；进入盘点视图时按规则自动生成
   const checkPlansQuarter=[];
@@ -2019,7 +2007,7 @@
 
   /* ============ 最近盘点记录：仅展示（由「保存/下载盘点单」归档写入） ============ */
 
-  /* ============ 盘点单录入：行内编辑/删除 ============ */
+  /* ============ 盘点单录入：行内编辑 ============ */
   let checkItemEditIdx=-1;
   function openCheckItemEdit(idx){
     checkItemEditIdx=idx;
@@ -2044,12 +2032,6 @@
     toast('盘点项已更新','ok','修改后的盘点项已保存');
   }
   function closeCheckItemEdit(){ document.getElementById('checkItemEditModal').classList.remove('show'); }
-  function deleteCheckItem(idx){
-    const it=checkItems[idx]; if(!it) return;
-    if(!confirm('确定删除盘点项「'+it.n+'」吗？此操作不可撤销。')) return;
-    checkItems.splice(idx,1); renderCheck(); renderCheckKpi();
-    toast('盘点项已删除','ok','已移除该项');
-  }
 
   /* ============ 盘点管理：统一事件委托 ============ */
   const checkView=document.getElementById('view-check');
@@ -2060,7 +2042,6 @@
       const ry=e.target.closest('[data-row-plan-y]'); if(ry){ openPlanEdit('y',+ry.dataset.rowPlanY); return; }
       const sy=e.target.closest('[data-start-check-y]'); if(sy){ openStartCheck('y',+sy.dataset.startCheckY); return; }
       const ri=e.target.closest('[data-row-check-item]'); if(ri && e.target.tagName!=='INPUT'){ openCheckItemEdit(+ri.dataset.rowCheckItem); return; }
-      const di=e.target.closest('[data-del-check-item]'); if(di){ deleteCheckItem(+di.dataset.delCheckItem); return; }
       const tl=e.target.closest('.tl-item'); if(tl){ openRecAction(+tl.dataset.recIdx); return; }
     });
     // 最近盘点记录：键盘可达（Enter / 空格 打开操作弹窗）
@@ -3036,14 +3017,7 @@
   document.getElementById('invModal').addEventListener('click',e=>{ if(e.target.id==='invModal') document.getElementById('invModal').classList.remove('show'); });
   document.getElementById('invModalEdit').addEventListener('click',()=>{ document.getElementById('invModal').classList.remove('show'); if(currentInvIdx>=0) openInvEdit(currentInvIdx); });
   document.getElementById('recModalEdit').addEventListener('click',()=>{ document.getElementById('recModal').classList.remove('show'); if(currentRec) openRecEdit(currentRec.type,currentRec.idx); });
-  document.getElementById('invModalDelete').addEventListener('click',()=>{ document.getElementById('invModal').classList.remove('show'); if(currentInvIdx>=0) deleteInv(currentInvIdx); });
-  document.getElementById('recModalDelete').addEventListener('click',()=>{ document.getElementById('recModal').classList.remove('show'); if(currentRec) deleteRec(currentRec.type,currentRec.idx); });
-  document.getElementById('checkItemEditDelete').addEventListener('click',()=>{ const idx=checkItemEditIdx; closeCheckItemEdit(); if(idx>=0) deleteCheckItem(idx); });
   document.addEventListener('click',e=>{
-    const dei=e.target.closest('[data-del-inv]');
-    if(dei){ deleteInv(+dei.dataset.delInv); e.stopPropagation(); return; }
-    const der=e.target.closest('[data-del-rec]');
-    if(der){ const p=der.dataset.delRec.split(':'); deleteRec(p[0],+p[1]); e.stopPropagation(); return; }
     const r=e.target.closest('[data-row-rec]');
     if(r){ const p=r.dataset.rowRec.split(':'); openRec(p[0],+p[1]); return; }
     const iv=e.target.closest('[data-row-inv]');
@@ -3233,7 +3207,7 @@
   });
   document.getElementById('draftOutbound').addEventListener('click',()=>{ toast('草稿已暂存','info','草稿已本地暂存，可稍后继续填写'); resetOutbound(); });
 
-  // ============ 库存管理：导出 / 新增 / 编辑 / 删除 ============
+  // ============ 库存管理：导出 / 新增 / 编辑 ============
   function exportInv(){
     const ac=document.querySelector('#invChips .chip.active'); const cat=ac?ac.dataset.cat:'all';
     const list=cat==='all'?items:items.filter(i=>i.c===cat);
@@ -3258,14 +3232,12 @@
       document.getElementById('invEditInDate').value=i.inDate||'';
       document.getElementById('invEditWarranty').value=i.warranty||'';
       t.textContent='编辑物资';
-      document.getElementById('invEditDelete').style.display='';
     } else {
       document.getElementById('invEditForm').reset();
       document.getElementById('invEditCat').value='office';
       document.getElementById('invEditUnit').value='件';
       document.getElementById('invEditSafe').value=(catDefault&&catDefault.office)||10;
       t.textContent='新增物资';
-      document.getElementById('invEditDelete').style.display='none';
     }
     document.getElementById('invEditModal').classList.add('show');
   }
@@ -3298,22 +3270,8 @@
     toast(invEditIdx>=0?'已更新物资':'已新增物资','ok',n);
   }
   function closeInvEdit(){ document.getElementById('invEditModal').classList.remove('show'); }
-  function deleteInv(idx){
-    const i=items[idx]; if(!i) return;
-    const inRel=inboundRecords.filter(r=>r.name===i.n && r.category===i.c);
-    const outRel=outboundRecords.filter(r=>r.name===i.n && r.category===i.c);
-    if(!confirm('确定删除该物资「'+i.n+'」吗？\n（将同步删除关联入库 '+inRel.length+' 条 / 出库 '+outRel.length+' 条记录）')) return;
-    for(let k=inboundRecords.length-1;k>=0;k--){ const r=inboundRecords[k]; if(r.name===i.n && r.category===i.c) inboundRecords.splice(k,1); }
-    for(let k=outboundRecords.length-1;k>=0;k--){ const r=outboundRecords[k]; if(r.name===i.n && r.category===i.c) outboundRecords.splice(k,1); }
-    items.splice(idx,1);
-    recomputeStocks();
-    checkItems=items.map(x=>({n:x.n,c:x.c,u:x.u,sys:x.q,real:x.q}));
-    const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); renderWarranty(); renderDataTables(); renderRecentOut(); renderDashboard(); wmsSave();
-    closeInvEdit();
-    toast('已删除物资','ok','已同步清理 '+i.n+' 的 '+inRel.length+' 条入库 / '+outRel.length+' 条出库记录');
-  }
 
-  // ============ 数据管理：记录 编辑 / 删除 ============
+  // ============ 数据管理：记录编辑 ============
   let recEditType=null, recEditIdx=-1;
   const recEditFields={
     in:[
@@ -3370,18 +3328,6 @@
     toast('记录已更新','ok','修改后的记录已保存');
   }
   function closeRecEdit(){ document.getElementById('recEditModal').classList.remove('show'); }
-  function deleteRec(type,idx){
-    const arr=(type==='in'?inboundRecords:outboundRecords);
-    const rec=arr[idx]; if(!rec) return;
-    if(!confirm('确定删除该记录「'+rec.id+'」吗？此操作不可撤销。')) return;
-    if(type==='in'){ inboundRecords.splice(idx,1); }
-    else { outboundRecords.splice(idx,1); }
-    adjustInventory(rec.name,rec.category,rec.qty, type==='in'?-1:1); // 先删记录再统一重算，确保库存与流水同步
-    renderDataTables(); renderInv('all'); renderRecentOut(); wmsSave();
-    updateDataNote();
-    closeRecEdit();
-    toast('记录已删除','ok','已移除该条记录');
-  }
 
   // ============ 出库领用：最近出库记录 ============
   function renderRecentOut(){
@@ -3402,12 +3348,10 @@
   document.getElementById('invEditSave').addEventListener('click',saveInvEdit);
   document.getElementById('invEditClose').addEventListener('click',closeInvEdit);
   document.getElementById('invEditCancel').addEventListener('click',closeInvEdit);
-  document.getElementById('invEditDelete').addEventListener('click',()=>deleteInv(invEditIdx));
   document.getElementById('invEditModal').addEventListener('click',e=>{ if(e.target.id==='invEditModal') closeInvEdit(); });
   document.getElementById('recEditSave').addEventListener('click',saveRecEdit);
   document.getElementById('recEditClose').addEventListener('click',closeRecEdit);
   document.getElementById('recEditCancel').addEventListener('click',closeRecEdit);
-  document.getElementById('recEditDelete').addEventListener('click',()=>deleteRec(recEditType,recEditIdx));
   document.getElementById('recEditModal').addEventListener('click',e=>{ if(e.target.id==='recEditModal') closeRecEdit(); });
   document.getElementById('viewAllOut').addEventListener('click',viewAllOut);
   renderRecentOut();
