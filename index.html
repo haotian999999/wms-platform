@@ -933,7 +933,7 @@
 
         <div class="grid row-2 mt">
           <div class="card">
-            <div class="panel-head"><div><h3>近 6 个月出入库趋势</h3><div class="sub" id="trendSub">单位：件</div></div><div style="display:flex;align-items:center;gap:8px"><div class="trend-switch" id="trendSwitch"><button class="ts active" data-range="month">本月</button><button class="ts" data-range="quarter">季度</button><button class="ts" data-range="year">年度</button></div><span class="more" id="exportTrendBtn" role="button" tabindex="0">导出报表</span></div></div>
+            <div class="panel-head"><div><h3>出入库趋势对比</h3><div class="sub" id="trendSub">本月 · 单位：件</div></div><div style="display:flex;align-items:center;gap:8px"><div class="trend-switch" id="trendSwitch"><button class="ts active" data-range="month">本月</button><button class="ts" data-range="quarter">季度</button><button class="ts" data-range="year">年度</button></div><span class="more" id="exportTrendBtn" role="button" tabindex="0">导出报表</span></div></div>
             <div class="chart-box"><canvas id="trendChart"></canvas></div>
           </div>
           <div class="card">
@@ -2616,21 +2616,35 @@
   // 季度 / 年度粒度聚合（trendChart 切换用）
   function qKeyOf(d){ const y=d.getFullYear(), q=Math.floor(d.getMonth()/3)+1; return y+'-Q'+q; }
   function last6Quarters(){ const arr=[]; const d=new Date(); for(let i=5;i>=0;i--){ const t=new Date(d.getFullYear(), d.getMonth()-3*i, 1); arr.push({key:qKeyOf(t),label:qKeyOf(t).replace('-Q',' Q')}); } return arr; }
-  function last6Years(){ const cur=new Date().getFullYear(); return Array.from({length:6},(_,i)=>{ const y=cur-5+i; return {key:String(y),label:String(y)+'年'}; }); }
   function sumByPeriod(records, periods, qtyKey, matchFn){ return periods.map(p=> records.filter(r=>matchFn(r,p.key)).reduce((s,r)=>s+(+r[qtyKey]||0),0)); }
+  // 本月内按天聚合：只统计当前自然月（1 日至今日）
+  function dayKeyOf(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
+  function thisMonthDays(){
+    const now=new Date(); const arr=[];
+    for(let d=1; d<=now.getDate(); d++){
+      const t=new Date(now.getFullYear(), now.getMonth(), d);
+      arr.push({key:dayKeyOf(t), label:(now.getMonth()+1)+'/'+d});
+    }
+    return arr;
+  }
   function buildTrendData(range){
     range=range||'month';
     if(range==='quarter'){
       const qs=last6Quarters();
       const inMatch=(r,p)=>{ const d=r.date?new Date(String(r.date).slice(0,10)):null; return d&&!isNaN(d)&&qKeyOf(d)===p; };
-      return { range:'quarter', title:'近 6 个季度出入库趋势', labels:qs.map(q=>q.label), inbound:sumByPeriod(inboundRecords,qs,'qty',inMatch), outbound:sumByPeriod(outboundRecords,qs,'qty',inMatch) };
+      return { range:'quarter', title:'近 6 个季度出入库趋势对比', labels:qs.map(q=>q.label), inbound:sumByPeriod(inboundRecords,qs,'qty',inMatch), outbound:sumByPeriod(outboundRecords,qs,'qty',inMatch) };
     }
     if(range==='year'){
-      const ys=last6Years();
+      // 只显示本年度数据：当前自然年 1 月 → 12 月
+      const cur=new Date().getFullYear();
+      const ys=Array.from({length:12},(_,i)=>cur+'-'+String(i+1).padStart(2,'0'));
       const yMatch=(r,p)=>String(r.date||'').startsWith(p);
-      return { range:'year', title:'近 6 年出入库趋势', labels:ys.map(y=>y.label), inbound:sumByPeriod(inboundRecords,ys,'qty',yMatch), outbound:sumByPeriod(outboundRecords,ys,'qty',yMatch) };
+      return { range:'year', title:'本年度出入库趋势对比', labels:ys.map(m=>monthLabel(m)), inbound:sumByPeriod(inboundRecords,ys.map(m=>({key:m})),'qty',yMatch), outbound:sumByPeriod(outboundRecords,ys.map(m=>({key:m})),'qty',yMatch) };
     }
-    const months=last6Months(); return { range:'month', title:'近 6 个月出入库趋势', labels:months.map(m=>m.label), inbound:sumByMonth(inboundRecords,months,'qty'), outbound:sumByMonth(outboundRecords,months,'qty') };
+    // 月度：只显示本月内信息（按天）
+    const days=thisMonthDays();
+    const dMatch=(r,p)=>String(r.date||'')===p;
+    return { range:'month', title:'本月出入库趋势对比', labels:days.map(d=>d.label), inbound:sumByPeriod(inboundRecords,days,'qty',dMatch), outbound:sumByPeriod(outboundRecords,days,'qty',dMatch) };
   }
   function buildCatData(){ const total=items.reduce((s,i)=>s+(+i.q||0),0)||1; const list=Object.keys(catMeta).map(k=>{ const q=items.filter(i=>i.c===k).reduce((s,i)=>s+(+i.q||0),0); return {key:k,label:catMeta[k].t,q,pct:Math.round(q/total*100),color:catColor(k)}; }).filter(x=>x.q>0); return {total,list}; }
 
@@ -2799,18 +2813,18 @@
     listEl.innerHTML=Object.keys(catMeta).map(k=>{ const m=catMeta[k]; const cnt=items.filter(i=>i.c===k).length; return `<div class="rec"><div class="ri" style="color:${m.col}">${m.icon||'📦'}</div><div><div class="rt">${m.t}</div><div class="rs">${m.desc||''} · ${cnt} 项</div></div><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>启用</span></div>`; }).join('');
   }
   let trendRange='month';
+  function trendSubText(range){ const map={month:'本月',quarter:'近 6 个季度',year:'本年度'}; return (map[range]||'本月')+' · 单位：件'; }
   function updateDashboardCharts(){
     if(typeof window.Chart==='undefined' || !charts.dashboard) return;
     const td=buildTrendData(trendRange); const cd=buildCatData();
     if(charts.dashboard.trend){ charts.dashboard.trend.data.labels=td.labels; charts.dashboard.trend.data.datasets[0].data=td.inbound; charts.dashboard.trend.data.datasets[1].data=td.outbound; charts.dashboard.trend.update(); }
     if(charts.dashboard.cat){ charts.dashboard.cat.data.labels=cd.list.map(x=>x.label); charts.dashboard.cat.data.datasets[0].data=cd.list.map(x=>x.q); charts.dashboard.cat.data.datasets[0].backgroundColor=cd.list.map(x=>x.color); charts.dashboard.cat.update(); }
-    const sub=document.getElementById('trendSub'); if(sub) sub.textContent=td.title.replace('趋势','')+' · 单位：件';
+    const sub=document.getElementById('trendSub'); if(sub) sub.textContent=trendSubText(trendRange);
   }
   function setTrendRange(range){
     trendRange=range;
     document.querySelectorAll('#trendSwitch .ts').forEach(b=>b.classList.toggle('active',b.dataset.range===range));
-    const td=buildTrendData(trendRange);
-    const sub=document.getElementById('trendSub'); if(sub) sub.textContent=td.title.replace('趋势','')+' · 单位：件';
+    const sub=document.getElementById('trendSub'); if(sub) sub.textContent=trendSubText(range);
     if(typeof window.Chart!=='undefined' && charts.dashboard && charts.dashboard.trend) updateDashboardCharts();
   }
   document.querySelectorAll('#trendSwitch .ts').forEach(b=>b.addEventListener('click',()=>setTrendRange(b.dataset.range)));
@@ -4116,13 +4130,14 @@
     const totalIn=td.inbound.reduce((a,b)=>a+b,0);
     const totalOut=td.outbound.reduce((a,b)=>a+b,0);
     const netTotal=totalIn-totalOut;
-    const unitName=td.range==='month'?'近 6 个月':(td.range==='quarter'?'近 6 个季度':'近 6 年');
+    const unitName=td.range==='month'?'本月':(td.range==='quarter'?'近 6 个季度':'本年度');
+    const periodName=td.range==='month'?'日期':(td.range==='quarter'?'季度':'月份');
     const rows=[
-      [unitName+'出入库趋势报表'],
+      ['出入库趋势对比报表（'+unitName+'）'],
       ['统计周期', td.labels[0]+' 至 '+td.labels[td.labels.length-1]],
       ['生成时间', ts],
       ['计量单位', '件'],
-      ['周期','入库(件)','出库领用(件)','净变化(件)']
+      [periodName,'入库(件)','出库领用(件)','净变化(件)']
     ];
     td.labels.forEach((m,i)=>{
       const net=td.inbound[i]-td.outbound[i];
@@ -4130,9 +4145,9 @@
     });
     rows.push(['合计', totalIn, totalOut, (netTotal>=0?'+':'')+netTotal]);
     rows.push([]);
-    rows.push(['报表说明', '入库为各月物资入库总量，出库领用为领用总量；净变化 = 入库 − 出库领用。数据来源于系统真实出入库记录。']);
-    exportXLSX(rows, unitName+'出入库趋势报表.xlsx', {titleMerge:true, headerAt:4});
-    toast('已导出报表','ok',unitName+'出入库趋势报表.xlsx 已生成');
+    rows.push(['报表说明', '入库为统计周期内物资入库总量，出库领用为领用总量；净变化 = 入库 − 出库领用。数据来源于系统真实出入库记录。']);
+    exportXLSX(rows, '出入库趋势对比报表_'+unitName+'.xlsx', {titleMerge:true, headerAt:4});
+    toast('已导出报表','ok','出入库趋势对比报表（'+unitName+'）已生成');
   }
 
   // 库存预警：基于 items 实时计算（低于安全库存的物资），数据驱动、无任何演示数据
