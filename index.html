@@ -153,26 +153,18 @@
   .search input{border:none;background:none;outline:none;font-family:var(--font);font-size:13px;width:100%;color:var(--ink)}
   .search input::placeholder{color:var(--ink-3)}
   .date-note{
-    margin-left:auto;display:flex;flex-direction:column;gap:4px;
+    margin-left:auto;display:flex;align-items:center;gap:8px;
     background:rgba(255,255,255,.08);border:1px solid var(--line);
-    border-radius:16px;padding:8px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    font-size:12.5px;color:var(--ink);font-weight:600;
+    border-radius:20px;padding:8px 16px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    font-size:13px;color:var(--ink);font-weight:600;white-space:nowrap;
     box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 4px 14px rgba(0,0,0,.15);
-    cursor:pointer;transition:all .2s var(--ease);user-select:none;align-items:flex-start;
+    transition:all .2s var(--ease);
   }
-  .date-note:hover{border-color:rgba(91,140,255,.5);background:rgba(91,140,255,.12);transform:translateY(-1px)}
-  .date-note .do-row{display:flex;align-items:center;gap:8px;line-height:1.4;flex-wrap:wrap}
-  .date-note .do-row b{color:var(--ink);font-weight:700}
+  .date-note:hover{border-color:rgba(91,140,255,.5);background:rgba(91,140,255,.12)}
   .date-note .do-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
   .date-note .do-dot.in{background:var(--success);box-shadow:0 0 6px rgba(47,230,160,.6)}
   .date-note .do-dot.none{background:var(--ink-3)}
-  .date-note .do-stats{margin-top:1px}
-  .date-note .do-stat{font-size:11.5px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid var(--line);font-weight:500;display:inline-flex;align-items:center;gap:4px}
-  .date-note .do-stat.in{color:#67d8a4;border-color:rgba(103,216,164,.4);background:rgba(47,230,160,.1)}
-  .date-note .do-stat.out{color:#ff9d4d;border-color:rgba(255,157,77,.4);background:rgba(255,157,77,.1)}
-  .date-note.do-empty .do-latest b{color:var(--ink-3);font-weight:500}
-  .date-note.do-empty .do-hint{color:var(--ink-3);font-weight:500}
-  .date-note.do-empty .do-hint b{color:var(--primary);font-weight:700}
+  .date-note b{color:var(--ink);font-weight:700}
   .icon-btn{
     width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
     background:rgba(255,255,255,.07);display:grid;place-items:center;cursor:pointer;position:relative;transition:all .15s,transform .12s;color:var(--ink-2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
@@ -314,6 +306,27 @@
   .field textarea{height:auto;padding:12px 14px;resize:vertical;min-height:84px}
   .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.2),0 0 14px rgba(91,140,255,.25)}
   .field select option{background:#0e1526;color:var(--ink)}
+  .in-suggest{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;max-height:280px;overflow-y:auto;border-radius:14px;background:rgba(18,26,46,.97);border:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 16px 40px rgba(0,0,0,.45);padding:6px}
+  .in-suggest .is-head{padding:8px 10px 6px;font-size:11.5px;color:var(--ink-3);font-weight:600;letter-spacing:.3px;display:flex;align-items:center;gap:6px}
+  .in-suggest .is-head::before{content:"";width:3px;height:11px;border-radius:2px;background:var(--primary)}
+  .in-suggest .is-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;cursor:pointer;transition:background .15s}
+  .in-suggest .is-item:hover,.in-suggest .is-item.hl{background:rgba(91,140,255,.14)}
+  .in-suggest .is-item .is-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:17px;background:rgba(255,255,255,.06);flex-shrink:0}
+  .in-suggest .is-item .is-main{flex:1;min-width:0}
+  .in-suggest .is-item .is-name{font-size:13.5px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px}
+  .in-suggest .is-item .is-meta{font-size:11.5px;color:var(--ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .in-suggest .is-item .is-badge{flex-shrink:0;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap}
+  .in-suggest .is-item .is-badge.ok{background:rgba(47,230,160,.14);color:#67d8a4;border:1px solid rgba(47,230,160,.35)}
+  .in-suggest .is-item .is-badge.match{background:rgba(91,140,255,.16);color:#9db9ff;border:1px solid rgba(91,140,255,.4)}
+  .in-suggest .is-empty{padding:16px 12px;text-align:center;font-size:12.5px;color:var(--ink-3)}
+  .in-suggest .is-hint{font-size:11.5px;color:var(--ink-3);padding:4px 10px 6px}
+  .in-suggest .is-group-title{font-size:11px;color:var(--ink-3);font-weight:700;padding:8px 10px 2px;display:flex;align-items:center;gap:6px;letter-spacing:.3px}
+  .in-suggest .is-group-title::before{content:"";width:3px;height:11px;border-radius:2px;background:var(--ink-3)}
+  [data-theme="light"] .in-suggest{background:rgba(255,255,255,.98);border-color:#e4eaf5;box-shadow:0 16px 40px rgba(91,140,255,.18)}
+  [data-theme="light"] .in-suggest .is-item .is-name{color:#1d2433}
+  [data-theme="light"] .in-suggest .is-item:hover,.in-suggest .is-item.hl{background:rgba(91,140,255,.1)}
+  [data-theme="light"] .in-suggest .is-badge.ok{background:rgba(47,230,160,.14);color:#1f9a6b}
+  [data-theme="light"] .in-suggest .is-badge.match{background:rgba(91,140,255,.14);color:#3a5bf0}
   .field-note{grid-column:1/-1;font-size:11.5px;line-height:1.5;color:var(--ink-3);background:rgba(91,140,255,.08);border:1px solid rgba(91,140,255,.18);border-radius:10px;padding:9px 12px}
   .rec-list{padding:8px 20px 18px;display:flex;flex-direction:column;gap:10px}
   .rec{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
@@ -789,10 +802,6 @@
   [data-theme="light"] .search{background:rgba(255,255,255,.46);border:1px solid var(--line)}
   [data-theme="light"] .date-note{background:rgba(255,255,255,.62);border:1px solid var(--line);color:#1d2433;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 4px 14px rgba(91,140,255,.08)}
   [data-theme="light"] .date-note:hover{background:rgba(91,140,255,.1);border-color:rgba(91,140,255,.3)}
-  [data-theme="light"] .date-note .do-stat{background:rgba(91,140,255,.05);border-color:#e4eaf5}
-  [data-theme="light"] .date-note .do-stat.in{color:#1f9a6b;background:rgba(47,230,160,.12);border-color:rgba(47,230,160,.3)}
-  [data-theme="light"] .date-note .do-stat.out{color:#d96510;background:rgba(255,157,77,.12);border-color:rgba(255,157,77,.3)}
-  [data-theme="light"] .date-note.do-empty .do-hint b{color:var(--primary-deep)}
   [data-theme="light"] .store-bar{background:rgba(20,30,60,.12)}
   [data-theme="light"] .icon-btn{background:rgba(255,255,255,.46);color:var(--ink-2)}
   [data-theme="light"] .icon-btn:hover{background:var(--primary-soft);color:#1d2433}
@@ -1031,7 +1040,7 @@
             <div class="form-grid">
               <div class="field"><label>入库单号（申购单号） <span style="color:var(--ink-3);font-weight:400">选填</span></label><input id="inNo" placeholder="如：CG-2026-001（留空自动生成）" /></div>
               <div class="field"><label>物资分类</label><select id="inCat"><option>办公用品</option><option>烟酒茶</option><option>礼品</option></select></div>
-              <div class="field"><label>物资名称</label><input id="inName" placeholder="如：A4 复印纸 70g" /></div>
+              <div class="field" style="position:relative"><label>物资名称 <span style="color:var(--ink-3);font-weight:400;font-size:11px">输入自动识别库存</span></label><input id="inName" placeholder="如：A4 复印纸 70g" autocomplete="off" /><div class="in-suggest" id="inNameSuggest" hidden></div></div>
               <div class="field"><label>品牌 <span style="color:var(--ink-3);font-weight:400">选填</span></label><input id="inBrand" placeholder="如：晨光 / 得力" /></div>
               <div class="field"><label>规格</label><input id="inSpec" placeholder="如：500张/包" /></div>
               <div class="field"><label>入库数量</label><input id="inQty" placeholder="0" type="number" /></div>
@@ -1791,29 +1800,11 @@
   function updateDataNote(){
     const el=document.getElementById('dateNote'); if(!el) return;
     const latest=latestInboundDate();
-    const now=new Date();
-    const curMonth=monthKey(now);
-    const monthIn=inboundRecords.filter(r=>String(r.date||'').startsWith(curMonth));
-    const monthOut=outboundRecords.filter(r=>String(r.date||'').startsWith(curMonth));
-    const monthInQty=monthIn.reduce((s,r)=>s+(+r.qty||0),0);
-    const monthOutQty=monthOut.reduce((s,r)=>s+(+r.qty||0),0);
-    const nav=view=>{ const el=document.querySelector('.nav-item[data-view="'+view+'"]'); if(el) el.click(); };
-    if(latest){
-      el.innerHTML='<div class="do-row do-latest"><span class="do-dot in"></span>数据截至 <b>'+fmtCNDate(latest)+'</b></div>'+
-        '<div class="do-row do-stats">'+
-          '<span class="do-stat in">入库 '+monthIn.length+' 笔 / '+fmtNum(monthInQty)+' 件</span>'+
-          '<span class="do-stat out">领用 '+monthOut.length+' 笔 / '+fmtNum(monthOutQty)+' 件</span>'+
-        '</div>';
-      el.className='date-note do-ready';
-      el.title='点击查看数据管理 · 入库记录';
-      el.onclick=()=>nav('data');
-    } else {
-      el.innerHTML='<div class="do-row do-latest"><span class="do-dot none"></span>暂无入库记录</div>'+
-        '<div class="do-row do-hint">前往 <b>入库管理 · 入库登记</b> 开始录入</div>';
-      el.className='date-note do-empty';
-      el.title='点击前往入库登记';
-      el.onclick=()=>nav('inbound');
-    }
+    // 只显示「数据截至 YYYY年M月D日」实时信息：有数据 → 最新入库日期；无数据 → 暂无入库记录
+    el.innerHTML = latest
+      ? '<span class="do-dot in"></span>📅 数据截至 <b>'+fmtCNDate(latest)+'</b>'
+      : '<span class="do-dot none"></span>📅 暂无入库记录';
+    el.className='date-note';
   }
   function daysLeft(expireStr){ if(!expireStr) return null; return Math.round((new Date(expireStr+'T00:00:00')-new Date())/86400000); }
   function wStatus(dl){ if(dl===null) return {cls:'',txt:'—'}; if(dl<0) return {cls:'out',txt:'已过期'}; if(dl<=90) return {cls:'low',txt:'临期 '+dl+'天'}; return {cls:'ok',txt:'正常'}; }
@@ -3524,6 +3515,7 @@
   function resetInbound(){
     ['inNo','inName','inBrand','inSpec','inQty','inSafe','inPrice','inSupplier','inHandler','inNote'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
     const w=document.getElementById('inWarranty'); if(w) w.value='';
+    const sg=document.getElementById('inNameSuggest'); if(sg) sg.hidden=true;
   }
   document.getElementById('confirmInbound').addEventListener('click',()=>{
     const name=document.getElementById('inName').value.trim();
@@ -3559,6 +3551,78 @@
     toast('入库成功','ok',`${name} ×${qty}${unit} 已登记并入库存`);
   });
   document.getElementById('resetInbound').addEventListener('click',resetInbound);
+
+  // ============ 入库登记：物资名称智能识别（库存匹配 + 同类别相似 + 归类回填） ============
+  function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function catKeyOfLabel(label){ return Object.keys(catMeta).find(k=>catMeta[k].t===label)||normCat(label)||''; }
+  let inNameIdx=-1;
+  function renderInNameSuggest(){
+    const box=document.getElementById('inNameSuggest');
+    const inp=document.getElementById('inName');
+    if(!box||!inp) return;
+    const kw=inp.value.trim().toLowerCase();
+    const curCat=catKeyOfLabel(document.getElementById('inCat').value);
+    if(!kw){ box.hidden=true; inNameIdx=-1; return; }
+    // 分组：完全匹配（同名库存已有）/ 相似名称（包含关键字）/ 同类别物品（当前分类下其他）
+    const exact=[], sim=[], sameCat=[];
+    const seen=new Set();
+    items.forEach(it=>{
+      const n=String(it.n||'').toLowerCase();
+      if(n===kw){ if(!seen.has('e'+it.c)){ seen.add('e'+it.c); exact.push(it); } }
+      else if(n.includes(kw)||kw.includes(n)){ if(!seen.has('s'+it.n+'|'+it.c)){ seen.add('s'+it.n+'|'+it.c); sim.push(it); } }
+      else if(curCat && it.c===curCat){ if(!seen.has('c'+it.n+'|'+it.c)){ seen.add('c'+it.n+'|'+it.c); sameCat.push(it); } }
+    });
+    const groups=[];
+    if(exact.length) groups.push({t:'完全匹配 · 库存已有', items:exact});
+    if(sim.length) groups.push({t:'相似名称', items:sim});
+    if(sameCat.length) groups.push({t:'同类别物品', items:sameCat});
+    if(!groups.length){
+      box.innerHTML='<div class="is-empty">库存中暂未找到「'+escHtml(kw)+'」<div class="is-hint">可直接填写下方信息完成入库登记，系统将自动建档</div></div>';
+      box.hidden=false; inNameIdx=-1; return;
+    }
+    const flat=[];
+    let html='';
+    groups.forEach(g=>{
+      html+='<div class="is-group-title">'+g.t+'</div>';
+      g.items.forEach(it=>{
+        flat.push(it);
+        const m=catMeta[it.c];
+        const st=statusOf(it.q,it.safe)[1];
+        const isExact=g.t.indexOf('完全')>=0;
+        html+='<div class="is-item" data-idx="'+(flat.length-1)+'">'+
+          '<div class="is-ic">'+(m?m.icon:'📦')+'</div>'+
+          '<div class="is-main"><div class="is-name">'+escHtml(it.n)+' <span class="tag '+m.cls+'"><span class="d" style="background:'+m.col+'"></span>'+m.t+'</span></div>'+
+          '<div class="is-meta">品牌 '+escHtml(it.b||'—')+' · 规格 '+escHtml(it.s||'—')+' · 单位 '+escHtml(it.u||'件')+' · 现存量 '+fmtNum(it.q)+' · 安全库存 '+fmtNum(it.safe)+'</div></div>'+
+          '<span class="is-badge '+(isExact?'ok':'match')+'">'+(isExact?'已在库':st)+'</span></div>';
+      });
+    });
+    box.innerHTML=html;
+    box.hidden=false; inNameIdx=-1;
+    box.querySelectorAll('.is-item').forEach(el=>el.addEventListener('click',()=>applyInNameSuggest(flat[+el.dataset.idx])));
+  }
+  function applyInNameSuggest(it){
+    if(!it) return;
+    document.getElementById('inCat').value=catMeta[it.c].t;
+    document.getElementById('inName').value=it.n;
+    const b=document.getElementById('inBrand'); if(b) b.value=it.b||'';
+    const s=document.getElementById('inSpec'); if(s) s.value=it.s||'';
+    const u=document.getElementById('inUnit'); if(u) u.value=it.u||'';
+    const sf=document.getElementById('inSafe'); if(sf&&it.safe!=null) sf.value=it.safe;
+    const box=document.getElementById('inNameSuggest'); if(box) box.hidden=true;
+    inNameIdx=-1;
+    toast('已匹配库存物资','ok','「'+it.n+'」为库存已有物品，入库数量将累加到现存量');
+  }
+  const _inNameEl=document.getElementById('inName');
+  if(_inNameEl){
+    _inNameEl.addEventListener('input',renderInNameSuggest);
+    _inNameEl.addEventListener('focus',renderInNameSuggest);
+    _inNameEl.addEventListener('keydown',e=>{
+      if(e.key==='Escape'){ const box=document.getElementById('inNameSuggest'); if(box) box.hidden=true; }
+    });
+    _inNameEl.addEventListener('blur',()=>{ setTimeout(()=>{ const box=document.getElementById('inNameSuggest'); if(box) box.hidden=true; },160); });
+  }
+  const _inCatEl=document.getElementById('inCat');
+  if(_inCatEl) _inCatEl.addEventListener('change',renderInNameSuggest);
 
   function resetOutbound(){ ['outNo','outApplicant','outName','outQty','outHandler','outPurpose'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';}); }
   document.getElementById('submitOutbound').addEventListener('click',()=>{
