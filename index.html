@@ -153,12 +153,26 @@
   .search input{border:none;background:none;outline:none;font-family:var(--font);font-size:13px;width:100%;color:var(--ink)}
   .search input::placeholder{color:var(--ink-3)}
   .date-note{
-    margin-left:auto;display:flex;align-items:center;gap:8px;
+    margin-left:auto;display:flex;flex-direction:column;gap:4px;
     background:rgba(255,255,255,.08);border:1px solid var(--line);
-    border-radius:20px;padding:8px 16px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    font-size:13px;color:var(--ink);font-weight:600;white-space:nowrap;
+    border-radius:16px;padding:8px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    font-size:12.5px;color:var(--ink);font-weight:600;
     box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 4px 14px rgba(0,0,0,.15);
+    cursor:pointer;transition:all .2s var(--ease);user-select:none;align-items:flex-start;
   }
+  .date-note:hover{border-color:rgba(91,140,255,.5);background:rgba(91,140,255,.12);transform:translateY(-1px)}
+  .date-note .do-row{display:flex;align-items:center;gap:8px;line-height:1.4;flex-wrap:wrap}
+  .date-note .do-row b{color:var(--ink);font-weight:700}
+  .date-note .do-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+  .date-note .do-dot.in{background:var(--success);box-shadow:0 0 6px rgba(47,230,160,.6)}
+  .date-note .do-dot.none{background:var(--ink-3)}
+  .date-note .do-stats{margin-top:1px}
+  .date-note .do-stat{font-size:11.5px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid var(--line);font-weight:500;display:inline-flex;align-items:center;gap:4px}
+  .date-note .do-stat.in{color:#67d8a4;border-color:rgba(103,216,164,.4);background:rgba(47,230,160,.1)}
+  .date-note .do-stat.out{color:#ff9d4d;border-color:rgba(255,157,77,.4);background:rgba(255,157,77,.1)}
+  .date-note.do-empty .do-latest b{color:var(--ink-3);font-weight:500}
+  .date-note.do-empty .do-hint{color:var(--ink-3);font-weight:500}
+  .date-note.do-empty .do-hint b{color:var(--primary);font-weight:700}
   .icon-btn{
     width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
     background:rgba(255,255,255,.07);display:grid;place-items:center;cursor:pointer;position:relative;transition:all .15s,transform .12s;color:var(--ink-2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
@@ -773,7 +787,12 @@
   }
   [data-theme="light"] .topbar h1{color:#1d2433;text-shadow:none}
   [data-theme="light"] .search{background:rgba(255,255,255,.46);border:1px solid var(--line)}
-  [data-theme="light"] .date-note{background:rgba(255,255,255,.46);border:1px solid var(--line);color:#1d2433}
+  [data-theme="light"] .date-note{background:rgba(255,255,255,.62);border:1px solid var(--line);color:#1d2433;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 4px 14px rgba(91,140,255,.08)}
+  [data-theme="light"] .date-note:hover{background:rgba(91,140,255,.1);border-color:rgba(91,140,255,.3)}
+  [data-theme="light"] .date-note .do-stat{background:rgba(91,140,255,.05);border-color:#e4eaf5}
+  [data-theme="light"] .date-note .do-stat.in{color:#1f9a6b;background:rgba(47,230,160,.12);border-color:rgba(47,230,160,.3)}
+  [data-theme="light"] .date-note .do-stat.out{color:#d96510;background:rgba(255,157,77,.12);border-color:rgba(255,157,77,.3)}
+  [data-theme="light"] .date-note.do-empty .do-hint b{color:var(--primary-deep)}
   [data-theme="light"] .store-bar{background:rgba(20,30,60,.12)}
   [data-theme="light"] .icon-btn{background:rgba(255,255,255,.46);color:var(--ink-2)}
   [data-theme="light"] .icon-btn:hover{background:var(--primary-soft);color:#1d2433}
@@ -1772,7 +1791,29 @@
   function updateDataNote(){
     const el=document.getElementById('dateNote'); if(!el) return;
     const latest=latestInboundDate();
-    el.innerHTML = latest ? `📅 数据截至 ${fmtCNDate(latest)}` : `📅 暂无入库记录`;
+    const now=new Date();
+    const curMonth=monthKey(now);
+    const monthIn=inboundRecords.filter(r=>String(r.date||'').startsWith(curMonth));
+    const monthOut=outboundRecords.filter(r=>String(r.date||'').startsWith(curMonth));
+    const monthInQty=monthIn.reduce((s,r)=>s+(+r.qty||0),0);
+    const monthOutQty=monthOut.reduce((s,r)=>s+(+r.qty||0),0);
+    const nav=view=>{ const el=document.querySelector('.nav-item[data-view="'+view+'"]'); if(el) el.click(); };
+    if(latest){
+      el.innerHTML='<div class="do-row do-latest"><span class="do-dot in"></span>数据截至 <b>'+fmtCNDate(latest)+'</b></div>'+
+        '<div class="do-row do-stats">'+
+          '<span class="do-stat in">入库 '+monthIn.length+' 笔 / '+fmtNum(monthInQty)+' 件</span>'+
+          '<span class="do-stat out">领用 '+monthOut.length+' 笔 / '+fmtNum(monthOutQty)+' 件</span>'+
+        '</div>';
+      el.className='date-note do-ready';
+      el.title='点击查看数据管理 · 入库记录';
+      el.onclick=()=>nav('data');
+    } else {
+      el.innerHTML='<div class="do-row do-latest"><span class="do-dot none"></span>暂无入库记录</div>'+
+        '<div class="do-row do-hint">前往 <b>入库管理 · 入库登记</b> 开始录入</div>';
+      el.className='date-note do-empty';
+      el.title='点击前往入库登记';
+      el.onclick=()=>nav('inbound');
+    }
   }
   function daysLeft(expireStr){ if(!expireStr) return null; return Math.round((new Date(expireStr+'T00:00:00')-new Date())/86400000); }
   function wStatus(dl){ if(dl===null) return {cls:'',txt:'—'}; if(dl<0) return {cls:'out',txt:'已过期'}; if(dl<=90) return {cls:'low',txt:'临期 '+dl+'天'}; return {cls:'ok',txt:'正常'}; }
@@ -2630,9 +2671,11 @@
   function buildTrendData(range){
     range=range||'month';
     if(range==='quarter'){
-      const qs=last6Quarters();
+      // 仅本年度 4 季度（Q1-Q4），不再展示跨年度的近 6 季度
+      const cur=new Date().getFullYear();
+      const qs=Array.from({length:4},(_,i)=>{ const q=i+1; return {key:cur+'-Q'+q, label:String(cur).slice(-2)+' Q'+q}; });
       const inMatch=(r,p)=>{ const d=r.date?new Date(String(r.date).slice(0,10)):null; return d&&!isNaN(d)&&qKeyOf(d)===p; };
-      return { range:'quarter', title:'近 6 个季度出入库趋势对比', labels:qs.map(q=>q.label), inbound:sumByPeriod(inboundRecords,qs,'qty',inMatch), outbound:sumByPeriod(outboundRecords,qs,'qty',inMatch) };
+      return { range:'quarter', title:'本年度出入库趋势对比', labels:qs.map(q=>q.label), inbound:sumByPeriod(inboundRecords,qs,'qty',inMatch), outbound:sumByPeriod(outboundRecords,qs,'qty',inMatch) };
     }
     if(range==='year'){
       // 只显示本年度数据：当前自然年 1 月 → 12 月
@@ -2813,7 +2856,7 @@
     listEl.innerHTML=Object.keys(catMeta).map(k=>{ const m=catMeta[k]; const cnt=items.filter(i=>i.c===k).length; return `<div class="rec"><div class="ri" style="color:${m.col}">${m.icon||'📦'}</div><div><div class="rt">${m.t}</div><div class="rs">${m.desc||''} · ${cnt} 项</div></div><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>启用</span></div>`; }).join('');
   }
   let trendRange='month';
-  function trendSubText(range){ const map={month:'本月',quarter:'近 6 个季度',year:'本年度'}; return (map[range]||'本月')+' · 单位：件'; }
+  function trendSubText(range){ const map={month:'本月',quarter:'本年度',year:'本年度'}; return (map[range]||'本月')+' · 单位：件'; }
   function updateDashboardCharts(){
     if(typeof window.Chart==='undefined' || !charts.dashboard) return;
     const td=buildTrendData(trendRange); const cd=buildCatData();
@@ -4130,7 +4173,7 @@
     const totalIn=td.inbound.reduce((a,b)=>a+b,0);
     const totalOut=td.outbound.reduce((a,b)=>a+b,0);
     const netTotal=totalIn-totalOut;
-    const unitName=td.range==='month'?'本月':(td.range==='quarter'?'近 6 个季度':'本年度');
+    const unitName=td.range==='month'?'本月':(td.range==='quarter'?'本年度季度':'本年度');
     const periodName=td.range==='month'?'日期':(td.range==='quarter'?'季度':'月份');
     const rows=[
       ['出入库趋势对比报表（'+unitName+'）'],
