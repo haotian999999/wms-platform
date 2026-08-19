@@ -1495,7 +1495,6 @@
         </form>
       </div>
       <div class="modal-foot">
-        <button class="btn btn-ghost" id="invEditDelete" style="color:#ff7a7a;border-color:rgba(255,90,90,.5)">🗑️ 删除</button>
         <button class="btn btn-ghost" id="invEditCancel">取消</button>
         <button class="btn btn-primary" id="invEditSave">保存</button>
       </div>
@@ -3402,7 +3401,6 @@
   document.getElementById('checkItemEditDelete').addEventListener('click',()=>{ const idx=checkItemEditIdx; closeCheckItemEdit(); if(idx>=0) deleteCheckItem(idx); });
   document.getElementById('recActionDel').addEventListener('click',()=>{ const i=recActionIdx; closeRecAction(); if(i>=0) deleteRecCheck(i); });
   document.getElementById('recEditDelete').addEventListener('click',()=>deleteRec(recEditType,recEditIdx));
-  document.getElementById('invEditDelete').addEventListener('click',()=>deleteInv(invEditIdx));
   document.getElementById('viewAllOut').addEventListener('click',viewAllOut);
   renderRecentOut();
 
