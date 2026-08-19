@@ -1272,17 +1272,22 @@
               <button class="btn btn-danger" id="delArchiveBtn">🗑 删除该年度归档</button>
             </div>
             <div class="archive-overview" id="archiveOverview"></div>
+            <!-- 财务会计框架：年度汇总（期初/入库/出库/期末 勾稽平衡） -->
             <div class="card mt">
-              <div class="panel-head"><div><h3>年度结存快照</h3><div class="sub">该年度末冻结的库存结存</div></div></div>
-              <div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th>年末结存</th><th>单位</th><th>结存金额(元)</th></tr></thead><tbody id="snapBody"></tbody></table></div>
+              <div class="panel-head"><div><h3>年度库存汇总 · 试算平衡</h3><div class="sub" id="archiveTrialSub">期初结存 + 本期入库 − 本期出库 = 期末结存（数量勾稽）</div></div></div>
+              <div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th class="num">期初结存</th><th class="num">本期入库</th><th class="num">本期出库</th><th class="num">期末结存</th><th>单位</th><th class="num">期末金额(元)</th><th>勾稽</th></tr></thead><tbody id="trialBody"></tbody><tfoot id="trialFoot" class="arch-foot"></tfoot></table></div>
             </div>
             <div class="card mt">
-              <div class="panel-head"><div><h3>归档入库流水</h3><div class="sub">该年度全部入库记录</div></div></div>
-              <div class="table-scroll"><table class="data-table"><thead><tr><th>入库单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>数量</th><th>金额(元)</th><th>供应商</th></tr></thead><tbody id="archInBody"></tbody><tfoot id="archInFoot" class="arch-foot"></tfoot></table></div>
+              <div class="panel-head"><div><h3>期末结存明细</h3><div class="sub">该年度 12 月 31 日库存余额（资产负债表 · 存货科目）</div></div></div>
+              <div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th class="num">单价(元)</th><th class="num">期末数量</th><th>单位</th><th class="num">期末金额(元)</th></tr></thead><tbody id="snapBody"></tbody><tfoot id="snapFoot" class="arch-foot"></tfoot></table></div>
             </div>
             <div class="card mt">
-              <div class="panel-head"><div><h3>归档出库流水</h3><div class="sub">该年度全部出库记录</div></div></div>
-              <div class="table-scroll"><table class="data-table"><thead><tr><th>出库单号</th><th>日期</th><th>领用人</th><th>物资名称</th><th>分类</th><th>数量</th><th>用途</th></tr></thead><tbody id="archOutBody"></tbody><tfoot id="archOutFoot" class="arch-foot"></tfoot></table></div>
+              <div class="panel-head"><div><h3>入库明细账</h3><div class="sub">该年度全部入库记录（存货收入明细）</div></div></div>
+              <div class="table-scroll"><table class="data-table"><thead><tr><th>入库单号</th><th>日期</th><th>物资名称</th><th>分类</th><th class="num">数量</th><th class="num">单价(元)</th><th class="num">金额(元)</th><th>供应商</th></tr></thead><tbody id="archInBody"></tbody><tfoot id="archInFoot" class="arch-foot"></tfoot></table></div>
+            </div>
+            <div class="card mt">
+              <div class="panel-head"><div><h3>出库明细账</h3><div class="sub">该年度全部出库记录（存货发出明细）</div></div></div>
+              <div class="table-scroll"><table class="data-table"><thead><tr><th>出库单号</th><th>日期</th><th>领用人</th><th>物资名称</th><th>分类</th><th class="num">数量</th><th class="num">单价(元)</th><th class="num">金额(元)</th><th>用途</th></tr></thead><tbody id="archOutBody"></tbody><tfoot id="archOutFoot" class="arch-foot"></tfoot></table></div>
             </div>
           </div>
         </div>
@@ -3339,8 +3344,9 @@
       '<div class="co-row"><span>结转年度</span><b>'+label+' 年</b></div>'+
       '<div class="co-row"><span>将归档入库流水</span><b>'+s.inH+' 笔</b></div>'+
       '<div class="co-row"><span>将归档出库流水</span><b>'+s.outH+' 笔</b></div>'+
-      '<div class="co-row"><span>期末库存物资</span><b>'+s.items+' 种 → 结存冻结为本期初</b></div>'+
-      '<div class="co-row warn"><span>本年（'+s.cur+' 年）数据</span><b>保留为本期流水，不受影响</b></div>';
+      '<div class="co-row"><span>期末库存物资</span><b>'+s.items+' 种 → 结存冻结为下年期初</b></div>'+
+      '<div class="co-row warn"><span>本年（'+s.cur+' 年）数据</span><b>保留为本期流水，不受影响</b></div>'+
+      '<div class="co-row warn"><span>财务口径</span><b>期初 + 入库 − 出库 = 期末 · 逐年勾稽平衡</b></div>';
     if(btn) btn.disabled=false; if(msg) msg.textContent='';
   }
   function doCarryover(){
@@ -3363,15 +3369,44 @@
       i.initQty=+(base+inLast-outLast).toFixed(2);
     });
     const years=[...new Set([...inArch,...outArch].map(yearOf).filter(y=>!isNaN(y)))].sort((a,b)=>a-b);
-    // 按年度拆分归档：每年独立成档，支持「2024 年 / 2025 年」归类查看、导出与删除
-    const lastYear=years[years.length-1]||(cur-1);
-    years.forEach(y=>{
+    // 财务会计链式结转：最近年度期末 = 结转时点库存 − 本年净入 + 本年净出（剔除本年变动）
+    // 更早年度期末 = 下一年度期初；期初 = 期末 − 本期入库 + 本期出库（逐年勾稽，恒等平衡）
+    const curIn=inboundRecords.filter(r=>yearOf(r)>=cur);
+    const curOut=outboundRecords.filter(r=>yearOf(r)>=cur);
+    const priceOf2={}; inboundRecords.forEach(r=>{ if(r.name&&r.price) priceOf2[r.name+'|'+r.category]=r.price; });
+    const unitPriceOf=(it)=>(typeof it.price==='number'&&it.price)? it.price : (priceOf2[it.n+'|'+it.c]||0);
+    const closingLatest=snapshot.map(s=>{
+      const ciQ=curIn.filter(r=>r.name===s.n&&r.category===s.c).reduce((x,r)=>x+(+r.qty||0),0);
+      const coQ=curOut.filter(r=>r.name===s.n&&r.category===s.c).reduce((x,r)=>x+(+r.qty||0),0);
+      const q=Math.max(0, +((+s.q||0)-ciQ+coQ).toFixed(2));
+      const p=unitPriceOf(s);
+      return {n:s.n,c:s.c,u:s.u,q,price:p,amount:+((q*p).toFixed(2))};
+    });
+    let nextClosing=closingLatest;
+    years.slice().reverse().forEach(y=>{
+      const inY=inArch.filter(r=>yearOf(r)===y);
+      const outY=outArch.filter(r=>yearOf(r)===y);
+      // 期末：最近年度用剔除本年变动后的结存；更早年度用下一年度期初（财务连续性）
+      const closing=nextClosing.map(o=>({n:o.n,c:o.c,u:o.u,q:o.q,price:o.price,amount:o.amount}));
+      // 期初 = 期末 − 入库 + 出库（按物资逐项）
+      const opening=closing.map(s=>{
+        const inQ=inY.filter(r=>r.name===s.n&&r.category===s.c).reduce((x,r)=>x+(+r.qty||0),0);
+        const outQ=outY.filter(r=>r.name===s.n&&r.category===s.c).reduce((x,r)=>x+(+r.qty||0),0);
+        const q=Math.max(0, +(s.q-inQ+outQ).toFixed(2));
+        return {n:s.n,c:s.c,u:s.u,q,price:s.price,amount:+((q*(s.price||0)).toFixed(2))};
+      });
+      nextClosing=opening; // 更早年度期末 = 本年度期初
+      // 出库补单价/金额（存货发出成本：按物资统一单价估算）
+      const outWithPrice=outY.map(r=>{
+        const p=priceOf2[r.name+'|'+r.category]||0;
+        return Object.assign({},r,{price:p,amount:+(((+r.qty||0)*p).toFixed(2))});
+      });
+      const inWithPrice=inY.map(r=>Object.assign({},r,{price:(+r.price||0),amount:(+r.amount||+(+r.qty||0)*(+r.price||0))}));
       archivedRecords.unshift({
         label:String(y), year:y,
-        inbound:inArch.filter(r=>yearOf(r)===y),
-        outbound:outArch.filter(r=>yearOf(r)===y),
-        // 期末结存快照仅挂载最近结转年度（对应结转时点的年末库存）
-        snapshot:(y===lastYear)?snapshot:[],
+        opening, closing,
+        inbound:inWithPrice,
+        outbound:outWithPrice,
         carriedAt:new Date().toISOString().slice(0,10)
       });
     });
@@ -3380,7 +3415,7 @@
     const keepOut=outboundRecords.filter(r=>yearOf(r)>=cur);
     inboundRecords.length=0; inboundRecords.push(...keepIn);
     outboundRecords.length=0; outboundRecords.push(...keepOut);
-    lastCarryoverYear=lastYear;
+    lastCarryoverYear=years[years.length-1]||(cur-1);
     recomputeStocks(); // 现存数值应与原 q 完全一致，不发生跳变
     checkPlansQuarter.length=0; checkPlansYear.length=0; seedCheckPlans(); // 新一年清空计划，重新生成
     wmsSave();
@@ -3399,25 +3434,26 @@
       const m=document.getElementById('archiveMeta'); if(m) m.textContent='暂无归档数据';
       if(ov) ov.innerHTML='<div class="ao-empty">暂无年度归档 · 执行「年度数据结转」后按年度归类展示</div>';
       if(expBtn) expBtn.disabled=true; if(delBtn) delBtn.disabled=true;
-      ['snapBody','archInBody','archOutBody'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML='<tr><td colspan="7" class="empty">暂无归档数据</td></tr>'; });
-      ['archInFoot','archOutFoot'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML=''; });
+      ['trialBody','snapBody','archInBody','archOutBody'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML='<tr><td colspan="9" class="empty">暂无归档数据</td></tr>'; });
+      ['trialFoot','snapFoot','archInFoot','archOutFoot'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML=''; });
       return;
     }
     sel.innerHTML=archivedRecords.map((a,i)=>`<option value="${i}">${a.label||a.year||i} 年（${a.inbound.length+a.outbound.length} 笔）</option>`).join('');
     if(ov){
       ov.innerHTML=archivedRecords.map((a,i)=>{
         const inAmt=a.inbound.reduce((s,r)=>s+(+r.amount||0),0);
-        const outQty=a.outbound.reduce((s,r)=>s+(+r.qty||0),0);
-        const snapAmt=(a.snapshot||[]).reduce((s,x)=>s+(+x.amount||0),0);
+        const outAmt=(a.outbound||[]).reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0);
+        const snapAmt=(a.closing||a.snapshot||[]).reduce((s,x)=>s+(+x.amount||0),0);
+        const opAmt=(a.opening||[]).reduce((s,x)=>s+(+x.amount||0),0);
         return `<div class="ao-card ${i===0?'active':''}" data-idx="${i}">
           <div class="ao-year">${a.label||a.year||i} 年</div>
           <div class="ao-grid">
-            <div><b>${a.inbound.length+a.outbound.length}</b><span>流水笔数</span></div>
-            <div><b>${fmtNum(inAmt)}</b><span>入库金额(元)</span></div>
-            <div><b>${fmtNum(outQty)}</b><span>领用件数</span></div>
-            <div><b>${fmtNum(snapAmt)}</b><span>年末结存(元)</span></div>
+            <div><b>${fmtNum(opAmt)}</b><span>期初结存(元)</span></div>
+            <div><b>${fmtNum(inAmt)}</b><span>本期入库(元)</span></div>
+            <div><b>${fmtNum(outAmt)}</b><span>本期出库(元)</span></div>
+            <div><b>${fmtNum(snapAmt)}</b><span>期末结存(元)</span></div>
           </div>
-          <div class="ao-foot">结转于 ${a.carriedAt||'—'}</div>
+          <div class="ao-foot">结转于 ${a.carriedAt||'—'} · 流水 ${a.inbound.length+a.outbound.length} 笔</div>
         </div>`;
       }).join('');
       ov.querySelectorAll('.ao-card').forEach(c=>c.addEventListener('click',()=>{
@@ -3437,20 +3473,51 @@
     if(ov){ ov.querySelectorAll('.ao-card').forEach(c=>c.classList.toggle('active',+c.dataset.idx===idx)); }
     const sel=document.getElementById('archiveYear'); if(sel&&+sel.value!==idx) sel.value=String(idx);
     const m=document.getElementById('archiveMeta'); if(m) m.textContent='结转于 '+a.carriedAt+' · 共 '+(a.inbound.length+a.outbound.length)+' 笔历史流水';
+    const ts=document.getElementById('archiveTrialSub');
+    if(ts) ts.textContent='期初结存 + 本期入库 − 本期出库 = 期末结存 · 勾稽平衡校验（'+a.label+' 年）';
+    // ---- 年度汇总 · 试算平衡表（期初+入库−出库=期末，按物资逐项勾稽）----
+    const trialBody=document.getElementById('trialBody');
+    const opening=a.opening||[], closing=a.closing||[];
+    const inY=a.inbound||[], outY=a.outbound||[];
+    // 物资全集：期末∪期初∪入库∪出库
+    const keys=new Map();
+    [[opening,'op'],[closing,'cl'],[inY,'in'],[outY,'out']].forEach(([arr,tag])=>{
+      arr.forEach(r=>{ const nm=r.n||r.name, ct=r.c||r.category; const k=nm+'|'+ct; if(!keys.has(k)) keys.set(k,{n:nm,c:ct,u:r.unit||r.u||'件',op:0,cl:0,iq:0,oq:0,price:0}); const e=keys.get(k); if(tag==='op')e.op+=(+r.q||0); if(tag==='cl'){e.cl+=(+r.q||0); e.price=+(r.price||0)||e.price;} if(tag==='in')e.iq+=(+r.qty||0); if(tag==='out')e.oq+=(+r.qty||0); });
+    });
+    let tOp=0,tIn=0,tOut=0,tCl=0,tAmt=0,tBal=0;
+    const rows=Array.from(keys.values()).map(e=>{
+      const bal=+(e.op+e.iq-e.oq-e.cl).toFixed(2);
+      const amt=+((e.cl*(e.price||0)).toFixed(2));
+      tOp+=e.op; tIn+=e.iq; tOut+=e.oq; tCl+=e.cl; tAmt+=amt; tBal+=bal;
+      return `<tr><td>${e.n}</td><td>${catMeta[e.c]?catMeta[e.c].t:e.c}</td><td class="num">${fmtNum(e.op)}</td><td class="num">${fmtNum(e.iq)}</td><td class="num">${fmtNum(e.oq)}</td><td class="num">${fmtNum(e.cl)}</td><td>${e.u}</td><td class="num">${fmtNum(amt)}</td><td><span class="status ${Math.abs(bal)<0.01?'ok':'down'}">${Math.abs(bal)<0.01?'平衡':'差异 '+bal}</span></td></tr>`;
+    }).join('')||'<tr><td colspan="9" class="empty">该年度无库存数据</td></tr>';
+    trialBody.innerHTML=rows;
+    const trialFoot=document.getElementById('trialFoot');
+    if(trialFoot) trialFoot.innerHTML=`<tr class="arch-total"><td colspan="2">合计</td><td class="num">${fmtNum(tOp)}</td><td class="num">${fmtNum(tIn)}</td><td class="num">${fmtNum(tOut)}</td><td class="num">${fmtNum(tCl)}</td><td></td><td class="num">${fmtNum(tAmt)}</td><td><span class="status ${Math.abs(tBal)<0.01?'ok':'down'}">${Math.abs(tBal)<0.01?'勾稽平衡':'差异 '+tBal}</span></td></tr>`;
+    // ---- 期末结存明细（资产负债表 · 存货）----
     const sb=document.getElementById('snapBody');
-    const snapAmt=(a.snapshot||[]).reduce((s,x)=>s+(+x.amount||0),0);
-    sb.innerHTML=(a.snapshot&&a.snapshot.length)?a.snapshot.map(s=>`<tr><td>${s.n}</td><td>${catMeta[s.c]?catMeta[s.c].t:s.c}</td><td class="num">${s.q}</td><td>${s.u||'—'}</td><td class="num">${s.amount!=null?s.amount:'—'}</td></tr>`).join('')+'<tr class="arch-total"><td colspan="2">合计</td><td class="num">'+fmtNum((a.snapshot||[]).reduce((s,x)=>s+(+x.q||0),0))+'</td><td></td><td class="num">'+fmtNum(snapAmt)+'</td></tr>':'<tr><td colspan="5" class="empty">无结存记录</td></tr>';
+    const snapAmt=closing.reduce((s,x)=>s+(+x.amount||+((+x.q||0)*(+x.price||0))||0),0);
+    sb.innerHTML=closing.length?closing.map(s=>`<tr><td>${s.n}</td><td>${catMeta[s.c]?catMeta[s.c].t:s.c}</td><td class="num">${s.price!=null?s.price:'—'}</td><td class="num">${s.q}</td><td>${s.u||'—'}</td><td class="num">${s.amount!=null?s.amount:(+(s.q*(s.price||0))).toFixed(2)}</td></tr>`).join('')+'<tr class="arch-total"><td colspan="4">期末结存合计</td><td></td><td class="num">'+fmtNum(snapAmt)+'</td></tr>':'<tr><td colspan="6" class="empty">无期末结存记录</td></tr>';
+    const snapFoot=document.getElementById('snapFoot');
+    if(snapFoot) snapFoot.innerHTML='';
+    // ---- 入库明细账 ----
     const ib=document.getElementById('archInBody');
-    ib.innerHTML=a.inbound.length?a.inbound.map(r=>`<tr><td class="code">${r.inNo||r.id}</td><td>${r.date}</td><td>${r.name}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td class="num">${r.amount||'—'}</td><td>${r.supplier||'—'}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">无入库归档</td></tr>';
-    const inQty=a.inbound.reduce((s,r)=>s+(+r.qty||0),0);
-    const inAmt=a.inbound.reduce((s,r)=>s+(+r.amount||0),0);
+    ib.innerHTML=inY.length?inY.map(r=>`<tr><td class="code">${r.inNo||r.id}</td><td>${r.date}</td><td>${r.name}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td class="num">${r.price!=null?r.price:'—'}</td><td class="num">${r.amount||'—'}</td><td>${r.supplier||'—'}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">无入库记录</td></tr>';
+    const inQty=inY.reduce((s,r)=>s+(+r.qty||0),0);
+    const inAmt=inY.reduce((s,r)=>s+(+r.amount||0),0);
     const inFoot=document.getElementById('archInFoot');
-    if(inFoot) inFoot.innerHTML=a.inbound.length?`<tr class="arch-total"><td colspan="4">入库合计</td><td class="num">${fmtNum(inQty)}</td><td class="num">${fmtNum(inAmt)}</td><td></td></tr>`:'';
+    if(inFoot) inFoot.innerHTML=inY.length?`<tr class="arch-total"><td colspan="4">入库合计</td><td class="num">${fmtNum(inQty)}</td><td></td><td class="num">${fmtNum(inAmt)}</td><td></td></tr>`:'';
+    // ---- 出库明细账（含发出成本）----
     const ob=document.getElementById('archOutBody');
-    ob.innerHTML=a.outbound.length?a.outbound.map(r=>`<tr><td class="code">${r.outNo||r.id}</td><td>${r.date}</td><td>${r.applicant||'—'}</td><td>${r.name}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td>${r.purpose||'—'}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">无出库归档</td></tr>';
-    const outQty=a.outbound.reduce((s,r)=>s+(+r.qty||0),0);
+    ob.innerHTML=outY.length?outY.map(r=>{
+      const p=(r.price!=null)?r.price:0;
+      const amt=(r.amount!=null)?r.amount:(+(+r.qty||0)*p).toFixed(2);
+      return `<tr><td class="code">${r.outNo||r.id}</td><td>${r.date}</td><td>${r.applicant||'—'}</td><td>${r.name}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td class="num">${p||'—'}</td><td class="num">${amt}</td><td>${r.purpose||'—'}</td></tr>`;
+    }).join(''):'<tr><td colspan="9" class="empty">无出库记录</td></tr>';
+    const outQty=outY.reduce((s,r)=>s+(+r.qty||0),0);
+    const outAmt=outY.reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0);
     const outFoot=document.getElementById('archOutFoot');
-    if(outFoot) outFoot.innerHTML=a.outbound.length?`<tr class="arch-total"><td colspan="5">出库合计</td><td class="num">${fmtNum(outQty)}</td><td></td></tr>`:'';
+    if(outFoot) outFoot.innerHTML=outY.length?`<tr class="arch-total"><td colspan="5">出库合计</td><td class="num">${fmtNum(outQty)}</td><td></td><td class="num">${fmtNum(outAmt)}</td><td></td></tr>`:'';
   }
   const _coBtn=document.getElementById('btnCarryover');
   if(_coBtn) _coBtn.addEventListener('click',()=>{
@@ -3468,7 +3535,8 @@
     document.getElementById('carryoverConfirmInfo').innerHTML='<div class="co-row"><span>结转年度</span><b>'+label+' 年</b></div>'+
       yearRows+
       '<div class="co-row"><span>合计归档流水</span><b>'+s.inH+' 入库 + '+s.outH+' 出库</b></div>'+
-      '<div class="co-row"><span>期末库存物资</span><b>'+s.items+' 种将冻结为期初</b></div>';
+      '<div class="co-row"><span>期末库存物资</span><b>'+s.items+' 种将冻结为下年期初</b></div>'+
+      '<div class="co-row warn"><span>财务口径</span><b>期初 + 入库 − 出库 = 期末 · 逐年勾稽</b></div>';
     document.getElementById('carryoverModal').classList.add('show');
   });
   document.getElementById('carryoverClose').addEventListener('click',()=>document.getElementById('carryoverModal').classList.remove('show'));
@@ -3480,15 +3548,32 @@
   function exportArchiveYear(){
     const a=archivedRecords[+document.getElementById('archiveYear').value||0]; if(!a) return;
     const label=(a.label||a.year||'')+' 年';
-    const rows=[[label+' 年度归档报表'],['结转日期',a.carriedAt||'—'],['流水合计',(a.inbound.length+a.outbound.length)+' 笔'],[],
-      ['年度结存快照'],['物资名称','分类','年末结存','单位','结存金额(元)']];
-    (a.snapshot||[]).forEach(s=>rows.push([s.n,catMeta[s.c]?catMeta[s.c].t:s.c,s.q,s.u||'—',s.amount!=null?s.amount:'—']));
+    const opening=a.opening||[], closing=a.closing||[];
+    const inY=a.inbound||[], outY=a.outbound||[];
+    const rows=[[label+' 年度归档报表'],['结转日期',a.carriedAt||'—'],
+      ['期初结存金额', fmtNum(opening.reduce((s,x)=>s+(+x.amount||0),0))+' 元'],
+      ['本期入库金额', fmtNum(inY.reduce((s,r)=>s+(+r.amount||0),0))+' 元'],
+      ['本期出库金额', fmtNum(outY.reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0))+' 元'],
+      ['期末结存金额', fmtNum(closing.reduce((s,x)=>s+(+x.amount||0),0))+' 元'],[],
+      ['年度库存汇总 · 试算平衡'],['物资名称','分类','期初结存','本期入库','本期出库','期末结存','单位','期末金额(元)','勾稽']];
+    const keys=new Map();
+    [[opening,'op'],[closing,'cl'],[inY,'in'],[outY,'out']].forEach(([arr,tag])=>{
+      arr.forEach(r=>{ const nm=r.n||r.name, ct=r.c||r.category; const k=nm+'|'+ct; if(!keys.has(k)) keys.set(k,{n:nm,c:ct,u:r.unit||r.u||'件',op:0,cl:0,iq:0,oq:0,price:0}); const e=keys.get(k); if(tag==='op')e.op+=(+r.q||0); if(tag==='cl'){e.cl+=(+r.q||0); e.price=+(r.price||0)||e.price;} if(tag==='in')e.iq+=(+r.qty||0); if(tag==='out')e.oq+=(+r.qty||0); });
+    });
+    Array.from(keys.values()).forEach(e=>{
+      const bal=+(e.op+e.iq-e.oq-e.cl).toFixed(2);
+      const amt=+((e.cl*(e.price||0)).toFixed(2));
+      rows.push([e.n,catMeta[e.c]?catMeta[e.c].t:e.c,e.op,e.iq,e.oq,e.cl,e.u,amt,Math.abs(bal)<0.01?'平衡':'差异 '+bal]);
+    });
     rows.push([]);
-    rows.push(['年度入库流水'],['入库单号','日期','物资名称','分类','数量','金额(元)','供应商']);
-    a.inbound.forEach(r=>rows.push([r.inNo||r.id,r.date,r.name,catMeta[r.category]?catMeta[r.category].t:r.category,r.qty,r.amount||'—',r.supplier||'—']));
+    rows.push(['期末结存明细'],['物资名称','分类','单价(元)','期末数量','单位','期末金额(元)']);
+    closing.forEach(s=>rows.push([s.n,catMeta[s.c]?catMeta[s.c].t:s.c,s.price!=null?s.price:'—',s.q,s.u||'—',s.amount!=null?s.amount:(+(s.q*(s.price||0))).toFixed(2)]));
     rows.push([]);
-    rows.push(['年度出库流水'],['出库单号','日期','领用人','物资名称','分类','数量','用途']);
-    a.outbound.forEach(r=>rows.push([r.outNo||r.id,r.date,r.applicant||'—',r.name,catMeta[r.category]?catMeta[r.category].t:r.category,r.qty,r.purpose||'—']));
+    rows.push(['入库明细账'],['入库单号','日期','物资名称','分类','数量','单价(元)','金额(元)','供应商']);
+    inY.forEach(r=>rows.push([r.inNo||r.id,r.date,r.name,catMeta[r.category]?catMeta[r.category].t:r.category,r.qty,r.price!=null?r.price:'—',r.amount||'—',r.supplier||'—']));
+    rows.push([]);
+    rows.push(['出库明细账'],['出库单号','日期','领用人','物资名称','分类','数量','单价(元)','金额(元)','用途']);
+    outY.forEach(r=>rows.push([r.outNo||r.id,r.date,r.applicant||'—',r.name,catMeta[r.category]?catMeta[r.category].t:r.category,r.qty,(r.price!=null)?r.price:'—',(r.amount!=null)?r.amount:(+(+r.qty||0)*(+r.price||0)).toFixed(2),r.purpose||'—']));
     exportXLSX(rows, label+'年度归档报表.xlsx', {});
     toast('已导出归档','ok',label+'年度归档报表.xlsx 已生成');
   }
