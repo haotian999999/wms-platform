@@ -949,7 +949,7 @@
           </div>
           <div class="table-scroll">
             <table class="data-table">
-              <thead><tr><th>讯号</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格</th><th>单位</th><th>库存数量</th><th>安全库存</th><th>入库单号（申购单号）</th><th>入库累计</th><th>出库单号（审批编号）</th><th>出库累计</th><th>质保期(月)</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
+              <thead><tr><th>讯号</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格</th><th>单位</th><th>库存数量</th><th>安全库存</th><th>入库单号（申购单号）</th><th>入库累计</th><th>出库单号（审批编号）</th><th>出库累计</th><th>质保期(月)</th><th>到期日</th><th>状态</th></tr></thead>
               <tbody id="invBody"></tbody>
             </table>
           </div>
@@ -1061,7 +1061,7 @@
               <div class="plan-meta" style="padding:0 20px 6px">每季度末由仓库管理员自行盘点，每年 4 次（全盘）。</div>
               <div class="table-scroll">
                 <table class="plan-table">
-                  <thead><tr><th>盘点周期</th><th>计划时间</th><th>盘点人</th><th>方式</th><th>状态</th><th>差异</th><th>操作</th></tr></thead>
+                  <thead><tr><th>盘点周期</th><th>计划时间</th><th>盘点人</th><th>方式</th><th>状态</th><th>差异</th><th>开始盘点</th></tr></thead>
                   <tbody id="planQuarterBody"></tbody>
                 </table>
               </div>
@@ -1073,7 +1073,7 @@
               <div class="plan-meta" style="padding:0 20px 6px">每半年与年末开展联合盘点，仓库管理员牵头、财务监盘人员共同参与，全面盘点，每年 2 次。</div>
               <div class="table-scroll">
                 <table class="plan-table">
-                  <thead><tr><th>盘点名称</th><th>计划时间</th><th>牵头（仓库）</th><th>监盘（财务）</th><th>范围</th><th>状态</th><th>操作</th></tr></thead>
+                  <thead><tr><th>盘点名称</th><th>计划时间</th><th>牵头（仓库）</th><th>监盘（财务）</th><th>范围</th><th>状态</th><th>开始盘点</th></tr></thead>
                   <tbody id="planYearBody"></tbody>
                 </table>
               </div>
@@ -1159,7 +1159,7 @@
           <div class="tabpane active" id="pane-data-in">
             <div class="table-scroll">
               <table class="data-table">
-                <thead><tr><th>入库单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格</th><th>单位</th><th>数量</th><th>单价</th><th>金额</th><th>供应商</th><th>经办人</th><th>仓库</th><th>质保期</th><th>到期日</th><th>状态</th><th>操作</th></tr></thead>
+                <thead><tr><th>入库单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格</th><th>单位</th><th>数量</th><th>单价</th><th>金额</th><th>供应商</th><th>经办人</th><th>仓库</th><th>质保期</th><th>到期日</th><th>状态</th></tr></thead>
                 <tbody id="inBody"></tbody>
               </table>
             </div>
@@ -1170,7 +1170,7 @@
           <div class="tabpane" id="pane-data-out">
             <div class="table-scroll">
               <table class="data-table">
-                <thead><tr><th>出库单号</th><th>日期</th><th>领用人</th><th>部门</th><th>物资名称</th><th>分类</th><th>数量</th><th>单位</th><th>用途</th><th>经办人</th><th>状态</th><th>操作</th></tr></thead>
+                <thead><tr><th>出库单号</th><th>日期</th><th>领用人</th><th>部门</th><th>物资名称</th><th>分类</th><th>数量</th><th>单位</th><th>用途</th><th>经办人</th><th>状态</th></tr></thead>
                 <tbody id="outBody"></tbody>
               </table>
             </div>
@@ -1402,6 +1402,7 @@
         <dl class="rec-detail" id="recModalBody"></dl>
         <div style="margin-top:18px;display:flex;gap:12px">
           <button class="btn btn-ghost" id="recModalEdit" style="flex:1;justify-content:center">✏️ 编辑记录</button>
+          <button class="btn btn-ghost" id="recModalDelete" style="flex:1;justify-content:center;color:#ff7a7a;border-color:rgba(255,90,90,.5)">🗑️ 删除记录</button>
           <button class="btn btn-primary" id="recModalDownload" style="flex:1;justify-content:center" data-perm="data">⬇ 下载此记录</button>
         </div>
       </div>
@@ -1419,6 +1420,7 @@
         <dl class="rec-detail" id="invModalBody"></dl>
         <div style="margin-top:18px;display:flex;gap:12px">
           <button class="btn btn-primary" id="invModalEdit" style="flex:1;justify-content:center">✏️ 编辑物资</button>
+          <button class="btn btn-ghost" id="invModalDelete" style="flex:1;justify-content:center;color:#ff7a7a;border-color:rgba(255,90,90,.5)">🗑️ 删除物资</button>
           <button class="btn btn-ghost" id="invModalCloseBtn" style="flex:1;justify-content:center">关闭</button>
         </div>
       </div>
@@ -1560,7 +1562,7 @@
         </div>
         <div class="table-scroll" style="margin-top:12px">
           <table class="data-table">
-            <thead><tr><th>物资名称</th><th>分类</th><th>系统库存</th><th>实盘数量</th><th>差异（实盘-系统）</th><th>处理</th></tr></thead>
+            <thead><tr><th>物资名称</th><th>分类</th><th>系统库存</th><th>实盘数量</th><th>差异（实盘-系统）</th></tr></thead>
             <tbody id="checkBody"></tbody>
           </table>
         </div>
@@ -1632,6 +1634,7 @@
       </div>
       <div class="modal-body"><div class="form-grid" id="checkItemEditBody"></div></div>
       <div class="modal-foot" style="display:flex;gap:12px;justify-content:flex-end;padding:16px 22px;border-top:1px solid var(--line)">
+        <button class="btn btn-ghost" id="checkItemEditDelete" style="margin-right:auto;color:#ff7a7a;border-color:rgba(255,90,90,.5)">🗑️ 删除</button>
         <button class="btn btn-ghost" id="checkItemEditCancel">取消</button>
         <button class="btn btn-primary" id="checkItemEditSave">保存</button>
       </div>
@@ -1727,10 +1730,9 @@
         ${warrantyMonthsCell(i)}
         ${warrantyCell(i)}
         <td><span class="status ${st}">${txt}</span></td>
-        <td><span class="cell-act"><button type="button" class="del" data-del-inv="${oi}">删除</button></span></td>
       </tr>`;
     }).join('');
-    if(!list.length){ body.innerHTML='<tr><td colspan="16" class="empty">暂无库存物资，请通过「入库管理 · 入库登记」或「数据导入」添加</td></tr>'; }
+    if(!list.length){ body.innerHTML='<tr><td colspan="15" class="empty">暂无库存物资，请通过「入库管理 · 入库登记」或「数据导入」添加</td></tr>'; }
     checkTableOverflow();
   }
   document.querySelectorAll('#invChips .chip').forEach(ch=>ch.addEventListener('click',()=>{
@@ -1755,7 +1757,6 @@
         <td class="num">${i.sys} ${i.u}</td>
         <td><input class="real-input" type="number" value="${real}" data-sys="${i.sys}" data-idx="${idx}" /></td>
         <td class="num"><span class="diff ${(real-i.sys)===0?'zero':(real-i.sys)>0?'up':'down'}" id="diff-${idx}">${(real-i.sys)>0?'+':''}${real-i.sys}</span></td>
-        <td><span class="cell-act"><button type="button" class="btn-mini del" data-del-check-item="${idx}">删除</button></span></td>
       </tr>`;
     }).join('');
     body.querySelectorAll('.real-input').forEach(inp=>{
@@ -2779,7 +2780,7 @@
         const v=r[c.k]; return `<td>${v==null||v===''?'—':v}</td>`;
       }).join('');
       const codeVal = type==='in' ? (r.inNo||r.id) : (r.outNo||r.id);
-      return `<tr data-row-rec="${type}:${i}"><td class="code">${codeVal}</td>${cells}<td><span class="cell-act"><button type="button" class="btn-mini del" data-del-rec="${type}:${i}">删除</button></span></td></tr>`;
+      return `<tr data-row-rec="${type}:${i}"><td class="code">${codeVal}</td>${cells}</tr>`;
     }).join('');
     return list.length;
   }
@@ -3035,6 +3036,9 @@
   document.getElementById('invModal').addEventListener('click',e=>{ if(e.target.id==='invModal') document.getElementById('invModal').classList.remove('show'); });
   document.getElementById('invModalEdit').addEventListener('click',()=>{ document.getElementById('invModal').classList.remove('show'); if(currentInvIdx>=0) openInvEdit(currentInvIdx); });
   document.getElementById('recModalEdit').addEventListener('click',()=>{ document.getElementById('recModal').classList.remove('show'); if(currentRec) openRecEdit(currentRec.type,currentRec.idx); });
+  document.getElementById('invModalDelete').addEventListener('click',()=>{ document.getElementById('invModal').classList.remove('show'); if(currentInvIdx>=0) deleteInv(currentInvIdx); });
+  document.getElementById('recModalDelete').addEventListener('click',()=>{ document.getElementById('recModal').classList.remove('show'); if(currentRec) deleteRec(currentRec.type,currentRec.idx); });
+  document.getElementById('checkItemEditDelete').addEventListener('click',()=>{ const idx=checkItemEditIdx; closeCheckItemEdit(); if(idx>=0) deleteCheckItem(idx); });
   document.addEventListener('click',e=>{
     const dei=e.target.closest('[data-del-inv]');
     if(dei){ deleteInv(+dei.dataset.delInv); e.stopPropagation(); return; }
