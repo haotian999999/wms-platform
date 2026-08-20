@@ -1291,7 +1291,7 @@
             </div>
             <div class="card mt">
               <div class="panel-head"><div><h3>年度盘点档案</h3><div class="sub">该年度盘点记录 · 账实差异（盘盈 / 盘亏 / 相符）</div></div></div>
-              <div class="table-scroll"><table class="data-table"><thead><tr><th>盘点日期</th><th>盘点类型</th><th>盘点范围</th><th class="num">差异项数</th><th class="num">净差异</th><th class="num">差异绝对值</th><th>结论</th></tr></thead><tbody id="archCheckBody"></tbody></table></div>
+              <div class="table-scroll"><table class="data-table"><thead><tr><th>盘点日期</th><th>盘点类型</th><th>盘点范围</th><th class="num">差异项数</th><th class="num">净差异</th><th class="num">差异绝对值</th><th>结论</th></tr></thead><tbody id="archCheckBody"><tr><td colspan="7" class="empty">暂无年度归档 · 执行「年度数据结转」后，该年度盘点记录将在此随档案一并封存展示</td></tr></tbody></table></div>
               <div class="note" style="padding:10px 16px;font-size:11.5px;color:var(--ink-3);border-top:1px solid var(--line);margin:0">差异口径：差异 = 实盘 − 账面；净差异 = 盘盈合计 − 盘亏合计（可正可负），差异绝对值 = 全部差异绝对值之和（衡量问题规模）；差异仅反映盘点结果，不执行自动平账。</div>
             </div>
             <div class="card mt">
@@ -3361,16 +3361,20 @@
     const el=document.getElementById('carryoverPreview'); if(!el) return;
     const btn=document.getElementById('btnCarryover'); const msg=document.getElementById('carryoverMsg');
     const s=carryoverStats(); const label=carryoverYearsLabel();
-    // 已结转且无可结转数据：给出明确「最新」状态，禁用按钮防止重复操作
+    const pf=carryoverPreflight();
+    // 已结转且无可结转数据：给出明确「最新」状态，禁用按钮防止重复操作；预检与盘点信息始终可见
     if(!label || (!s.inH && !s.outH)){
       const done=lastCarryoverYear>=s.cur-1;
       el.innerHTML='<div class="note'+(done?' ok':'')+'">'+(done
         ? '✅ 本会计年度（'+s.cur+' 年）期初已为最新，历史流水全部归档完成。'
-        : '当前没有上一年度（&lt; '+s.cur+' 年）的出入库流水，无需结转。')+'</div>';
+        : '当前没有上一年度（&lt; '+s.cur+' 年）的出入库流水，无需结转。')+'</div>'+
+        (pf.noPrice? '<div class="co-row warn" style="margin-top:8px"><span>完整性预检</span><b style="color:#ff9d4d">⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
+          : '<div class="co-row" style="margin-top:8px"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
+        (pf.checkCount? '<div class="co-row"><span>盘点联动</span><b>已封存历史盘点记录 '+pf.checkCount+' 条</b></div>'
+          : '<div class="co-row warn"><span>盘点联动</span><b>历史年度无盘点记录（建议结转前完成全面盘点）</b></div>');
       if(btn) btn.disabled=true; if(msg) msg.textContent=done?'已无需结转':'已是最新年度';
       return;
     }
-    const pf=carryoverPreflight();
     el.innerHTML=
       '<div class="co-row"><span>结转年度</span><b>'+label+' 年</b></div>'+
       '<div class="co-row"><span>将归档入库流水</span><b>'+s.inH+' 笔</b></div>'+
@@ -3477,7 +3481,8 @@
       const m=document.getElementById('archiveMeta'); if(m) m.textContent='暂无归档数据';
       if(ov) ov.innerHTML='<div class="ao-empty">暂无年度归档 · 执行「年度数据结转」后按年度归类展示</div>';
       if(expBtn) expBtn.disabled=true; if(delBtn) delBtn.disabled=true;
-      ['trialBody','snapBody','archInBody','archOutBody','archCheckBody'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML='<tr><td colspan="9" class="empty">暂无归档数据</td></tr>'; });
+      ['trialBody','snapBody','archInBody','archOutBody'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML='<tr><td colspan="9" class="empty">暂无归档数据</td></tr>'; });
+      const cb0=document.getElementById('archCheckBody'); if(cb0) cb0.innerHTML='<tr><td colspan="7" class="empty">暂无年度归档 · 执行「年度数据结转」后，该年度盘点记录将在此随档案一并封存展示</td></tr>';
       ['trialFoot','snapFoot','archInFoot','archOutFoot'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML=''; });
       return;
     }
