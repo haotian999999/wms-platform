@@ -1290,6 +1290,11 @@
               <div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th class="num">单价(元)</th><th class="num">期末数量</th><th>单位</th><th class="num">期末金额(元)</th></tr></thead><tbody id="snapBody"></tbody><tfoot id="snapFoot" class="arch-foot"></tfoot></table></div>
             </div>
             <div class="card mt">
+              <div class="panel-head"><div><h3>年度盘点档案</h3><div class="sub">该年度盘点记录 · 账实差异（盘盈 / 盘亏 / 相符）</div></div></div>
+              <div class="table-scroll"><table class="data-table"><thead><tr><th>盘点日期</th><th>盘点类型</th><th>盘点范围</th><th class="num">差异项数</th><th class="num">净差异</th><th class="num">差异绝对值</th><th>结论</th></tr></thead><tbody id="archCheckBody"></tbody></table></div>
+              <div class="note" style="padding:10px 16px;font-size:11.5px;color:var(--ink-3);border-top:1px solid var(--line);margin:0">差异口径：差异 = 实盘 − 账面；净差异 = 盘盈合计 − 盘亏合计（可正可负），差异绝对值 = 全部差异绝对值之和（衡量问题规模）；差异仅反映盘点结果，不执行自动平账。</div>
+            </div>
+            <div class="card mt">
               <div class="panel-head"><div><h3>入库明细账</h3><div class="sub">该年度全部入库记录（存货收入明细）</div></div></div>
               <div class="table-scroll"><table class="data-table"><thead><tr><th>入库单号</th><th>日期</th><th>物资名称</th><th>分类</th><th class="num">数量</th><th class="num">单价(元)</th><th class="num">金额(元)</th><th>供应商</th></tr></thead><tbody id="archInBody"></tbody><tfoot id="archInFoot" class="arch-foot"></tfoot></table></div>
             </div>
@@ -2240,7 +2245,9 @@
   function archiveCheckToTimeline(snap, planLabel, planKey){
     if(checkArchived) return false;
     const title=planLabel||((snap.type||'盘点')+' 完成');
-    const rec={title, sub:(snap.scope||'—')+' · '+snap.items.length+' 项 · '+(snap.diffCount?('差异 '+snap.diffCount+' 项'):'无差异'), date:snap.date||new Date().toISOString().slice(0,10), dot:snap.diffCount?'warn':'in', planKey};
+    const diffNet=snap.items.reduce((s,x)=>s+(+x.d||0),0);
+    const diffAbs=snap.items.reduce((s,x)=>s+Math.abs(+x.d||0),0);
+    const rec={title, sub:(snap.scope||'—')+' · '+snap.items.length+' 项 · '+(snap.diffCount?('差异 '+snap.diffCount+' 项'):'无差异'), date:snap.date||new Date().toISOString().slice(0,10), dot:snap.diffCount?'warn':'in', planKey, diffCount:snap.diffCount, diffNet, diffAbs};
     // 同一计划已存在记录（如「进行中」）→ 原地更新为「已完成」，实现计划与记录双向呼应
     if(planKey){
       const ex=checkRecords.findIndex(r=>r.planKey===planKey);
@@ -3342,6 +3349,14 @@
     if(!yrs.length) return null;
     return yrs[0]===yrs[yrs.length-1]? String(yrs[0]) : (yrs[0]+'–'+yrs[yrs.length-1]);
   }
+  // 结转前完整性预检：缺单价物资数（影响金额准确性）、该年度盘点记录数（影响账实闭环）
+  function carryoverPreflight(){
+    const priceOf={}; inboundRecords.forEach(r=>{ if(r.name&&r.price) priceOf[r.name+'|'+r.category]=r.price; });
+    const noPrice=items.filter(i=>!(+i.price>0) && !(priceOf[i.n+'|'+i.c]>0)).length;
+    const cur=new Date().getFullYear();
+    const checkCount=checkRecords.filter(r=>yearOf(r)<cur).length;
+    return {noPrice, checkCount};
+  }
   function renderCarryoverCard(){
     const el=document.getElementById('carryoverPreview'); if(!el) return;
     const btn=document.getElementById('btnCarryover'); const msg=document.getElementById('carryoverMsg');
@@ -3355,13 +3370,18 @@
       if(btn) btn.disabled=true; if(msg) msg.textContent=done?'已无需结转':'已是最新年度';
       return;
     }
+    const pf=carryoverPreflight();
     el.innerHTML=
       '<div class="co-row"><span>结转年度</span><b>'+label+' 年</b></div>'+
       '<div class="co-row"><span>将归档入库流水</span><b>'+s.inH+' 笔</b></div>'+
       '<div class="co-row"><span>将归档出库流水</span><b>'+s.outH+' 笔</b></div>'+
       '<div class="co-row"><span>期末库存物资</span><b>'+s.items+' 种 → 结存冻结为下年期初</b></div>'+
       '<div class="co-row warn"><span>本年（'+s.cur+' 年）数据</span><b>保留为本期流水，不受影响</b></div>'+
-      '<div class="co-row warn"><span>财务口径</span><b>期初 + 入库 − 出库 = 期末 · 逐年勾稽平衡</b></div>';
+      '<div class="co-row warn"><span>财务口径</span><b>期初 + 入库 − 出库 = 期末 · 逐年勾稽平衡</b></div>'+
+      (pf.noPrice? '<div class="co-row warn"><span>完整性预检</span><b style="color:#ff9d4d">⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
+        : '<div class="co-row"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
+      (pf.checkCount? '<div class="co-row"><span>盘点联动</span><b>已封存历史盘点记录 '+pf.checkCount+' 条</b></div>'
+        : '<div class="co-row warn"><span>盘点联动</span><b>历史年度无盘点记录（建议结转前完成全面盘点）</b></div>');
     if(btn) btn.disabled=false; if(msg) msg.textContent='';
   }
   function doCarryover(){
@@ -3417,11 +3437,19 @@
         return Object.assign({},r,{price:p,amount:+(((+r.qty||0)*p).toFixed(2))});
       });
       const inWithPrice=inY.map(r=>Object.assign({},r,{price:(+r.price||0),amount:(+r.amount||+(+r.qty||0)*(+r.price||0))}));
+      // 盘点联动：该年度已完成盘点记录随年度一并封存（盘点表清洗视角：盘盈/盘亏/相符 + 净差异 + 差异绝对值）
+      const checkSnap=checkRecords.filter(r=>yearOf(r)===y).map(r=>({
+        date:r.date, title:r.title||'盘点', scope:(r.sub||'').split('·')[0]||'—',
+        diffCount:r.diffCount!=null?r.diffCount:null,
+        diffNet:r.diffNet!=null?r.diffNet:null,
+        diffAbs:r.diffAbs!=null?r.diffAbs:null
+      }));
       archivedRecords.unshift({
         label:String(y), year:y,
         opening, closing,
         inbound:inWithPrice,
         outbound:outWithPrice,
+        checks:checkSnap,
         carriedAt:new Date().toISOString().slice(0,10)
       });
     });
@@ -3449,7 +3477,7 @@
       const m=document.getElementById('archiveMeta'); if(m) m.textContent='暂无归档数据';
       if(ov) ov.innerHTML='<div class="ao-empty">暂无年度归档 · 执行「年度数据结转」后按年度归类展示</div>';
       if(expBtn) expBtn.disabled=true; if(delBtn) delBtn.disabled=true;
-      ['trialBody','snapBody','archInBody','archOutBody'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML='<tr><td colspan="9" class="empty">暂无归档数据</td></tr>'; });
+      ['trialBody','snapBody','archInBody','archOutBody','archCheckBody'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML='<tr><td colspan="9" class="empty">暂无归档数据</td></tr>'; });
       ['trialFoot','snapFoot','archInFoot','archOutFoot'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML=''; });
       return;
     }
@@ -3529,6 +3557,18 @@
       const amt=(r.amount!=null)?r.amount:(+(+r.qty||0)*p).toFixed(2);
       return `<tr><td class="code">${r.outNo||r.id}</td><td>${r.date}</td><td>${r.applicant||'—'}</td><td>${r.name}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td class="num">${p||'—'}</td><td class="num">${amt}</td><td>${r.purpose||'—'}</td></tr>`;
     }).join(''):'<tr><td colspan="9" class="empty">无出库记录</td></tr>';
+    // ---- 年度盘点档案（盘点联动 · 账实差异）----
+    const cb=document.getElementById('archCheckBody');
+    const checks=a.checks||[];
+    if(cb){
+      cb.innerHTML=checks.length?checks.map(c=>{
+        const diffOk=!(c.diffCount!=null && c.diffCount>0);
+        const net=c.diffNet!=null?(c.diffNet>0?'+'+c.diffNet:c.diffNet):'—';
+        const abs=c.diffAbs!=null?c.diffAbs:'—';
+        const concl=c.diffCount==null?'—':(c.diffCount>0?'存在差异':'账实相符');
+        return `<tr><td>${c.date||'—'}</td><td>${c.title||'盘点'}</td><td>${c.scope||'—'}</td><td class="num">${c.diffCount!=null?c.diffCount:'—'}</td><td class="num ${c.diffNet>0?'':'down'}">${net}</td><td class="num">${abs}</td><td><span class="status ${diffOk?'ok':'warn'}">${concl}</span></td></tr>`;
+      }).join(''):'<tr><td colspan="7" class="empty">该年度无盘点记录 · 建议每年结转前完成一次全面盘点</td></tr>';
+    }
     const outQty=outY.reduce((s,r)=>s+(+r.qty||0),0);
     const outAmt=outY.reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0);
     const outFoot=document.getElementById('archOutFoot');
@@ -3551,6 +3591,7 @@
       yearRows+
       '<div class="co-row"><span>合计归档流水</span><b>'+s.inH+' 入库 + '+s.outH+' 出库</b></div>'+
       '<div class="co-row"><span>期末库存物资</span><b>'+s.items+' 种将冻结为下年期初</b></div>'+
+      (carryoverPreflight().noPrice? '<div class="co-row warn"><span>完整性预检</span><b style="color:#ff9d4d">⚠ '+carryoverPreflight().noPrice+' 项物资缺单价，期末金额按 0 计</b></div>':'')+
       '<div class="co-row warn"><span>财务口径</span><b>期初 + 入库 − 出库 = 期末 · 逐年勾稽</b></div>';
     document.getElementById('carryoverModal').classList.add('show');
   });
@@ -3589,6 +3630,9 @@
     rows.push([]);
     rows.push(['出库明细账'],['出库单号','日期','领用人','物资名称','分类','数量','单价(元)','金额(元)','用途']);
     outY.forEach(r=>rows.push([r.outNo||r.id,r.date,r.applicant||'—',r.name,catMeta[r.category]?catMeta[r.category].t:r.category,r.qty,(r.price!=null)?r.price:'—',(r.amount!=null)?r.amount:(+(+r.qty||0)*(+r.price||0)).toFixed(2),r.purpose||'—']));
+    rows.push([]);
+    rows.push(['年度盘点档案'],['盘点日期','盘点类型','盘点范围','差异项数','净差异','差异绝对值','结论']);
+    (a.checks||[]).forEach(c=>rows.push([c.date||'—',c.title||'盘点',c.scope||'—',c.diffCount!=null?c.diffCount:'—',c.diffNet!=null?c.diffNet:'—',c.diffAbs!=null?c.diffAbs:'—',(c.diffCount==null)?'—':(c.diffCount>0?'存在差异':'账实相符')]));
     exportXLSX(rows, label+'年度归档报表.xlsx', {});
     toast('已导出归档','ok',label+'年度归档报表.xlsx 已生成');
   }
