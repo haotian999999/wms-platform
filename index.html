@@ -615,7 +615,15 @@
   #view-data .cell-act button,#view-data .cell-act .btn-mini{padding:4px 10px;font-size:12px}
   /* 子标签统一缩小，与表格字号协调；数据管理页放在工具栏内，与搜索框同高对齐 */
   /* 年度结转卡片与历史归档标签页 */
-  #view-data .archive-toolbar{display:flex;align-items:center;gap:10px;margin:6px 0 14px;flex-wrap:wrap}
+  .arch-top{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1.35fr);gap:14px;align-items:start}
+  .arch-top-left{padding:16px 18px}
+  .arch-top-right{display:flex;flex-direction:column;gap:12px;min-width:0}
+  .arch-top-right .archive-toolbar{margin:0;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .arch-top-right .archive-overview{margin-top:0}
+  .arch-top-right .archive-overview .ao-empty{padding:18px 16px}
+  [data-theme="light"] .arch-top-left{background:rgba(255,255,255,.6)}
+  [data-theme="light"] .arch-top-right .archive-toolbar{background:rgba(91,140,255,.05);border-color:#e4eaf5}
+  @media (max-width:980px){ .arch-top{grid-template-columns:1fr} }
   #view-data .archive-section{margin-bottom:18px}
   #view-data .archive-section h4{font-size:13px;font-weight:500;margin:0 0 8px;color:var(--ink-2)}
   .carryover-preview{margin-top:4px}
@@ -1277,25 +1285,31 @@
 
           <!-- 历史归档 -->
           <div class="tabpane" id="pane-data-archive">
-            <!-- 年度结转：归档的前置操作，置于归档列表之上，逻辑与展示同源 -->
-            <div class="card form-card" id="carryoverCard">
-              <div class="section-title" style="display:flex;align-items:center;gap:10px">📆 年度数据结转 <span class="co-badge" id="carryoverBadge">—</span></div>
-              <div class="section-sub" id="carryoverSub">将上一年度出入库流水归档封存，并把该年度末库存冻结为本年期初结存</div>
-              <div id="carryoverPreview" class="carryover-preview"></div>
-              <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap">
-                <button class="btn btn-primary" id="btnCarryover" data-perm="login">执行年度结转</button>
-                <span class="plan-meta" id="carryoverMsg"></span>
+            <!-- 上半部分：左侧年度数据结转 + 右侧归档操作/总览（横向布局） -->
+            <div class="arch-top">
+              <!-- 左：年度数据结转 -->
+              <div class="card form-card arch-top-left" id="carryoverCard">
+                <div class="section-title" style="display:flex;align-items:center;gap:10px">📆 年度数据结转 <span class="co-badge" id="carryoverBadge">—</span></div>
+                <div class="section-sub" id="carryoverSub">将上一年度出入库流水归档封存，并把该年度末库存冻结为本年期初结存</div>
+                <div id="carryoverPreview" class="carryover-preview"></div>
+                <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap">
+                  <button class="btn btn-primary" id="btnCarryover" data-perm="login">执行年度结转</button>
+                  <span class="plan-meta" id="carryoverMsg"></span>
+                </div>
+              </div>
+              <!-- 右：归档操作 + 年度总览 -->
+              <div class="arch-top-right">
+                <div class="archive-toolbar">
+                  <label>选择年度</label>
+                  <select id="archiveYear"></select>
+                  <span class="plan-meta" id="archiveMeta"></span>
+                  <span style="flex:1"></span>
+                  <button class="btn btn-ghost" id="exportArchiveBtn">⬇ 导出</button>
+                  <button class="btn btn-danger" id="delArchiveBtn">🗑 删除</button>
+                </div>
+                <div class="archive-overview" id="archiveOverview"></div>
               </div>
             </div>
-            <div class="archive-toolbar">
-              <label>选择年度：</label>
-              <select id="archiveYear"></select>
-              <span class="plan-meta" id="archiveMeta"></span>
-              <span style="flex:1"></span>
-              <button class="btn btn-ghost" id="exportArchiveBtn">⬇ 导出该年度归档</button>
-              <button class="btn btn-danger" id="delArchiveBtn">🗑 删除该年度归档</button>
-            </div>
-            <div class="archive-overview" id="archiveOverview"></div>
             <!-- 报表折叠面板控制条：全部展开 / 全部收起 -->
             <div class="arch-panelbar">
               <div class="apb-left"><span class="apb-title">年度报表</span><span class="apb-sub" id="archPanelCount">5 张可展开</span></div>
