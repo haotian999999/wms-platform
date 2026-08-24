@@ -619,42 +619,58 @@
   /* 年度结转卡片与历史归档标签页 */
   /* 归档区外层与页面其他区块统一内边距，保证四边对齐与底部收尾 */
   #pane-data-archive{padding:14px 18px}
-  .arch-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
-  .arch-top-left{padding:16px 18px}
-  .arch-top-right{display:flex;flex-direction:column;gap:14px;min-width:0}
-  .arch-top-right .archive-overview{margin-top:0}
-  .arch-top-right .archive-overview .ao-empty{padding:18px}
-  .archive-kpi-card{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-  .ak-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-  .ak-title{display:flex;align-items:center;gap:10px;min-width:0}
-  .ak-icon{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,rgba(91,140,255,.18),rgba(125,140,255,.12));display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;border:1px solid rgba(91,140,255,.25)}
-  .ak-h{font-size:14.5px;font-weight:700;color:var(--ink);line-height:1.25}
-  .ak-sub{font-size:11.5px;color:var(--ink-3);margin-top:2px}
-  .ak-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
-  .ak-actions .btn{height:32px;padding:0 12px;font-size:12.5px;border-radius:10px}
-  .ak-body{display:grid;grid-template-columns:minmax(140px,0.7fr) 1fr;gap:14px;align-items:center}
-  .ak-field{display:flex;flex-direction:column;gap:5px;min-width:0}
-  .ak-field label{font-size:11.5px;font-weight:600;color:var(--ink-2)}
-  .ak-field select{height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.12);color:var(--ink);font-size:13px;font-family:var(--font);outline:none;cursor:pointer;transition:all .18s;width:100%}
-  .ak-field select:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(91,140,255,.15)}
-  .ak-field select:disabled{opacity:.6;cursor:not-allowed;background:rgba(0,0,0,.06);color:var(--ink-3)}
-  .ak-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-  .ak-stat{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:2px}
-  .ak-stat-v{font-size:17px;font-weight:700;color:var(--ink);line-height:1}
-  .ak-stat-l{font-size:10.5px;color:var(--ink-3)}
-  .ak-stat:first-child .ak-stat-v{color:var(--primary)}
-  .ak-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:2px}
-  .ak-kpis>div{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:9px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
-  .ak-kpis b{font-size:15px;font-weight:700;color:var(--ink);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ak-kpis span{font-size:10.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  [data-theme="light"] .arch-top-left{background:rgba(255,255,255,.6)}
-  [data-theme="light"] .archive-kpi-card{background:rgba(255,255,255,.6);border-color:#e4eaf5}
-  [data-theme="light"] .ak-field select{background:rgba(255,255,255,.7);color:var(--ink)}
-  [data-theme="light"] .ak-stat{background:rgba(255,255,255,.45);border-color:#e4eaf5}
-  [data-theme="light"] .ak-kpis>div{background:rgba(255,255,255,.45);border-color:#e4eaf5}
-  [data-theme="light"] .ak-icon{background:linear-gradient(135deg,rgba(91,140,255,.12),rgba(125,140,255,.08))}
-  @media (max-width:980px){ .arch-top{grid-template-columns:1fr} .ak-body{grid-template-columns:1fr} }
-  @media (max-width:980px){ .arch-top{grid-template-columns:1fr} }
+  .arch-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:stretch}
+  /* 通用 KPI 卡：左右结转/归档卡片统一组件 */
+  .kpi-card{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:16px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);min-height:0}
+  .kp-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .kp-title{display:flex;align-items:center;gap:10px;min-width:0}
+  .kp-icon{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,rgba(91,140,255,.18),rgba(125,140,255,.12));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:1px solid rgba(91,140,255,.25)}
+  .kp-h{font-size:15px;font-weight:700;color:var(--ink);line-height:1.25;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .kp-sub{font-size:12px;color:var(--ink-3);margin-top:2px;line-height:1.4}
+  .kp-badge{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:600;display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);color:var(--ink-2);background:rgba(255,255,255,.06)}
+  .kp-badge.ok{background:rgba(47,230,160,.12);color:#67d8a4;border-color:rgba(47,230,160,.35)}
+  .kp-badge.warn{background:rgba(255,157,77,.12);color:#ff9d4d;border-color:rgba(255,157,77,.35)}
+  .kp-badge.muted{background:rgba(255,255,255,.05);color:var(--ink-3)}
+  .kp-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .kp-actions .btn{height:32px;padding:0 12px;font-size:12.5px;border-radius:10px;display:inline-flex;align-items:center;gap:5px}
+  .kp-body{display:flex;flex-direction:column;gap:12px;flex:1;justify-content:space-between;min-width:0}
+  .kp-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .kp-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .kp-stat{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;min-width:0}
+  .kp-stat-v{font-size:16px;font-weight:700;color:var(--ink);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+  .kp-stat-l{font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kp-stat:first-child .kp-stat-v{color:var(--primary)}
+  .kp-status{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--line);font-size:12px;color:var(--ink-2)}
+  .kp-status b{font-weight:600;color:var(--ink-1)}
+  .kp-status.warn{background:rgba(255,138,76,.08);border-color:rgba(255,138,76,.25);color:#ff9d4d}
+  .kp-status.warn b{color:#ffb088}
+  .kp-status.ok{background:rgba(47,230,160,.08);border-color:rgba(47,230,160,.25);color:#6ff0bf}
+  .kp-status.ok b{color:#8ff5cf}
+  .kp-field{display:flex;flex-direction:column;gap:5px;min-width:0}
+  .kp-field label{font-size:11.5px;font-weight:600;color:var(--ink-2)}
+  .kp-field select{height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.12);color:var(--ink);font-size:13px;font-family:var(--font);outline:none;cursor:pointer;transition:all .18s;width:100%}
+  .kp-field select:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(91,140,255,.15)}
+  .kp-field select:disabled{opacity:.6;cursor:not-allowed;background:rgba(0,0,0,.06);color:var(--ink-3)}
+  .kp-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:auto;padding-top:2px}
+  .kp-foot .plan-meta{margin-top:0}
+  /* 结转卡片专用 */
+  .carryover-card .kp-icon{background:linear-gradient(135deg,rgba(255,193,7,.18),rgba(255,160,0,.12));border-color:rgba(255,193,7,.3)}
+  .carryover-card .kp-stat:first-child .kp-stat-v{color:#ffd166}
+  /* 归档卡片专用 */
+  .archive-card .kp-icon{background:linear-gradient(135deg,rgba(91,140,255,.18),rgba(125,140,255,.12));border-color:rgba(91,140,255,.25)}
+  /* 响应式 */
+  @media (max-width:980px){ .arch-top{grid-template-columns:1fr} .kp-row{grid-template-columns:repeat(2,1fr)} }
+  [data-theme="light"] .kpi-card{background:rgba(255,255,255,.6);border-color:#e4eaf5}
+  [data-theme="light"] .kp-stat{background:rgba(255,255,255,.45);border-color:#e4eaf5}
+  [data-theme="light"] .kp-status{background:rgba(255,255,255,.45);border-color:#e4eaf5;color:#5b6577}
+  [data-theme="light"] .kp-status.warn{background:rgba(255,138,76,.08);border-color:rgba(255,138,76,.2);color:#d46a2c}
+  [data-theme="light"] .kp-status.ok{background:rgba(47,230,160,.08);border-color:rgba(47,230,160,.2);color:#1a9c5e}
+  [data-theme="light"] .kp-field select{background:rgba(255,255,255,.7);color:var(--ink)}
+  [data-theme="light"] .kp-badge{background:rgba(255,255,255,.5);border-color:#d8dde8;color:#5b6577}
+  [data-theme="light"] .kp-badge.ok{background:rgba(47,230,160,.14);color:#1a9c5e;border-color:rgba(47,230,160,.35)}
+  [data-theme="light"] .kp-badge.warn{background:rgba(255,157,77,.14);color:#d46a2c;border-color:rgba(255,157,77,.35)}
+  [data-theme="light"] .carryover-card .kp-icon{background:linear-gradient(135deg,rgba(255,193,7,.12),rgba(255,160,0,.08))}
+  [data-theme="light"] .archive-card .kp-icon{background:linear-gradient(135deg,rgba(91,140,255,.12),rgba(125,140,255,.08))}
   #view-data .archive-section{margin-bottom:18px}
   #view-data .archive-section h4{font-size:13px;font-weight:500;margin:0 0 8px;color:var(--ink-2)}
   .carryover-preview{margin-top:4px}
@@ -1327,42 +1343,53 @@
             <!-- 上半部分：左侧年度数据结转 + 右侧归档操作/总览（横向布局） -->
             <div class="arch-top">
               <!-- 左：年度数据结转 -->
-              <div class="card form-card arch-top-left" id="carryoverCard">
-                <div class="section-title" style="display:flex;align-items:center;gap:10px">📆 年度数据结转 <span class="co-badge" id="carryoverBadge">—</span></div>
-                <div class="section-sub" id="carryoverSub">将上一年度出入库流水归档封存，并把该年度末库存冻结为本年期初结存</div>
-                <div id="carryoverPreview" class="carryover-preview"></div>
-                <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap">
-                  <button class="btn btn-primary" id="btnCarryover" data-perm="login">执行年度结转</button>
-                  <span class="plan-meta" id="carryoverMsg"></span>
+              <div class="kpi-card carryover-card arch-top-left" id="carryoverCard">
+                <div class="kp-header">
+                  <div class="kp-title">
+                    <div class="kp-icon">📆</div>
+                    <div>
+                      <div class="kp-h">年度数据结转 <span class="kp-badge" id="carryoverBadge">—</span></div>
+                      <div class="kp-sub" id="carryoverSub">将上一年度出入库流水归档封存，并把该年度末库存冻结为本年期初结存</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="kp-body">
+                  <div id="carryoverPreview" class="carryover-preview"></div>
+                  <div class="kp-foot">
+                    <button class="btn btn-primary" id="btnCarryover" data-perm="login">执行年度结转</button>
+                    <span class="plan-meta" id="carryoverMsg"></span>
+                  </div>
                 </div>
               </div>
               <!-- 右：归档操作 + 年度总览 -->
               <div class="arch-top-right">
-                <div class="archive-kpi-card">
-                  <div class="ak-header">
-                    <div class="ak-title">
-                      <div class="ak-icon">📁</div>
+                <div class="kpi-card archive-card">
+                  <div class="kp-header">
+                    <div class="kp-title">
+                      <div class="kp-icon">📁</div>
                       <div>
-                        <div class="ak-h">年度归档档案</div>
-                        <div class="plan-meta ak-sub" id="archiveMeta">暂无归档数据</div>
+                        <div class="kp-h">年度归档档案</div>
+                        <div class="kp-sub" id="archiveMeta">暂无归档数据</div>
                       </div>
                     </div>
-                    <div class="ak-actions">
+                    <div class="kp-actions">
                       <button class="btn btn-ghost" id="exportArchiveBtn" disabled>⬇ 导出</button>
                       <button class="btn btn-danger" id="delArchiveBtn" disabled>🗑 删除</button>
                     </div>
                   </div>
-                  <div class="ak-body">
-                    <div class="ak-field">
-                      <label for="archiveYear">选择年度</label>
-                      <select id="archiveYear" disabled><option value="">暂无归档年度</option></select>
+                  <div class="kp-body">
+                    <div class="kp-row" style="grid-template-columns:minmax(140px,0.75fr) 1fr">
+                      <div class="kp-field">
+                        <label for="archiveYear">选择年度</label>
+                        <select id="archiveYear" disabled><option value="">暂无归档年度</option></select>
+                      </div>
+                      <div class="kp-stats" id="archiveStats">
+                        <div class="kp-stat"><span class="kp-stat-v" id="akStatYears">0</span><span class="kp-stat-l">已归档年度</span></div>
+                        <div class="kp-stat"><span class="kp-stat-v" id="akStatRecs">0</span><span class="kp-stat-l">出入库流水</span></div>
+                      </div>
                     </div>
-                    <div class="ak-stats" id="archiveStats">
-                      <div class="ak-stat"><span class="ak-stat-v" id="akStatYears">0</span><span class="ak-stat-l">已归档年度</span></div>
-                      <div class="ak-stat"><span class="ak-stat-v" id="akStatRecs">0</span><span class="ak-stat-l">出入库流水</span></div>
-                    </div>
+                    <div id="archiveKpis" class="kp-row"></div>
                   </div>
-                  <div class="ak-kpis" id="archiveKpis"></div>
                 </div>
               </div>
             </div>
@@ -3546,28 +3573,32 @@
     // 已结转且无可结转数据：给出明确「最新」状态，禁用按钮防止重复操作；预检与盘点信息始终可见
     if(!label || (!s.inH && !s.outH)){
       const done=lastCarryoverYear>=s.cur-1;
-      el.innerHTML='<div class="note'+(done?' ok':'')+'">'+(done
-        ? '✅ 本会计年度（'+s.cur+' 年）期初已为最新，历史流水全部归档完成。'
-        : '当前没有上一年度（&lt; '+s.cur+' 年）的出入库流水，无需结转。')+'</div>'+
-        (pf.noPrice? '<div class="co-row warn" style="margin-top:8px"><span>完整性预检</span><b style="color:#ff9d4d">⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
-          : '<div class="co-row" style="margin-top:8px"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
-        (pf.checkCount? '<div class="co-row"><span>盘点联动</span><b>已封存历史盘点记录 '+pf.checkCount+' 条</b></div>'
-          : '<div class="co-row warn"><span>盘点联动</span><b>历史年度无盘点记录（建议结转前完成全面盘点）</b></div>');
+      el.innerHTML='<div class="kp-status '+(done?'ok':'warn')+'"><span>结转状态</span><b>'+(done?'✓ 本会计年度（'+s.cur+' 年）期初已为最新，历史流水全部归档完成':'当前没有上一年度（&lt; '+s.cur+' 年）的出入库流水，无需结转')+'</b></div>'+
+        '<div class="kp-row" style="grid-template-columns:repeat(4,1fr)">'+
+          '<div class="kp-stat"><span class="kp-stat-v">—</span><span class="kp-stat-l">结转年度</span></div>'+
+          '<div class="kp-stat"><span class="kp-stat-v">0</span><span class="kp-stat-l">入库流水</span></div>'+
+          '<div class="kp-stat"><span class="kp-stat-v">0</span><span class="kp-stat-l">出库流水</span></div>'+
+          '<div class="kp-stat"><span class="kp-stat-v">'+items.length+'</span><span class="kp-stat-l">库存物资</span></div>'+
+        '</div>'+
+        (pf.noPrice? '<div class="kp-status warn"><span>完整性预检</span><b>⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
+          : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
+        (pf.checkCount? '<div class="kp-status ok"><span>盘点联动</span><b>已封存历史盘点记录 '+pf.checkCount+' 条</b></div>'
+          : '<div class="kp-status warn"><span>盘点联动</span><b>历史年度无盘点记录（建议结转前完成全面盘点）</b></div>');
       if(btn) btn.disabled=true; if(msg) msg.textContent=done?'已无需结转':'已是最新年度';
       updateCarryoverBadge();
       return;
     }
-    el.innerHTML=
-      '<div class="co-row"><span>结转年度</span><b>'+label+' 年</b></div>'+
-      '<div class="co-row"><span>将归档入库流水</span><b>'+s.inH+' 笔</b></div>'+
-      '<div class="co-row"><span>将归档出库流水</span><b>'+s.outH+' 笔</b></div>'+
-      '<div class="co-row"><span>期末库存物资</span><b>'+s.items+' 种 → 结存冻结为下年期初</b></div>'+
-      '<div class="co-row warn"><span>本年（'+s.cur+' 年）数据</span><b>保留为本期流水，不受影响</b></div>'+
-      '<div class="co-row warn"><span>财务口径</span><b>期初 + 入库 − 出库 = 期末 · 逐年勾稽平衡</b></div>'+
-      (pf.noPrice? '<div class="co-row warn"><span>完整性预检</span><b style="color:#ff9d4d">⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
-        : '<div class="co-row"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
-      (pf.checkCount? '<div class="co-row"><span>盘点联动</span><b>已封存历史盘点记录 '+pf.checkCount+' 条</b></div>'
-        : '<div class="co-row warn"><span>盘点联动</span><b>历史年度无盘点记录（建议结转前完成全面盘点）</b></div>');
+    el.innerHTML='<div class="kp-row">'+
+      '<div class="kp-stat"><span class="kp-stat-v">'+label+' 年</span><span class="kp-stat-l">结转年度</span></div>'+
+      '<div class="kp-stat"><span class="kp-stat-v">'+s.inH+'</span><span class="kp-stat-l">将归档入库流水</span></div>'+
+      '<div class="kp-stat"><span class="kp-stat-v">'+s.outH+'</span><span class="kp-stat-l">将归档出库流水</span></div>'+
+      '<div class="kp-stat"><span class="kp-stat-v">'+s.items+'</span><span class="kp-stat-l">期末库存物资</span></div>'+
+    '</div>'+
+    '<div class="kp-status ok"><span>财务口径</span><b>期初 + 入库 − 出库 = 期末 · 逐年勾稽平衡；本年（'+s.cur+' 年）数据保留为本期流水，不受影响</b></div>'+
+    (pf.noPrice? '<div class="kp-status warn"><span>完整性预检</span><b>⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
+      : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
+    (pf.checkCount? '<div class="kp-status ok"><span>盘点联动</span><b>已封存历史盘点记录 '+pf.checkCount+' 条</b></div>'
+      : '<div class="kp-status warn"><span>盘点联动</span><b>历史年度无盘点记录（建议结转前完成全面盘点）</b></div>');
     if(btn) btn.disabled=false; if(msg) msg.textContent='';
     updateCarryoverBadge();
   }
@@ -3663,7 +3694,7 @@
       sel.innerHTML='<option value="">暂无归档年度</option>';
       sel.disabled=true;
       const m=document.getElementById('archiveMeta'); if(m) m.textContent='暂无归档数据';
-      const st=document.getElementById('archiveStats'); if(st) st.innerHTML='<div class="ak-stat"><span class="ak-stat-v">0</span><span class="ak-stat-l">已归档年度</span></div><div class="ak-stat"><span class="ak-stat-v">0</span><span class="ak-stat-l">出入库流水</span></div>';
+      const st=document.getElementById('archiveStats'); if(st) st.innerHTML='<div class="kp-stat"><span class="kp-stat-v">0</span><span class="kp-stat-l">已归档年度</span></div><div class="kp-stat"><span class="kp-stat-v">0</span><span class="kp-stat-l">出入库流水</span></div>';
       if(ov) ov.innerHTML='<div class="ao-empty">暂无年度归档 · 执行「年度数据结转」后按年度归类展示</div>';
       const ek=document.getElementById('archiveKpis'); if(ek) ek.innerHTML='';
       if(expBtn) expBtn.disabled=true; if(delBtn) delBtn.disabled=true;
@@ -3676,7 +3707,7 @@
     sel.disabled=false;
     sel.innerHTML=archivedRecords.map((a,i)=>`<option value="${i}">${a.label||a.year||i} 年（${a.inbound.length+a.outbound.length} 笔）</option>`).join('');
     const totalRecs=archivedRecords.reduce((s,a)=>s+a.inbound.length+a.outbound.length,0);
-    const st=document.getElementById('archiveStats'); if(st) st.innerHTML=`<div class="ak-stat"><span class="ak-stat-v">${archivedRecords.length}</span><span class="ak-stat-l">已归档年度</span></div><div class="ak-stat"><span class="ak-stat-v">${totalRecs}</span><span class="ak-stat-l">出入库流水</span></div>`;
+    const st=document.getElementById('archiveStats'); if(st) st.innerHTML=`<div class="kp-stat"><span class="kp-stat-v">${archivedRecords.length}</span><span class="kp-stat-l">已归档年度</span></div><div class="kp-stat"><span class="kp-stat-v">${totalRecs}</span><span class="kp-stat-l">出入库流水</span></div>`;
     if(expBtn) expBtn.disabled=false; if(delBtn) delBtn.disabled=false;
     renderArchiveKpis(+sel.value||0);
     renderArchiveDetail(+sel.value||0);
@@ -3690,10 +3721,10 @@
     const outAmt=(a.outbound||[]).reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0);
     const snapAmt=(a.closing||a.snapshot||[]).reduce((s,x)=>s+(+x.amount||0),0);
     const opAmt=(a.opening||[]).reduce((s,x)=>s+(+x.amount||0),0);
-    kpis.innerHTML=`<div class="ak-kpi"><b>${fmtNum(opAmt)}</b><span>期初结存(元)</span></div>`
-      +`<div class="ak-kpi"><b>${fmtNum(inAmt)}</b><span>本期入库(元)</span></div>`
-      +`<div class="ak-kpi"><b>${fmtNum(outAmt)}</b><span>本期出库(元)</span></div>`
-      +`<div class="ak-kpi"><b>${fmtNum(snapAmt)}</b><span>期末结存(元)</span></div>`;
+    kpis.innerHTML=`<div class="kp-stat"><span class="kp-stat-v">${fmtNum(opAmt)}</span><span class="kp-stat-l">期初结存(元)</span></div>`
+      +`<div class="kp-stat"><span class="kp-stat-v">${fmtNum(inAmt)}</span><span class="kp-stat-l">本期入库(元)</span></div>`
+      +`<div class="kp-stat"><span class="kp-stat-v">${fmtNum(outAmt)}</span><span class="kp-stat-l">本期出库(元)</span></div>`
+      +`<div class="kp-stat"><span class="kp-stat-v">${fmtNum(snapAmt)}</span><span class="kp-stat-l">期末结存(元)</span></div>`;
   }
   function renderArchiveDetail(idx){
     const a=archivedRecords[idx]; if(!a) return;
@@ -3815,8 +3846,8 @@
     const b=document.getElementById('carryoverBadge'); if(!b) return;
     const cur=new Date().getFullYear();
     const label=carryoverYearsLabel();
-    if(!label){ b.textContent='已是最新年度'; b.className='co-badge ok'; }
-    else { b.textContent='待结转 '+label+' 年'; b.className='co-badge warn'; }
+    if(!label){ b.textContent='已是最新年度'; b.className='kp-badge ok'; }
+    else { b.textContent='待结转 '+label+' 年'; b.className='kp-badge warn'; }
   }
   function exportArchiveYear(){
     const a=archivedRecords[+document.getElementById('archiveYear').value||0]; if(!a) return;
