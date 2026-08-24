@@ -657,18 +657,23 @@
   .carryover-preview .co-row:last-child{border-bottom:none}
   .carryover-preview .co-row b{color:var(--ink-1);font-weight:500}
   .carryover-preview .co-row.warn b{color:#ffb088;font-weight:600}
-  .archive-overview{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:14px}
-  .archive-overview .ao-card{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;padding:14px 18px;cursor:pointer;transition:all .2s var(--ease)}
-  .archive-overview .ao-card:hover{transform:translateY(-2px);border-color:rgba(91,140,255,.5);box-shadow:0 10px 24px rgba(91,140,255,.12)}
-  .archive-overview .ao-card.active{border-color:var(--primary);background:rgba(91,140,255,.1);box-shadow:0 0 0 1px var(--primary)}
-  .archive-overview .ao-card .ao-year{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
-  .archive-overview .ao-card .ao-year::after{content:"›";color:var(--ink-3);font-weight:400}
-  .archive-overview .ao-card .ao-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
-  .archive-overview .ao-card .ao-grid>div{display:flex;flex-direction:column;gap:2px}
-  .archive-overview .ao-card .ao-grid b{font-size:14px;font-weight:700;color:var(--ink)}
+  .archive-overview{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:0}
+  .archive-overview .ao-card{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px;cursor:pointer;transition:all .2s var(--ease);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .archive-overview .ao-card:hover{transform:translateY(-2px);border-color:rgba(91,140,255,.4);box-shadow:0 12px 28px rgba(91,140,255,.10)}
+  .archive-overview .ao-card.active{border-color:var(--primary);background:rgba(91,140,255,.08);box-shadow:0 0 0 1px rgba(91,140,255,.2),0 12px 32px rgba(91,140,255,.12)}
+  .archive-overview .ao-card .ao-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .archive-overview .ao-card .ao-title{display:flex;align-items:center;gap:10px;min-width:0}
+  .archive-overview .ao-card .ao-icon{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,rgba(91,140,255,.18),rgba(125,140,255,.12));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1px solid rgba(91,140,255,.25)}
+  .archive-overview .ao-card .ao-year{font-size:15px;font-weight:700;color:var(--ink);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .archive-overview .ao-card .ao-badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;background:rgba(91,140,255,.12);color:var(--primary);border:1px solid rgba(91,140,255,.25);white-space:nowrap}
+  .archive-overview .ao-card .ao-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .archive-overview .ao-card .ao-grid>div{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+  .archive-overview .ao-card .ao-grid b{font-size:16px;font-weight:700;color:var(--ink);line-height:1}
   .archive-overview .ao-card .ao-grid span{font-size:11px;color:var(--ink-3)}
-  .archive-overview .ao-card .ao-foot{margin-top:10px;font-size:11px;color:var(--ink-3);border-top:1px dashed var(--line);padding-top:8px}
-  .archive-overview .ao-empty{grid-column:1/-1;text-align:center;color:var(--ink-3);font-size:13px;padding:22px 0;border:1px dashed var(--line);border-radius:14px}
+  .archive-overview .ao-card .ao-foot{margin-top:2px;font-size:11.5px;color:var(--ink-3);display:flex;align-items:center;gap:8px}
+  .archive-overview .ao-card .ao-foot::before{content:"";flex:1;height:1px;background:var(--line);opacity:.5}
+  .archive-overview .ao-card .ao-foot::after{content:"";flex:1;height:1px;background:var(--line);opacity:.5}
+  .archive-overview .ao-empty{grid-column:1/-1;text-align:center;color:var(--ink-3);font-size:13px;padding:22px 0;border:1px dashed var(--line);border-radius:16px}
   .arch-foot .arch-total td,.arch-total td{background:rgba(91,140,255,.06);font-weight:700;color:var(--ink-2)}
   .arch-foot{display:table-footer-group}
   .co-badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line)}
@@ -688,8 +693,10 @@
   .arch-panel .ap-body{overflow:hidden;transition:max-height .28s var(--ease),opacity .2s var(--ease)}
   [data-theme="light"] .arch-panelbar{background:rgba(91,140,255,.05);border-color:#e4eaf5}
   [data-theme="light"] .arch-panel .ap-head:hover{background:rgba(91,140,255,.08)}
-  [data-theme="light"] .archive-overview .ao-card{background:rgba(91,140,255,.04);border-color:#e4eaf5}
-  [data-theme="light"] .archive-overview .ao-card.active{background:rgba(91,140,255,.1);border-color:var(--primary-deep)}
+  [data-theme="light"] .archive-overview .ao-card{background:rgba(255,255,255,.6);border-color:#e4eaf5}
+  [data-theme="light"] .archive-overview .ao-card.active{background:rgba(91,140,255,.08);border-color:var(--primary-deep)}
+  [data-theme="light"] .archive-overview .ao-card .ao-icon{background:linear-gradient(135deg,rgba(91,140,255,.12),rgba(125,140,255,.08));border-color:rgba(91,140,255,.18)}
+  [data-theme="light"] .archive-overview .ao-card .ao-grid>div{background:rgba(255,255,255,.45);border-color:#e4eaf5}
   [data-theme="light"] .arch-total td{background:rgba(91,140,255,.08);color:#3a5bf0}
   .archive-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}
   .archive-toolbar label{font-size:13px;color:var(--ink-3)}
@@ -3671,14 +3678,20 @@
         const snapAmt=(a.closing||a.snapshot||[]).reduce((s,x)=>s+(+x.amount||0),0);
         const opAmt=(a.opening||[]).reduce((s,x)=>s+(+x.amount||0),0);
         return `<div class="ao-card ${i===0?'active':''}" data-idx="${i}">
-          <div class="ao-year">${a.label||a.year||i} 年</div>
+          <div class="ao-head">
+            <div class="ao-title">
+              <div class="ao-icon">📂</div>
+              <div class="ao-year">${a.label||a.year||i} 年</div>
+            </div>
+            ${i===0?'<span class="ao-badge">当前档案</span>':''}
+          </div>
           <div class="ao-grid">
             <div><b>${fmtNum(opAmt)}</b><span>期初结存(元)</span></div>
             <div><b>${fmtNum(inAmt)}</b><span>本期入库(元)</span></div>
             <div><b>${fmtNum(outAmt)}</b><span>本期出库(元)</span></div>
             <div><b>${fmtNum(snapAmt)}</b><span>期末结存(元)</span></div>
           </div>
-          <div class="ao-foot">结转于 ${a.carriedAt||'—'} · 流水 ${a.inbound.length+a.outbound.length} 笔</div>
+          <div class="ao-foot">${a.carriedAt||'—'} · 流水 ${a.inbound.length+a.outbound.length} 笔</div>
         </div>`;
       }).join('');
       ov.querySelectorAll('.ao-card').forEach(c=>c.addEventListener('click',()=>{
