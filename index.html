@@ -500,6 +500,8 @@
   #view-check .plan-table td:last-child{min-width:104px}
   .data-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;line-height:1.45}
   .data-table th,.data-table td{white-space:nowrap;vertical-align:middle;overflow:visible;text-align:center;padding:9px 13px}
+  .data-table th.num,.data-table td.num{text-align:right}
+  .data-table th:first-child,.data-table td:first-child{text-align:left}
   .data-table td.down{color:var(--danger);font-weight:600}
   .data-table thead th{
     position:sticky;top:0;z-index:2;
@@ -3190,7 +3192,7 @@
   function exportXLSX(rows,filename,opts){
     try{
       opts=opts||{};
-      const headerAt=(typeof opts.headerAt==='number')?opts.headerAt:0;
+      const headerAt=(typeof opts.headerAt==='number')?opts.headerAt:null;
       const titleMerge=!!opts.titleMerge;
       if(typeof XLSX==='undefined'){ alert('表格组件未加载，请联网后重试'); return; }
       const ws=XLSX.utils.aoa_to_sheet(rows);
@@ -3232,6 +3234,12 @@
         alignment:{horizontal:'center',vertical:'center'},
         border
       };
+      const sectionStyle={
+        font:{name:'Microsoft YaHei',sz:11,bold:true,color:{rgb:'333333'}},
+        fill:{patternType:'solid',fgColor:{rgb:'E8F4F8'}},
+        alignment:{horizontal:'left',vertical:'center',wrapText:true},
+        border
+      };
       // 应用默认样式
       const range=XLSX.utils.decode_range(ws['!ref']);
       for(let r=range.s.r;r<=range.e.r;r++){
@@ -3241,41 +3249,73 @@
           ws[ref].s=Object.assign({},ws[ref].s||{},defaultStyle);
         }
       }
-      // 标题行合并居中（仅盘点记录等报告式导出）
+      // 对齐策略：文本居中、数字居右、名称居左
+      const rightKeys=['金额','数量','单价','库存','差异','次数','件数','占比','现存量','默认值','剩余天数','建议补货','净变化','期初结存','本期入库','本期出库','期末结存','期末金额','净差异','差异绝对值','差异项数','系统库存','实盘数量'];
+      const centerKeys=['单号','编号','日期','到期日','状态','单位','仓库','分类','部门','经办人','用途','质保期','领用人','盘点类型','盘点范围','结论','勾稽','类型','方式','盘点人','盘点周期','开始盘点','单独预警','序号'];
+      const leftKeys=['物资名称','名称','规格','供应商','品牌','备注','标题','描述'];
+      const headerWords=[].concat(rightKeys,centerKeys,leftKeys);
+      const alignOf=h=>{
+        const s=String(h||'');
+        if(leftKeys.some(k=>s.includes(k))) return 'left';
+        if(rightKeys.some(k=>s.includes(k))) return 'right';
+        if(centerKeys.some(k=>s.includes(k))) return 'center';
+        return 'center';
+      };
+      // 自动识别表头行（支持多表格工作簿，如年度归档报表）
+      const isHeaderRow=row=>{
+        if(!Array.isArray(row) || row.length<3) return false;
+        if(row.some(cell=>cell==null || String(cell).trim()==='')) return false;
+        if(!row.every(cell=>typeof cell==='string')) return false;
+        let matched=0;
+        for(const h of row) if(headerWords.some(k=>h.includes(k))) matched++;
+        return matched>=2;
+      };
+      const headerRows=[];
+      const sectionRows=[];
+      for(let r=0;r<rowCount;r++){
+        const row=rows[r];
+        if(isHeaderRow(row)){ headerRows.push(r); continue; }
+        if(Array.isArray(row) && row.length===1 && row[0]!=null && typeof row[0]==='string' && r>0){
+          const s=row[0];
+          if(/明细|档案|汇总|平衡|盘点单|实盘单|补货建议|趋势对比|库存管理|入库记录|出库记录/.test(s)) sectionRows.push(r);
+        }
+      }
+      // 标题行样式（含 opts.titleMerge 与单单元格主标题）
       if(titleMerge && colCount>1){
         ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:colCount-1}}];
         for(let c=0;c<colCount;c++){
           const ref=XLSX.utils.encode_cell({r:0,c});
           ws[ref].s=Object.assign({},ws[ref].s,titleStyle);
         }
+      } else if(rowCount>0 && Array.isArray(rows[0]) && rows[0].length===1 && typeof rows[0][0]==='string' && /报表|单/.test(rows[0][0])){
+        const ref=XLSX.utils.encode_cell({r:0,c:0});
+        if(ws[ref]) ws[ref].s=Object.assign({},ws[ref].s,titleStyle);
       }
-      // 表头行样式
-      if(headerAt>=0 && headerAt<rowCount){
-        const hrow=rows[headerAt];
-        for(let c=0;c<hrow.length;c++){
-          const ref=XLSX.utils.encode_cell({r:headerAt,c});
+      // 分节标题行（如“年度库存汇总 · 试算平衡”）
+      sectionRows.forEach(r=>{
+        if(!ws['!merges']) ws['!merges']=[];
+        if(colCount>1) ws['!merges'].push({s:{r,c:0},e:{r,c:colCount-1}});
+        const ref=XLSX.utils.encode_cell({r,c:0});
+        if(ws[ref]) ws[ref].s=Object.assign({},ws[ref].s,sectionStyle);
+      });
+      // 表头行样式：按列语义决定水平对齐
+      headerRows.forEach(hr=>{
+        const hrow=rows[hr];
+        for(let c=0;c<colCount;c++){
+          const ref=XLSX.utils.encode_cell({r:hr,c});
           if(!ws[ref]) continue;
-          ws[ref].s=Object.assign({},ws[ref].s,headerStyle);
+          const align=alignOf(hrow[c]);
+          ws[ref].s=Object.assign({},ws[ref].s,headerStyle,{alignment:{horizontal:align,vertical:'center',wrapText:true}});
         }
-        ws['!freeze']={xSplit:0,ySplit:headerAt+1};
-      }
-      // 数据区对齐策略：根据表头语义智能判断居中/居左/居右
-      // 居右：金额/数值类
-      const rightKeys=['单价','金额','系统库存','实盘数量','差异'];
-      // 居中：单号/编号、日期、到期日、状态、单位、仓库、分类、部门、经办人、用途、数量、质保期、领用人等文本类
-      const centerKeys=['单号','编号','日期','到期日','状态','单位','仓库','分类','部门','经办人','用途','数量','质保期','领用人'];
-      // 居左：物资名称、规格、供应商
-      const leftKeys=['物资名称','规格','供应商'];
-      const alignOf=h=>{
-        const s=String(h||'');
-        if(rightKeys.some(k=>s.includes(k))) return 'right';
-        if(centerKeys.some(k=>s.includes(k))) return 'center';
-        if(leftKeys.some(k=>s.includes(k))) return 'left';
-        return 'left';
-      };
+      });
+      // 冻结首行表头
+      const freezeRow=headerRows.length?headerRows[0]:(typeof headerAt==='number'?headerAt:0);
+      if(freezeRow>=0 && freezeRow<rowCount) ws['!freeze']={xSplit:0,ySplit:freezeRow+1};
       // 报告式信息区（盘点记录等）：标签居左、值居右
-      if(headerAt>0 && titleMerge){
-        for(let r=1;r<headerAt;r++){
+      if(headerRows.length){
+        const firstHeader=headerRows[0];
+        for(let r=(titleMerge?1:0);r<firstHeader;r++){
+          if(sectionRows.includes(r)) continue;
           const row=rows[r];
           if(!row || row.length<2) continue;
           const labelRef=XLSX.utils.encode_cell({r,c:0});
@@ -3284,14 +3324,38 @@
           if(ws[valRef]) ws[valRef].s=Object.assign({},ws[valRef].s,{alignment:{horizontal:'right',vertical:'center',wrapText:true},border});
         }
       }
-      // 表格数据区
-      if(headerAt>=0 && headerAt<rowCount){
-        const hrow=rows[headerAt];
-        for(let c=0;c<colCount;c++){
-          const align=alignOf(hrow[c]);
-          for(let r=headerAt+1;r<rowCount;r++){
+      // 表格数据区对齐：按各自表头语义分区应用
+      for(let i=0;i<headerRows.length;i++){
+        const hr=headerRows[i];
+        const hrow=rows[hr];
+        const endRow=(i+1<headerRows.length)?headerRows[i+1]-1:rowCount-1;
+        const colAligns=[];
+        for(let c=0;c<colCount;c++) colAligns.push(alignOf(hrow[c]));
+        for(let r=hr+1;r<=endRow;r++){
+          const row=rows[r];
+          if(!Array.isArray(row) || row.length===0) continue;
+          if(sectionRows.includes(r)) continue;
+          for(let c=0;c<colCount;c++){
             const ref=XLSX.utils.encode_cell({r,c});
             if(!ws[ref]) continue;
+            ws[ref].s=Object.assign({},ws[ref].s,{alignment:{horizontal:colAligns[c]||'center',vertical:'center',wrapText:true},border});
+          }
+        }
+      }
+      // 显式 headerAt 兜底（单一表格导出）
+      if(!headerRows.length && headerAt!=null && headerAt>=0 && headerAt<rowCount){
+        const hrow=rows[headerAt];
+        for(let c=0;c<colCount;c++){
+          const ref=XLSX.utils.encode_cell({r:headerAt,c});
+          if(!ws[ref]) continue;
+          const align=alignOf(hrow[c]);
+          ws[ref].s=Object.assign({},ws[ref].s,headerStyle,{alignment:{horizontal:align,vertical:'center',wrapText:true}});
+        }
+        for(let r=headerAt+1;r<rowCount;r++){
+          for(let c=0;c<colCount;c++){
+            const ref=XLSX.utils.encode_cell({r,c});
+            if(!ws[ref]) continue;
+            const align=alignOf(hrow[c]);
             ws[ref].s=Object.assign({},ws[ref].s,{alignment:{horizontal:align,vertical:'center',wrapText:true},border});
           }
         }
@@ -4206,8 +4270,65 @@
   function buildWorkbook(sheets,filename){
     if(typeof XLSX==='undefined'){ alert('表格组件未加载，请联网后重试'); return; }
     const wb=XLSX.utils.book_new();
-    sheets.forEach(s=>{ const ws=XLSX.utils.aoa_to_sheet(s.rows); const c=s.rows[0]?s.rows[0].length:1; ws['!cols']=Array.from({length:c},()=>({wch:18})); XLSX.utils.book_append_sheet(wb,ws,s.name); });
-    XLSX.writeFile(wb,filename);
+    const thin={style:'thin',color:{rgb:'BFBFBF'}};
+    const border={top:thin,bottom:thin,left:thin,right:thin};
+    const defaultStyle={font:{name:'Microsoft YaHei',sz:10,color:{rgb:'333333'}},alignment:{horizontal:'left',vertical:'center',wrapText:true},border};
+    const headerStyle={font:{name:'Microsoft YaHei',sz:10,bold:true,color:{rgb:'FFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'5BC0DE'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border};
+    const rightKeys=['金额','数量','单价','库存','差异','次数','件数','占比','现存量','默认值','剩余天数','建议补货','净变化','期初结存','本期入库','本期出库','期末结存','期末金额','净差异','差异绝对值','差异项数','系统库存','实盘数量'];
+    const centerKeys=['单号','编号','日期','到期日','状态','单位','仓库','分类','部门','经办人','用途','质保期','领用人','盘点类型','盘点范围','结论','勾稽','类型','方式','盘点人','盘点周期','开始盘点','单独预警','序号'];
+    const leftKeys=['物资名称','名称','规格','供应商','品牌','备注','标题','描述'];
+    const headerWords=[].concat(rightKeys,centerKeys,leftKeys);
+    const alignOf=h=>{ const s=String(h||''); if(leftKeys.some(k=>s.includes(k))) return 'left'; if(rightKeys.some(k=>s.includes(k))) return 'right'; if(centerKeys.some(k=>s.includes(k))) return 'center'; return 'center'; };
+    sheets.forEach(s=>{
+      const rows=s.rows;
+      const ws=XLSX.utils.aoa_to_sheet(rows);
+      const colCount=rows.reduce((m,r)=>Math.max(m,Array.isArray(r)?r.length:0),0);
+      const rowCount=rows.length;
+      // 列宽按内容估算
+      const widths=[];
+      for(let c=0;c<colCount;c++){
+        let max=8;
+        for(let r=0;r<rows.length;r++){
+          const cell=rows[r]&&rows[r][c]; if(cell==null) continue;
+          let len=0; const str=String(cell); for(const ch of str) len+=(ch.charCodeAt(0)>255?2:1); if(len>max) max=len;
+        }
+        widths.push({wch:Math.min(Math.max(max+2,10),42)});
+      }
+      ws['!cols']=widths;
+      ws['!rows']=Array.from({length:rowCount},()=>({hpt:22}));
+      const range=XLSX.utils.decode_range(ws['!ref']);
+      for(let r=range.s.r;r<=range.e.r;r++){
+        for(let c=range.s.c;c<=range.e.c;c++){
+          const ref=XLSX.utils.encode_cell({r,c});
+          if(!ws[ref]) ws[ref]={v:''};
+          ws[ref].s=Object.assign({},ws[ref].s||{},defaultStyle);
+        }
+      }
+      const isHeaderRow=row=>Array.isArray(row) && row.length>=3 && row.every(cell=>cell!=null && String(cell).trim()!=='') && row.every(cell=>typeof cell==='string') && row.filter(h=>headerWords.some(k=>h.includes(k))).length>=2;
+      let headerRowIdx=-1;
+      for(let r=0;r<rowCount;r++) if(isHeaderRow(rows[r])){ headerRowIdx=r; break; }
+      // 兜底：把首行当表头
+      if(headerRowIdx===-1 && rowCount>0 && Array.isArray(rows[0]) && rows[0].length>1) headerRowIdx=0;
+      if(headerRowIdx>=0){
+        const hrow=rows[headerRowIdx];
+        const colAligns=[];
+        for(let c=0;c<colCount;c++){
+          colAligns.push(alignOf(hrow[c]));
+          const ref=XLSX.utils.encode_cell({r:headerRowIdx,c});
+          if(ws[ref]) ws[ref].s=Object.assign({},ws[ref].s,headerStyle,{alignment:{horizontal:colAligns[c],vertical:'center',wrapText:true}});
+        }
+        for(let r=headerRowIdx+1;r<rowCount;r++){
+          for(let c=0;c<colCount;c++){
+            const ref=XLSX.utils.encode_cell({r,c});
+            if(!ws[ref]) continue;
+            ws[ref].s=Object.assign({},ws[ref].s,{alignment:{horizontal:colAligns[c]||'center',vertical:'center',wrapText:true},border});
+          }
+        }
+        ws['!freeze']={xSplit:0,ySplit:headerRowIdx+1};
+      }
+      XLSX.utils.book_append_sheet(wb,ws,s.name);
+    });
+    XLSX.writeFile(wb,filename,{cellStyles:true});
   }
   function exportAllData(){
     const p=new Date(); const pad=n=>String(n).padStart(2,'0'); const fn='物资数据库_'+p.getFullYear()+'-'+pad(p.getMonth()+1)+'-'+pad(p.getDate())+'.xlsx';
