@@ -619,7 +619,7 @@
   /* 年度结转卡片与历史归档标签页 */
   /* 归档区外层与页面其他区块统一内边距，保证四边对齐与底部收尾 */
   #pane-data-archive{padding:14px 18px}
-  .arch-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+  .arch-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:stretch}
   /* 通用 KPI 卡：左右结转/归档卡片统一组件 */
   .kpi-card{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:16px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);min-height:0}
   .kp-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -633,7 +633,7 @@
   .kp-badge.muted{background:rgba(255,255,255,.05);color:var(--ink-3)}
   .kp-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
   .kp-actions .btn{height:32px;padding:0 12px;font-size:12.5px;border-radius:10px;display:inline-flex;align-items:center;gap:5px}
-  .kp-body{display:flex;flex-direction:column;gap:12px;flex:1;justify-content:space-between;min-width:0}
+  .kp-body{display:flex;flex-direction:column;gap:12px;flex:1;min-width:0}
   .kp-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   .kp-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
   .kp-stat{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -673,7 +673,7 @@
   [data-theme="light"] .archive-card .kp-icon{background:linear-gradient(135deg,rgba(91,140,255,.12),rgba(125,140,255,.08))}
   #view-data .archive-section{margin-bottom:18px}
   #view-data .archive-section h4{font-size:13px;font-weight:500;margin:0 0 8px;color:var(--ink-2)}
-  .carryover-preview{margin-top:4px}
+  .carryover-preview{margin-top:4px;flex:1;display:flex;flex-direction:column;gap:8px;justify-content:center}
   .carryover-preview .co-row{display:flex;justify-content:space-between;align-items:center;padding:7px 2px;border-bottom:1px dashed var(--line)}
   .carryover-preview .co-row:last-child{border-bottom:none}
   .carryover-preview .co-row b{color:var(--ink-1);font-weight:500}
@@ -1372,10 +1372,6 @@
                         <div class="kp-sub" id="archiveMeta">暂无归档数据</div>
                       </div>
                     </div>
-                    <div class="kp-actions">
-                      <button class="btn btn-ghost" id="exportArchiveBtn" disabled>⬇ 导出</button>
-                      <button class="btn btn-danger" id="delArchiveBtn" disabled>🗑 删除</button>
-                    </div>
                   </div>
                   <div class="kp-body">
                     <div class="kp-row" style="grid-template-columns:minmax(140px,0.75fr) 1fr">
@@ -1389,6 +1385,10 @@
                       </div>
                     </div>
                     <div id="archiveKpis" class="kp-row"></div>
+                    <div class="kp-foot">
+                      <button class="btn btn-ghost" id="exportArchiveBtn" disabled>⬇ 导出</button>
+                      <button class="btn btn-danger" id="delArchiveBtn" disabled>🗑 删除</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3581,9 +3581,7 @@
           '<div class="kp-stat"><span class="kp-stat-v">'+items.length+'</span><span class="kp-stat-l">库存物资</span></div>'+
         '</div>'+
         (pf.noPrice? '<div class="kp-status warn"><span>完整性预检</span><b>⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
-          : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
-        (pf.checkCount? '<div class="kp-status ok"><span>盘点联动</span><b>已封存历史盘点记录 '+pf.checkCount+' 条</b></div>'
-          : '<div class="kp-status warn"><span>盘点联动</span><b>历史年度无盘点记录（建议结转前完成全面盘点）</b></div>');
+          : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>');
       if(btn) btn.disabled=true; if(msg) msg.textContent=done?'已无需结转':'已是最新年度';
       updateCarryoverBadge();
       return;
@@ -3596,9 +3594,7 @@
     '</div>'+
     '<div class="kp-status ok"><span>财务口径</span><b>期初 + 入库 − 出库 = 期末 · 逐年勾稽平衡；本年（'+s.cur+' 年）数据保留为本期流水，不受影响</b></div>'+
     (pf.noPrice? '<div class="kp-status warn"><span>完整性预检</span><b>⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
-      : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
-    (pf.checkCount? '<div class="kp-status ok"><span>盘点联动</span><b>已封存历史盘点记录 '+pf.checkCount+' 条</b></div>'
-      : '<div class="kp-status warn"><span>盘点联动</span><b>历史年度无盘点记录（建议结转前完成全面盘点）</b></div>');
+      : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>');
     if(btn) btn.disabled=false; if(msg) msg.textContent='';
     updateCarryoverBadge();
   }
