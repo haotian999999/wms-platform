@@ -615,12 +615,15 @@
   #view-data .cell-act button,#view-data .cell-act .btn-mini{padding:4px 10px;font-size:12px}
   /* 子标签统一缩小，与表格字号协调；数据管理页放在工具栏内，与搜索框同高对齐 */
   /* 年度结转卡片与历史归档标签页 */
-  /* 归档区外层与页面其他区块(标签栏/表格)统一左右内缩 18px，保证左右边界对齐 */
-  #pane-data-archive{margin-top:14px;padding:0 18px}
+  /* 归档区外层与页面其他区块统一内边距，保证四边对齐与底部收尾 */
+  #pane-data-archive{padding:14px 18px}
   .arch-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
   .arch-top-left{padding:16px 18px}
   .arch-top-right{display:flex;flex-direction:column;gap:14px;min-width:0}
-  .arch-top-right .archive-toolbar{margin:0;padding:14px 18px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .arch-top-right .archive-toolbar{margin:0;padding:14px 18px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .arch-tb-left,.arch-tb-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .arch-tb-right{gap:8px}
+  .arch-tb-label{font-size:13px;color:var(--ink-2);font-weight:600;white-space:nowrap}
   .arch-top-right .archive-overview{margin-top:0}
   .arch-top-right .archive-overview .ao-empty{padding:18px}
   [data-theme="light"] .arch-top-left{background:rgba(255,255,255,.6)}
@@ -656,6 +659,7 @@
   .arch-panelbar .apb-sub{font-size:12px;color:var(--ink-3);margin-left:8px}
   .arch-panelbar .apb-actions{margin-left:auto;display:flex;gap:8px}
   .arch-panelbar .btn{padding:5px 12px;font-size:12px}
+  .arch-panel{margin-top:14px}
   .arch-panel .ap-head{cursor:pointer;user-select:none;transition:background .18s;border-radius:12px;padding:14px 18px}
   .arch-panel .ap-head:hover{background:rgba(91,140,255,.08)}
   .arch-panel .ap-head .ap-toggle{font-size:12px;color:var(--ink-3);font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
@@ -1302,12 +1306,15 @@
               <!-- 右：归档操作 + 年度总览 -->
               <div class="arch-top-right">
                 <div class="archive-toolbar">
-                  <label>选择年度</label>
-                  <select id="archiveYear"></select>
-                  <span class="plan-meta" id="archiveMeta"></span>
-                  <span style="flex:1"></span>
-                  <button class="btn btn-ghost" id="exportArchiveBtn">⬇ 导出</button>
-                  <button class="btn btn-danger" id="delArchiveBtn">🗑 删除</button>
+                  <div class="arch-tb-left">
+                    <span class="arch-tb-label">选择年度</span>
+                    <select id="archiveYear" disabled><option value="">暂无归档年度</option></select>
+                    <span class="plan-meta" id="archiveMeta">暂无归档数据</span>
+                  </div>
+                  <div class="arch-tb-right">
+                    <button class="btn btn-ghost" id="exportArchiveBtn" disabled>导出</button>
+                    <button class="btn btn-danger" id="delArchiveBtn" disabled>删除</button>
+                  </div>
                 </div>
                 <div class="archive-overview" id="archiveOverview"></div>
               </div>
@@ -1321,7 +1328,7 @@
               </div>
             </div>
             <!-- 财务会计框架：年度汇总（期初/入库/出库/期末 勾稽平衡） -->
-            <div class="card mt arch-panel" data-panel="trial">
+            <div class="card arch-panel" data-panel="trial">
               <div class="panel-head ap-head" role="button" tabindex="0" aria-expanded="true">
                 <div><h3>年度库存汇总 · 试算平衡</h3><div class="sub" id="archiveTrialSub">期初结存 + 本期入库 − 本期出库 = 期末结存（数量勾稽）</div></div>
                 <span class="ap-toggle">收起 ▲</span>
@@ -1330,7 +1337,7 @@
                 <div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th class="num">期初结存</th><th class="num">本期入库</th><th class="num">本期出库</th><th class="num">期末结存</th><th>单位</th><th class="num">期末金额(元)</th><th>勾稽</th></tr></thead><tbody id="trialBody"></tbody><tfoot id="trialFoot" class="arch-foot"></tfoot></table></div>
               </div>
             </div>
-            <div class="card mt arch-panel" data-panel="snap">
+            <div class="card arch-panel" data-panel="snap">
               <div class="panel-head ap-head" role="button" tabindex="0" aria-expanded="false">
                 <div><h3>期末结存明细</h3><div class="sub">该年度 12 月 31 日库存余额（资产负债表 · 存货科目）</div></div>
                 <span class="ap-toggle">展开 ▼</span>
@@ -1339,7 +1346,7 @@
                 <div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th class="num">单价(元)</th><th class="num">期末数量</th><th>单位</th><th class="num">期末金额(元)</th></tr></thead><tbody id="snapBody"></tbody><tfoot id="snapFoot" class="arch-foot"></tfoot></table></div>
               </div>
             </div>
-            <div class="card mt arch-panel" data-panel="check">
+            <div class="card arch-panel" data-panel="check">
               <div class="panel-head ap-head" role="button" tabindex="0" aria-expanded="false">
                 <div><h3>年度盘点档案</h3><div class="sub">该年度盘点记录 · 账实差异（盘盈 / 盘亏 / 相符）</div></div>
                 <span class="ap-toggle">展开 ▼</span>
@@ -1349,7 +1356,7 @@
                 <div class="note" style="padding:10px 16px;font-size:11.5px;color:var(--ink-3);border-top:1px solid var(--line);margin:0">差异口径：差异 = 实盘 − 账面；净差异 = 盘盈合计 − 盘亏合计（可正可负），差异绝对值 = 全部差异绝对值之和（衡量问题规模）；差异仅反映盘点结果，不执行自动平账。</div>
               </div>
             </div>
-            <div class="card mt arch-panel" data-panel="in">
+            <div class="card arch-panel" data-panel="in">
               <div class="panel-head ap-head" role="button" tabindex="0" aria-expanded="false">
                 <div><h3>入库明细账</h3><div class="sub">该年度全部入库记录（存货收入明细）</div></div>
                 <span class="ap-toggle">展开 ▼</span>
@@ -1358,7 +1365,7 @@
                 <div class="table-scroll"><table class="data-table"><thead><tr><th>入库单号</th><th>日期</th><th>物资名称</th><th>分类</th><th class="num">数量</th><th class="num">单价(元)</th><th class="num">金额(元)</th><th>供应商</th></tr></thead><tbody id="archInBody"></tbody><tfoot id="archInFoot" class="arch-foot"></tfoot></table></div>
               </div>
             </div>
-            <div class="card mt arch-panel" data-panel="out">
+            <div class="card arch-panel" data-panel="out">
               <div class="panel-head ap-head" role="button" tabindex="0" aria-expanded="false">
                 <div><h3>出库明细账</h3><div class="sub">该年度全部出库记录（存货发出明细）</div></div>
                 <span class="ap-toggle">展开 ▼</span>
@@ -3544,7 +3551,8 @@
     const expBtn=document.getElementById('exportArchiveBtn');
     const delBtn=document.getElementById('delArchiveBtn');
     if(!archivedRecords.length){
-      sel.innerHTML='';
+      sel.innerHTML='<option value="">暂无归档年度</option>';
+      sel.disabled=true;
       const m=document.getElementById('archiveMeta'); if(m) m.textContent='暂无归档数据';
       if(ov) ov.innerHTML='<div class="ao-empty">暂无年度归档 · 执行「年度数据结转」后按年度归类展示</div>';
       if(expBtn) expBtn.disabled=true; if(delBtn) delBtn.disabled=true;
@@ -3554,6 +3562,7 @@
       apCount(); updateCarryoverBadge();
       return;
     }
+    sel.disabled=false;
     sel.innerHTML=archivedRecords.map((a,i)=>`<option value="${i}">${a.label||a.year||i} 年（${a.inbound.length+a.outbound.length} 笔）</option>`).join('');
     if(ov){
       ov.innerHTML=archivedRecords.map((a,i)=>{
