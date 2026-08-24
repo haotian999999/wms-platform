@@ -626,7 +626,7 @@
   .kp-title{display:flex;align-items:center;gap:10px;min-width:0}
   .kp-icon{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,rgba(91,140,255,.18),rgba(125,140,255,.12));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:1px solid rgba(91,140,255,.25)}
   .kp-h{font-size:15px;font-weight:700;color:var(--ink);line-height:1.25;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .kp-sub{font-size:12px;color:var(--ink-3);margin-top:2px;line-height:1.4}
+  .kp-sub{font-size:12px;color:var(--ink-3);margin-top:2px;line-height:1.4;min-height:34px}
   .kp-badge{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:600;display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);color:var(--ink-2);background:rgba(255,255,255,.06)}
   .kp-badge.ok{background:rgba(47,230,160,.12);color:#67d8a4;border-color:rgba(47,230,160,.35)}
   .kp-badge.warn{background:rgba(255,157,77,.12);color:#ff9d4d;border-color:rgba(255,157,77,.35)}
@@ -651,7 +651,7 @@
   .kp-field select{height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.12);color:var(--ink);font-size:13px;font-family:var(--font);outline:none;cursor:pointer;transition:all .18s;width:100%}
   .kp-field select:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(91,140,255,.15)}
   .kp-field select:disabled{opacity:.6;cursor:not-allowed;background:rgba(0,0,0,.06);color:var(--ink-3)}
-  .kp-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:2px}
+  .kp-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:2px;margin-top:auto}
   .kp-foot .plan-meta{margin-top:0}
   /* 结转卡片专用 */
   .carryover-card .kp-icon{background:linear-gradient(135deg,rgba(255,193,7,.18),rgba(255,160,0,.12));border-color:rgba(255,193,7,.3)}
@@ -673,7 +673,7 @@
   [data-theme="light"] .archive-card .kp-icon{background:linear-gradient(135deg,rgba(91,140,255,.12),rgba(125,140,255,.08))}
   #view-data .archive-section{margin-bottom:18px}
   #view-data .archive-section h4{font-size:13px;font-weight:500;margin:0 0 8px;color:var(--ink-2)}
-  .carryover-preview{margin-top:4px;flex:1;display:flex;flex-direction:column;gap:8px;justify-content:center}
+  .carryover-preview{margin-top:2px;flex:1;display:flex;flex-direction:column;gap:10px;justify-content:flex-start}
   .carryover-preview .co-row{display:flex;justify-content:space-between;align-items:center;padding:7px 2px;border-bottom:1px dashed var(--line)}
   .carryover-preview .co-row:last-child{border-bottom:none}
   .carryover-preview .co-row b{color:var(--ink-1);font-weight:500}
@@ -1349,7 +1349,7 @@
                     <div class="kp-icon">📆</div>
                     <div>
                       <div class="kp-h">年度数据结转 <span class="kp-badge" id="carryoverBadge">—</span></div>
-                      <div class="kp-sub" id="carryoverSub">将上一年度出入库流水归档封存，并把该年度末库存冻结为本年期初结存</div>
+                      <div class="kp-sub" id="carryoverSub">上一年度流水归档封存，年末库存冻结为本年期初结存</div>
                     </div>
                   </div>
                 </div>
