@@ -624,29 +624,34 @@
   .arch-top-right{display:flex;flex-direction:column;gap:14px;min-width:0}
   .arch-top-right .archive-overview{margin-top:0}
   .arch-top-right .archive-overview .ao-empty{padding:18px}
-  .archive-kpi-card{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:16px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-  .ak-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .archive-kpi-card{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .ak-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
   .ak-title{display:flex;align-items:center;gap:10px;min-width:0}
-  .ak-icon{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,rgba(91,140,255,.18),rgba(125,140,255,.12));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:1px solid rgba(91,140,255,.25)}
-  .ak-h{font-size:15px;font-weight:700;color:var(--ink);line-height:1.3}
-  .ak-sub{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .ak-icon{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,rgba(91,140,255,.18),rgba(125,140,255,.12));display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;border:1px solid rgba(91,140,255,.25)}
+  .ak-h{font-size:14.5px;font-weight:700;color:var(--ink);line-height:1.25}
+  .ak-sub{font-size:11.5px;color:var(--ink-3);margin-top:2px}
   .ak-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
-  .ak-actions .btn{height:34px;padding:0 14px;font-size:13px;border-radius:10px}
-  .ak-body{display:grid;grid-template-columns:minmax(140px,0.7fr) 1fr;gap:18px;align-items:end}
-  .ak-field{display:flex;flex-direction:column;gap:6px;min-width:0}
-  .ak-field label{font-size:12px;font-weight:600;color:var(--ink-2)}
-  .ak-field select{height:38px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.12);color:var(--ink);font-size:13px;font-family:var(--font);outline:none;cursor:pointer;transition:all .18s;width:100%}
+  .ak-actions .btn{height:32px;padding:0 12px;font-size:12.5px;border-radius:10px}
+  .ak-body{display:grid;grid-template-columns:minmax(140px,0.7fr) 1fr;gap:14px;align-items:center}
+  .ak-field{display:flex;flex-direction:column;gap:5px;min-width:0}
+  .ak-field label{font-size:11.5px;font-weight:600;color:var(--ink-2)}
+  .ak-field select{height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.12);color:var(--ink);font-size:13px;font-family:var(--font);outline:none;cursor:pointer;transition:all .18s;width:100%}
   .ak-field select:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(91,140,255,.15)}
   .ak-field select:disabled{opacity:.6;cursor:not-allowed;background:rgba(0,0,0,.06);color:var(--ink-3)}
-  .ak-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-  .ak-stat{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
-  .ak-stat-v{font-size:18px;font-weight:700;color:var(--ink);line-height:1}
-  .ak-stat-l{font-size:11px;color:var(--ink-3)}
+  .ak-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .ak-stat{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:2px}
+  .ak-stat-v{font-size:17px;font-weight:700;color:var(--ink);line-height:1}
+  .ak-stat-l{font-size:10.5px;color:var(--ink-3)}
   .ak-stat:first-child .ak-stat-v{color:var(--primary)}
+  .ak-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:2px}
+  .ak-kpis>div{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:9px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+  .ak-kpis b{font-size:15px;font-weight:700;color:var(--ink);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ak-kpis span{font-size:10.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   [data-theme="light"] .arch-top-left{background:rgba(255,255,255,.6)}
   [data-theme="light"] .archive-kpi-card{background:rgba(255,255,255,.6);border-color:#e4eaf5}
   [data-theme="light"] .ak-field select{background:rgba(255,255,255,.7);color:var(--ink)}
   [data-theme="light"] .ak-stat{background:rgba(255,255,255,.45);border-color:#e4eaf5}
+  [data-theme="light"] .ak-kpis>div{background:rgba(255,255,255,.45);border-color:#e4eaf5}
   [data-theme="light"] .ak-icon{background:linear-gradient(135deg,rgba(91,140,255,.12),rgba(125,140,255,.08))}
   @media (max-width:980px){ .arch-top{grid-template-columns:1fr} .ak-body{grid-template-columns:1fr} }
   @media (max-width:980px){ .arch-top{grid-template-columns:1fr} }
@@ -1357,8 +1362,8 @@
                       <div class="ak-stat"><span class="ak-stat-v" id="akStatRecs">0</span><span class="ak-stat-l">出入库流水</span></div>
                     </div>
                   </div>
+                  <div class="ak-kpis" id="archiveKpis"></div>
                 </div>
-                <div class="archive-overview" id="archiveOverview"></div>
               </div>
             </div>
             <!-- 报表折叠面板控制条：全部展开 / 全部收起 -->
@@ -3660,6 +3665,7 @@
       const m=document.getElementById('archiveMeta'); if(m) m.textContent='暂无归档数据';
       const st=document.getElementById('archiveStats'); if(st) st.innerHTML='<div class="ak-stat"><span class="ak-stat-v">0</span><span class="ak-stat-l">已归档年度</span></div><div class="ak-stat"><span class="ak-stat-v">0</span><span class="ak-stat-l">出入库流水</span></div>';
       if(ov) ov.innerHTML='<div class="ao-empty">暂无年度归档 · 执行「年度数据结转」后按年度归类展示</div>';
+      const ek=document.getElementById('archiveKpis'); if(ek) ek.innerHTML='';
       if(expBtn) expBtn.disabled=true; if(delBtn) delBtn.disabled=true;
       ['trialBody','snapBody','archInBody','archOutBody'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML='<tr><td colspan="9" class="empty">暂无归档数据</td></tr>'; });
       const cb0=document.getElementById('archCheckBody'); if(cb0) cb0.innerHTML='<tr><td colspan="7" class="empty">暂无年度归档 · 执行「年度数据结转」后，该年度盘点记录将在此随档案一并封存展示</td></tr>';
@@ -3671,46 +3677,27 @@
     sel.innerHTML=archivedRecords.map((a,i)=>`<option value="${i}">${a.label||a.year||i} 年（${a.inbound.length+a.outbound.length} 笔）</option>`).join('');
     const totalRecs=archivedRecords.reduce((s,a)=>s+a.inbound.length+a.outbound.length,0);
     const st=document.getElementById('archiveStats'); if(st) st.innerHTML=`<div class="ak-stat"><span class="ak-stat-v">${archivedRecords.length}</span><span class="ak-stat-l">已归档年度</span></div><div class="ak-stat"><span class="ak-stat-v">${totalRecs}</span><span class="ak-stat-l">出入库流水</span></div>`;
-    if(ov){
-      ov.innerHTML=archivedRecords.map((a,i)=>{
-        const inAmt=a.inbound.reduce((s,r)=>s+(+r.amount||0),0);
-        const outAmt=(a.outbound||[]).reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0);
-        const snapAmt=(a.closing||a.snapshot||[]).reduce((s,x)=>s+(+x.amount||0),0);
-        const opAmt=(a.opening||[]).reduce((s,x)=>s+(+x.amount||0),0);
-        return `<div class="ao-card ${i===0?'active':''}" data-idx="${i}">
-          <div class="ao-head">
-            <div class="ao-title">
-              <div class="ao-icon">📂</div>
-              <div class="ao-year">${a.label||a.year||i} 年</div>
-            </div>
-            ${i===0?'<span class="ao-badge">当前档案</span>':''}
-          </div>
-          <div class="ao-grid">
-            <div><b>${fmtNum(opAmt)}</b><span>期初结存(元)</span></div>
-            <div><b>${fmtNum(inAmt)}</b><span>本期入库(元)</span></div>
-            <div><b>${fmtNum(outAmt)}</b><span>本期出库(元)</span></div>
-            <div><b>${fmtNum(snapAmt)}</b><span>期末结存(元)</span></div>
-          </div>
-          <div class="ao-foot">${a.carriedAt||'—'} · 流水 ${a.inbound.length+a.outbound.length} 笔</div>
-        </div>`;
-      }).join('');
-      ov.querySelectorAll('.ao-card').forEach(c=>c.addEventListener('click',()=>{
-        const idx=+c.dataset.idx;
-        ov.querySelectorAll('.ao-card').forEach(x=>x.classList.remove('active'));
-        c.classList.add('active');
-        sel.value=String(idx);
-        renderArchiveDetail(idx);
-      }));
-    }
     if(expBtn) expBtn.disabled=false; if(delBtn) delBtn.disabled=false;
+    renderArchiveKpis(+sel.value||0);
     renderArchiveDetail(+sel.value||0);
     apCount();
     updateCarryoverBadge();
   }
+  function renderArchiveKpis(idx){
+    const a=archivedRecords[idx]; if(!a) return;
+    const kpis=document.getElementById('archiveKpis'); if(!kpis) return;
+    const inAmt=a.inbound.reduce((s,r)=>s+(+r.amount||0),0);
+    const outAmt=(a.outbound||[]).reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0);
+    const snapAmt=(a.closing||a.snapshot||[]).reduce((s,x)=>s+(+x.amount||0),0);
+    const opAmt=(a.opening||[]).reduce((s,x)=>s+(+x.amount||0),0);
+    kpis.innerHTML=`<div class="ak-kpi"><b>${fmtNum(opAmt)}</b><span>期初结存(元)</span></div>`
+      +`<div class="ak-kpi"><b>${fmtNum(inAmt)}</b><span>本期入库(元)</span></div>`
+      +`<div class="ak-kpi"><b>${fmtNum(outAmt)}</b><span>本期出库(元)</span></div>`
+      +`<div class="ak-kpi"><b>${fmtNum(snapAmt)}</b><span>期末结存(元)</span></div>`;
+  }
   function renderArchiveDetail(idx){
     const a=archivedRecords[idx]; if(!a) return;
-    const ov=document.getElementById('archiveOverview');
-    if(ov){ ov.querySelectorAll('.ao-card').forEach(c=>c.classList.toggle('active',+c.dataset.idx===idx)); }
+    renderArchiveKpis(idx);
     const sel=document.getElementById('archiveYear'); if(sel&&+sel.value!==idx) sel.value=String(idx);
     const m=document.getElementById('archiveMeta'); if(m) m.textContent='结转于 '+a.carriedAt+' · 共 '+(a.inbound.length+a.outbound.length)+' 笔历史流水';
     const ts=document.getElementById('archiveTrialSub');
