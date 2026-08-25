@@ -1468,7 +1468,7 @@
         <div class="grid row-3">
           <div class="card kpi"><div class="top"><div class="lbl">库存总金额</div><div class="ic">💰</div></div><div class="val" id="repTotalValue">¥ 0</div><div class="trend" id="repValueTrend">— 暂无数据</div></div>
           <div class="card kpi"><div class="top"><div class="lbl">期间领用次数</div><div class="ic">🧾</div></div><div class="val" id="repMonthOutCount">0</div><div class="trend" id="repOutTrend">— 暂无数据</div></div>
-          <div class="card kpi"><div class="top"><div class="lbl" title="当前库存总量 ÷ 期间日均出库量，表示按当前出库速度库存还能维持多少天">周转天数</div><div class="ic">🔄</div></div><div class="val" id="repTurnover">—</div><div class="trend" id="repTurnTrend">暂无数据</div></div>
+          <div class="card kpi"><div class="top"><div class="lbl" title="当前库存低于安全库存阈值的物资项数（含缺货与偏低），需及时补货">安全库存预警</div><div class="ic">⚠️</div></div><div class="val" id="repAlert">0</div><div class="trend" id="repAlertTrend">暂无数据</div></div>
         </div>
         <div class="grid row-2 mt">
           <div class="card">
@@ -2975,13 +2975,6 @@
     if(range==='year'){ const y=now.getFullYear(); return r=>String(r.date||'').startsWith(String(y)); }
     return ()=>true;
   }
-  function repPeriodDays(range){
-    const now=new Date();
-    if(range==='month') return new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-    if(range==='quarter'){ const m=now.getMonth(); const qs=[0,3,6,9][Math.floor(m/3)]; return Math.round((new Date(now.getFullYear(), qs+3, 0) - new Date(now.getFullYear(), qs, 1))/86400000); }
-    if(range==='year') return ((now.getFullYear()%4===0&&now.getFullYear()%100!==0)||now.getFullYear()%400===0)?366:365;
-    return Math.max(1, Math.round((now - new Date(now.getFullYear(),0,1))/86400000));
-  }
   function repPrevFilter(range){
     const now=new Date();
     if(range==='month'){ const d=new Date(now.getFullYear(), now.getMonth()-1, 1); const k=monthKey(d); return r=>String(r.date||'').startsWith(k); }
@@ -3004,29 +2997,16 @@
     const tV=document.getElementById('repValueTrend'); if(tV){ tV.textContent=totalValue?'— 基于入库单价估算':'— 暂无数据'; tV.className='trend'; }
     const elO=document.getElementById('repMonthOutCount'); if(elO) elO.textContent=fmtNum(outCountCur);
     const tO=document.getElementById('repOutTrend'); if(tO){ if(outCountPrev===0){ tO.textContent='— 暂无环比'; tO.className='trend'; } else { const pct=((outCountCur-outCountPrev)/outCountPrev*100).toFixed(1); const up=+pct>=0; tO.textContent=(up?'▲ ':'▼ ')+Math.abs(pct)+'%'; tO.className='trend '+(up?'up':'down'); } }
-    const elT=document.getElementById('repTurnover'); const tT=document.getElementById('repTurnTrend');
-    if(elT&&tT){
-      const totalQty=items.reduce((s,i)=>s+(+i.q||0),0);
-      if(totalQty>0){
-        if(outQtyCur===0){
-          elT.textContent='—';
-          tT.textContent='— 期间无出库，无法估算周转';
-          tT.className='trend';
-        } else {
-          const days=repPeriodDays(repRange);
-          const avgDailyOut=outQtyCur/Math.max(1,days);
-          if(avgDailyOut<1){
-            elT.textContent='>365 天';
-            tT.textContent='— 期间出库量低，周转缓慢';
-            tT.className='trend';
-          } else {
-            const dd=Math.round(totalQty/avgDailyOut);
-            if(dd>365){ elT.textContent='>365 天'; tT.textContent='— 库存充足，周转缓慢'; tT.className='trend'; }
-            else { elT.textContent=dd+' 天'; tT.textContent='— 按期间日均估算'; tT.className='trend'; }
-          }
-        }
-      }
-      else { elT.textContent='—'; tT.textContent='暂无数据'; tT.className='trend'; }
+    const elA=document.getElementById('repAlert'); const tA=document.getElementById('repAlertTrend');
+    if(elA&&tA){
+      const armed=items.filter(i=>(+i.safe||0)>0);
+      const outN=armed.filter(i=>i.q<=0).length;
+      const lowN=armed.filter(i=>i.q>0 && i.q<(+i.safe||0)).length;
+      const alertN=outN+lowN;
+      elA.textContent=fmtNum(alertN);
+      if(armed.length===0){ elA.textContent='—'; tA.textContent='— 未设置安全库存'; tA.className='trend'; }
+      else if(alertN===0){ tA.textContent='✓ 全部充足'; tA.className='trend up'; }
+      else { tA.textContent='⚠ 缺货 '+outN+' · 偏低 '+lowN; tA.className='trend down'; }
     }
     const rangeLabel={month:'本月',quarter:'本季度',year:'本年度',all:'全部期间'}[repRange];
     const sub=document.getElementById('repRangeSub'); if(sub) sub.textContent='当前统计范围：'+rangeLabel+'（领用 '+outCountCur+' 次 / '+fmtNum(outQtyCur)+' 件）';
