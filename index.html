@@ -673,7 +673,8 @@
   [data-theme="light"] .archive-card .kp-icon{background:linear-gradient(135deg,rgba(91,140,255,.12),rgba(125,140,255,.08))}
   #view-data .archive-section{margin-bottom:18px}
   #view-data .archive-section h4{font-size:13px;font-weight:500;margin:0 0 8px;color:var(--ink-2)}
-  .carryover-preview{margin-top:2px;flex:1;display:flex;flex-direction:column;gap:10px;justify-content:flex-start}
+  .kp-content{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0;justify-content:flex-start}
+  .carryover-preview{margin-top:2px}
   .carryover-preview .co-row{display:flex;justify-content:space-between;align-items:center;padding:7px 2px;border-bottom:1px dashed var(--line)}
   .carryover-preview .co-row:last-child{border-bottom:none}
   .carryover-preview .co-row b{color:var(--ink-1);font-weight:500}
@@ -1354,7 +1355,7 @@
                   </div>
                 </div>
                 <div class="kp-body">
-                  <div id="carryoverPreview" class="carryover-preview"></div>
+                  <div id="carryoverPreview" class="carryover-preview kp-content"></div>
                   <div class="kp-foot">
                     <button class="btn btn-primary" id="btnCarryover" data-perm="login">执行年度结转</button>
                     <span class="plan-meta" id="carryoverMsg"></span>
@@ -1374,17 +1375,19 @@
                     </div>
                   </div>
                   <div class="kp-body">
-                    <div class="kp-row" style="grid-template-columns:minmax(140px,0.75fr) 1fr">
-                      <div class="kp-field">
-                        <label for="archiveYear">选择年度</label>
-                        <select id="archiveYear" disabled><option value="">暂无归档年度</option></select>
+                    <div class="kp-content">
+                      <div class="kp-row" style="grid-template-columns:minmax(140px,0.75fr) 1fr">
+                        <div class="kp-field">
+                          <label for="archiveYear">选择年度</label>
+                          <select id="archiveYear" disabled><option value="">暂无归档年度</option></select>
+                        </div>
+                        <div class="kp-stats" id="archiveStats">
+                          <div class="kp-stat"><span class="kp-stat-v" id="akStatYears">0</span><span class="kp-stat-l">已归档年度</span></div>
+                          <div class="kp-stat"><span class="kp-stat-v" id="akStatRecs">0</span><span class="kp-stat-l">出入库流水</span></div>
+                        </div>
                       </div>
-                      <div class="kp-stats" id="archiveStats">
-                        <div class="kp-stat"><span class="kp-stat-v" id="akStatYears">0</span><span class="kp-stat-l">已归档年度</span></div>
-                        <div class="kp-stat"><span class="kp-stat-v" id="akStatRecs">0</span><span class="kp-stat-l">出入库流水</span></div>
-                      </div>
+                      <div id="archiveKpis" class="kp-row"></div>
                     </div>
-                    <div id="archiveKpis" class="kp-row"></div>
                     <div class="kp-foot">
                       <button class="btn btn-ghost" id="exportArchiveBtn" disabled>⬇ 导出</button>
                       <button class="btn btn-danger" id="delArchiveBtn" disabled>🗑 删除</button>
