@@ -1167,7 +1167,9 @@
               <div class="field"><label>所属部门</label><select id="outDept"><option>总经理</option><option>财务总监</option><option>项目经理</option><option>办公室</option><option>财务部</option><option>海外事业部</option><option>销售部</option><option>采购部</option><option>人力资源部</option><option>法务/董办</option></select></div>
               <div class="field"><label>物资分类</label><select id="outCat"><option>办公用品</option><option>烟酒茶</option><option>礼品</option></select></div>
               <div class="field" style="position:relative"><label>物资名称 <span style="color:var(--ink-3);font-weight:400;font-size:11px">输入自动识别库存</span></label><input id="outName" placeholder="如：签字笔" autocomplete="off" /><div class="in-suggest" id="outNameSuggest" hidden></div></div>
+              <div class="field"><label>规格 <span style="color:var(--ink-3);font-weight:400">自动带出</span></label><input id="outSpec" placeholder="如：500张/包" /></div>
               <div class="field"><label>领用数量</label><input id="outQty" placeholder="0" type="number" /></div>
+              <div class="field"><label>单位</label><input id="outUnit" placeholder="件" value="件" /></div>
               <div class="field"><label>经办人</label><input id="outHandler" placeholder="admin" /></div>
               <div class="field full"><label>用途说明</label><textarea id="outPurpose" placeholder="如：部门日常办公 / 客户拜访礼品…"></textarea></div>
             </div>
@@ -1446,7 +1448,7 @@
                 <span class="ap-toggle">展开 ▼</span>
               </div>
               <div class="ap-body" style="display:none">
-                <div class="table-scroll"><table class="data-table"><thead><tr><th>出库单号</th><th>日期</th><th>领用人</th><th>物资名称</th><th>分类</th><th class="num">数量</th><th class="num">单价(元)</th><th class="num">金额(元)</th><th>用途</th></tr></thead><tbody id="archOutBody"></tbody><tfoot id="archOutFoot" class="arch-foot"></tfoot></table></div>
+                <div class="table-scroll"><table class="data-table"><thead><tr><th>出库单号</th><th>日期</th><th>领用人</th><th>物资名称</th><th>分类</th><th class="num">数量</th><th class="num">单位</th><th class="num">单价(元)</th><th class="num">金额(元)</th><th>用途</th></tr></thead><tbody id="archOutBody"></tbody><tfoot id="archOutFoot" class="arch-foot"></tfoot></table></div>
               </div>
             </div>
           </div>
@@ -3767,8 +3769,8 @@
     ob.innerHTML=outY.length?outY.map(r=>{
       const p=(r.price!=null)?r.price:0;
       const amt=(r.amount!=null)?r.amount:(+(+r.qty||0)*p).toFixed(2);
-      return `<tr><td class="code">${r.outNo||r.id}</td><td>${r.date}</td><td>${r.applicant||'—'}</td><td>${r.name}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td class="num">${p||'—'}</td><td class="num">${amt}</td><td>${r.purpose||'—'}</td></tr>`;
-    }).join(''):'<tr><td colspan="9" class="empty">无出库记录</td></tr>';
+      return `<tr><td class="code">${r.outNo||r.id}</td><td>${r.date}</td><td>${r.applicant||'—'}</td><td>${r.name}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td>${r.unit||'件'}</td><td class="num">${p||'—'}</td><td class="num">${amt}</td><td>${r.purpose||'—'}</td></tr>`;
+    }).join(''):'<tr><td colspan="10" class="empty">无出库记录</td></tr>';
     // ---- 年度盘点档案（盘点联动 · 账实差异）----
     const cb=document.getElementById('archCheckBody');
     const checks=a.checks||[];
@@ -3784,7 +3786,7 @@
     const outQty=outY.reduce((s,r)=>s+(+r.qty||0),0);
     const outAmt=outY.reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0);
     const outFoot=document.getElementById('archOutFoot');
-    if(outFoot) outFoot.innerHTML=outY.length?`<tr class="arch-total"><td colspan="5">出库合计</td><td class="num">${fmtNum(outQty)}</td><td></td><td class="num">${fmtNum(outAmt)}</td><td></td></tr>`:'';
+    if(outFoot) outFoot.innerHTML=outY.length?`<tr class="arch-total"><td colspan="5">出库合计</td><td class="num">${fmtNum(outQty)}</td><td></td><td></td><td class="num">${fmtNum(outAmt)}</td><td></td></tr>`:'';
   }
   const _coBtn=document.getElementById('btnCarryover');
   if(_coBtn) _coBtn.addEventListener('click',()=>{
@@ -4062,9 +4064,12 @@
     if(!it) return;
     document.getElementById('outCat').value=catMeta[it.c].t;
     document.getElementById('outName').value=it.n;
+    const _sp=document.getElementById('outSpec'); if(_sp) _sp.value=it.s||'';
+    const _un=document.getElementById('outUnit'); if(_un) _un.value=it.u||'件';
     const box=document.getElementById('outNameSuggest'); if(box) box.hidden=true;
     outNameIdx=-1;
-    toast('已匹配库存物资','ok','「'+it.n+'」为库存已有物品，领用将正确扣减对应库存');
+    const tip=(it.s&&it.s!=='—'?('（'+it.s+'）'):'')+' · 单位 '+(it.u||'件');
+    toast('已匹配库存物资','ok','「'+it.n+'」'+tip+'，领用将正确扣减对应库存');
   }
   const _outNameEl=document.getElementById('outName');
   if(_outNameEl){
@@ -4078,7 +4083,7 @@
   const _outCatEl=document.getElementById('outCat');
   if(_outCatEl) _outCatEl.addEventListener('change',renderOutNameSuggest);
 
-  function resetOutbound(){ ['outNo','outApplicant','outName','outQty','outHandler','outPurpose'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';}); }
+  function resetOutbound(){ ['outNo','outApplicant','outName','outSpec','outUnit','outQty','outHandler','outPurpose'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';}); }
   document.getElementById('submitOutbound').addEventListener('click',()=>{
     const applicant=document.getElementById('outApplicant').value.trim();
     const dept=document.getElementById('outDept').value;
@@ -4090,10 +4095,12 @@
     if(!applicant||!cat||!name||isNaN(qty)||qty<=0){ toast('请完整填写领用人/分类/名称/数量','warn','以上为必填项'); return; }
     const outNo=document.getElementById('outNo').value.trim();
     const recId=outNo||genId('CK');
-    const rec={id:recId,outNo:outNo||recId,date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit:'件',purpose,handler:approver,status:'已出库'};
+    const unit=document.getElementById('outUnit').value.trim()||'件';
+    const spec=document.getElementById('outSpec').value.trim();
+    const rec={id:recId,outNo:outNo||recId,date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit,spec,purpose,handler:approver,status:'已出库'};
     outboundRecords.unshift(rec);
     const exist=items.find(i=>i.n===name && i.c===cat);
-    if(!exist){ items.push({c:cat,n:name,s:'—',u:'件',safe:catDefault[cat]||10,initQty:0}); }
+    if(!exist){ items.push({c:cat,n:name,s:spec||'—',u:unit,safe:catDefault[cat]||10,initQty:0}); }
     renderRecentOut();
     recomputeStocks();
     renderDataTables(); renderInv('all'); wmsSave();
@@ -4254,7 +4261,7 @@
   function renderRecentOut(){
     const list=outboundRecords.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
     const el=document.getElementById('recentOutList'); if(!el) return;
-    el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${r.applicant} 领用 ${r.name} ×${r.qty}</div><div class="rs">${r.dept} · ${r.purpose||'—'} · ${r.date}</div></div><div class="rq out">−${r.qty}</div></div>`).join('')
+    el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${r.applicant} 领用 ${r.name} ×${r.qty} ${r.unit||'件'}</div><div class="rs">${r.dept} · ${r.purpose||'—'} · ${r.date}</div></div><div class="rq out">−${r.qty} ${r.unit||'件'}</div></div>`).join('')
       : '<div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无出库记录</div>';
     const cnt=document.getElementById('recentOutCount'); if(cnt) cnt.textContent=list.length;
   }
