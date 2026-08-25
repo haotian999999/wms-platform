@@ -1468,7 +1468,7 @@
         <div class="grid row-3">
           <div class="card kpi"><div class="top"><div class="lbl">库存总金额</div><div class="ic">💰</div></div><div class="val" id="repTotalValue">¥ 0</div><div class="trend" id="repValueTrend">— 暂无数据</div></div>
           <div class="card kpi"><div class="top"><div class="lbl">期间领用次数</div><div class="ic">🧾</div></div><div class="val" id="repMonthOutCount">0</div><div class="trend" id="repOutTrend">— 暂无数据</div></div>
-          <div class="card kpi"><div class="top"><div class="lbl">周转天数</div><div class="ic">🔄</div></div><div class="val" id="repTurnover">—</div><div class="trend" id="repTurnTrend">暂无数据</div></div>
+          <div class="card kpi"><div class="top"><div class="lbl" title="当前库存总量 ÷ 期间日均出库量，表示按当前出库速度库存还能维持多少天">周转天数</div><div class="ic">🔄</div></div><div class="val" id="repTurnover">—</div><div class="trend" id="repTurnTrend">暂无数据</div></div>
         </div>
         <div class="grid row-2 mt">
           <div class="card">
@@ -3007,9 +3007,25 @@
     const elT=document.getElementById('repTurnover'); const tT=document.getElementById('repTurnTrend');
     if(elT&&tT){
       const totalQty=items.reduce((s,i)=>s+(+i.q||0),0);
-      const days=repPeriodDays(repRange);
-      const avgDailyOut=outQtyCur/Math.max(1,days);
-      if(avgDailyOut>0 && totalQty>0){ const dd=Math.round(totalQty/avgDailyOut); elT.textContent=dd+' 天'; tT.textContent='— 按期间日均估算'; tT.className='trend'; }
+      if(totalQty>0){
+        if(outQtyCur===0){
+          elT.textContent='—';
+          tT.textContent='— 期间无出库，无法估算周转';
+          tT.className='trend';
+        } else {
+          const days=repPeriodDays(repRange);
+          const avgDailyOut=outQtyCur/Math.max(1,days);
+          if(avgDailyOut<1){
+            elT.textContent='>365 天';
+            tT.textContent='— 期间出库量低，周转缓慢';
+            tT.className='trend';
+          } else {
+            const dd=Math.round(totalQty/avgDailyOut);
+            if(dd>365){ elT.textContent='>365 天'; tT.textContent='— 库存充足，周转缓慢'; tT.className='trend'; }
+            else { elT.textContent=dd+' 天'; tT.textContent='— 按期间日均估算'; tT.className='trend'; }
+          }
+        }
+      }
       else { elT.textContent='—'; tT.textContent='暂无数据'; tT.className='trend'; }
     }
     const rangeLabel={month:'本月',quarter:'本季度',year:'本年度',all:'全部期间'}[repRange];
