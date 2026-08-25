@@ -1624,6 +1624,22 @@
             <div class="maint-line" id="jsonRestoreInfo"></div>
           </div>
 
+          <!-- 7. 云同步设置 -->
+          <div class="card form-card">
+            <div class="section-title">☁️ 云端同步</div>
+            <div class="section-sub">换电脑登录后自动同步、数据不丢失</div>
+            <div class="field" style="margin-bottom:12px">
+              <label>GitHub 访问令牌（Token）</label>
+              <input type="password" id="cloudTokenInput" placeholder="粘贴你的 GitHub 令牌" autocomplete="off" />
+            </div>
+            <div class="maint-line" id="cloudSyncInfo">未配置令牌，跨设备同步未开启</div>
+            <div class="maint-actions">
+              <button class="btn btn-primary" id="btnCloudSave">保存并开启同步</button>
+              <button class="btn btn-ghost" id="btnCloudSync">立即同步</button>
+            </div>
+            <p class="maint-warn" style="margin-top:10px">🔒 令牌仅保存在本机浏览器，用于将数据安全写入你的 GitHub 仓库 <b>data/wms_db.json</b>（仅此一个文件）。如需停止同步，将输入框清空后点「保存」即可。</p>
+          </div>
+
         </div>
       </section>
 
@@ -1941,8 +1957,14 @@
   const WMS_DB_KEY='wms_db_v2';
   const WMS_AUTO_KEY='wms_auto_backup';
   const WMS_FULL_KEY='wms_full_backup';
+  const WMS_REPO='haotian999999/wms-platform';
+  const WMS_CLOUD_PATH='data/wms_db.json';
+  const WMS_TOKEN_KEY='wms_gh_token';
+  const WMS_SYNC_KEY='wms_sync_on';
   let autoBackupEnabled=false;
   try{ autoBackupEnabled=localStorage.getItem('wms_autobackup_on')==='1'; }catch(e){}
+  let cloudToken=''; try{ cloudToken=localStorage.getItem(WMS_TOKEN_KEY)||''; }catch(e){}
+  let cloudSyncOn=true; try{ cloudSyncOn=localStorage.getItem(WMS_SYNC_KEY)!=='0'; }catch(e){}
   function _wmsLoad(){ try{ const r=localStorage.getItem(WMS_DB_KEY); const o=r&&JSON.parse(r); return (o&&Array.isArray(o.items))?o:null; }catch(e){ return null; } }
   let _wmsData=_wmsLoad();
   // 数据完整性兜底：主数据文件异常（损坏/为空）但存在有效自动备份时，自动还原，避免信息丢失
@@ -1956,10 +1978,139 @@
       }
     }catch(e){}
   }
-  function wmsSave(){
-    try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify({items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords,archivedRecords,lastCarryoverYear})); }catch(e){ console.warn('wms 保存失败',e); }
-    if(autoBackupEnabled) writeAutoBackup();
+  function dbSnapshot(){
+    return {items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords,archivedRecords,lastCarryoverYear,updatedAt:Date.now()};
   }
+  function wmsSave(){
+    try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify(dbSnapshot())); }catch(e){ console.warn('wms 保存失败',e); }
+    if(autoBackupEnabled) writeAutoBackup();
+    scheduleCloudSync();
+  }
+
+  // ============ 云端同步（GitHub 仓库 data/wms_db.json） ============
+  // 换电脑登录后自动拉取云端最新数据并合并，保存时自动推送，实现跨设备数据不丢失
+  function cloudConfigured(){ return !!(cloudToken && WMS_REPO); }
+  let cloudBusy=false, cloudTimer=null, cloudLastErr='';
+  function scheduleCloudSync(){
+    if(!cloudSyncOn || !cloudConfigured()) return;
+    clearTimeout(cloudTimer);
+    cloudTimer=setTimeout(()=>pushCloud(), 1500);
+  }
+  function cloudHeaders(){
+    return {'Accept':'application/vnd.github+json','Authorization':'Bearer '+cloudToken,'X-GitHub-Api-Version':'2022-11-28'};
+  }
+  async function ghGet(path){
+    const r=await fetch('https://api.github.com/repos/'+WMS_REPO+'/contents/'+path, {headers:cloudHeaders()});
+    if(r.status===404) return null;
+    if(!r.ok){ throw new Error('读取云端失败 HTTP '+r.status); }
+    const j=await r.json();
+    return {sha:j.sha, content:decodeURIComponent(escape(atob(j.content)))};
+  }
+  async function ghPut(path, content, sha){
+    const body={message:'WMS 云端同步 '+new Date().toLocaleString(), content:btoa(unescape(encodeURIComponent(content)))};
+    if(sha) body.sha=sha;
+    const r=await fetch('https://api.github.com/repos/'+WMS_REPO+'/contents/'+path, {method:'PUT',headers:cloudHeaders(),body:JSON.stringify(body)});
+    if(!r.ok){ throw new Error('写入云端失败 HTTP '+r.status); }
+    return (await r.json()).content.sha;
+  }
+  // 合并两库：所有业务数据取并集去重（双方录入互不覆盖丢失），updatedAt 取较新值
+  function mergeCloud(cloud){
+    const local=dbSnapshot();
+    const c=cloud||{};
+    const union=(la,ca)=>{
+      const m=new Map();
+      (la||[]).forEach(x=>{ const k=JSON.stringify(x); if(!m.has(k)) m.set(k,x); });
+      (ca||[]).forEach(x=>{ const k=JSON.stringify(x); if(!m.has(k)) m.set(k,x); });
+      return Array.from(m.values());
+    };
+    const merged={
+      items: union(local.items, c.items),
+      inboundRecords: union(local.inboundRecords, c.inboundRecords),
+      outboundRecords: union(local.outboundRecords, c.outboundRecords),
+      checkPlansQuarter: union(local.checkPlansQuarter, c.checkPlansQuarter),
+      checkPlansYear: union(local.checkPlansYear, c.checkPlansYear),
+      checkRecords: union(local.checkRecords, c.checkRecords),
+      archivedRecords: union(local.archivedRecords, c.archivedRecords),
+      lastCarryoverYear: Math.max(
+        (typeof c.lastCarryoverYear==='number'?c.lastCarryoverYear:0),
+        (typeof local.lastCarryoverYear==='number'?local.lastCarryoverYear:0)
+      ),
+      updatedAt: Math.max((c.updatedAt||0), (local.updatedAt||0), Date.now())
+    };
+    return merged;
+  }
+  function applyCloudData(m){
+    items.length=0; (m.items||[]).forEach(x=>items.push(x));
+    inboundRecords.length=0; (m.inboundRecords||[]).forEach(x=>inboundRecords.push(x));
+    outboundRecords.length=0; (m.outboundRecords||[]).forEach(x=>outboundRecords.push(x));
+    checkPlansQuarter.length=0; (m.checkPlansQuarter||[]).forEach(x=>checkPlansQuarter.push(x));
+    checkPlansYear.length=0; (m.checkPlansYear||[]).forEach(x=>checkPlansYear.push(x));
+    checkRecords.length=0; (m.checkRecords||[]).forEach(x=>checkRecords.push(x));
+    archivedRecords.length=0; (m.archivedRecords||[]).forEach(x=>archivedRecords.push(x));
+    lastCarryoverYear=m.lastCarryoverYear;
+    wmsSave();
+  }
+  async function pushCloud(){
+    if(!cloudConfigured()||cloudBusy) return;
+    cloudBusy=true;
+    try{
+      const remote=await ghGet(WMS_CLOUD_PATH);
+      const local=dbSnapshot();
+      // 始终与云端取并集合并后推送，确保任一方录入的数据都不丢失
+      const content=remote ? mergeCloud(remote.content) : local;
+      await ghPut(WMS_CLOUD_PATH, JSON.stringify(content), remote?remote.sha:null);
+      updateCloudInfo('上次同步 '+new Date().toLocaleTimeString()+' ✓');
+    }catch(e){
+      cloudLastErr=e.message;
+      updateCloudInfo('同步失败：'+e.message);
+    }finally{ cloudBusy=false; }
+  }
+  async function pullCloud(){
+    if(!cloudConfigured()) { updateCloudInfo('未配置令牌，请在数据维护页开启云端同步'); return; }
+    if(cloudBusy) return;
+    cloudBusy=true;
+    try{
+      const remote=await ghGet(WMS_CLOUD_PATH);
+      if(!remote){ updateCloudInfo('云端暂无数据，首次登录将自动上传当前数据'); await pushCloud(); return; }
+      const local=dbSnapshot();
+      const merged=mergeCloud(remote.content);
+      applyCloudData(merged);
+      const source=(remote.content.updatedAt||0)>(local.updatedAt||0)?'云端':'本地';
+      toast('同步完成','ok','已载入'+source+'数据，跨设备数据已同步');
+      updateCloudInfo('上次同步 '+new Date().toLocaleTimeString()+' ✓（'+source+'）');
+    }catch(e){
+      cloudLastErr=e.message;
+      updateCloudInfo('同步失败：'+e.message+'（数据仍保存在本机，不会丢失）');
+    }finally{ cloudBusy=false; }
+  }
+  function updateCloudInfo(txt){
+    const el=document.getElementById('cloudSyncInfo'); if(el) el.textContent=txt||'';
+  }
+  function saveCloudSettings(){
+    const inp=document.getElementById('cloudTokenInput');
+    const v=(inp.value||'').trim();
+    cloudToken=v;
+    try{ if(v) localStorage.setItem(WMS_TOKEN_KEY,v); else localStorage.removeItem(WMS_TOKEN_KEY); }catch(e){}
+    cloudSyncOn=!!v;
+    try{ localStorage.setItem(WMS_SYNC_KEY, v?'1':'0'); }catch(e){}
+    if(!v){ updateCloudInfo('已停止云端同步，数据仅保存在本机'); toast('已停止同步','info','跨设备同步已关闭'); return; }
+    updateCloudInfo('令牌已保存，正在连接云端…');
+    toast('同步已开启','ok','正在连接 GitHub 云端');
+    setTimeout(pullCloud, 300);
+  }
+  document.addEventListener('DOMContentLoaded',()=>{
+    const saveBtn=document.getElementById('btnCloudSave');
+    const syncBtn=document.getElementById('btnCloudSync');
+    const inp=document.getElementById('cloudTokenInput');
+    if(inp && cloudToken) inp.value=cloudToken;
+    if(saveBtn) saveBtn.addEventListener('click',saveCloudSettings);
+    if(syncBtn) syncBtn.addEventListener('click',pullCloud);
+    if(cloudConfigured()){
+      updateCloudInfo('已配置令牌，等待首次同步…');
+      setTimeout(pullCloud, 800);
+    }
+  });
+
 
   // ---- Inventory data ----
   // 库存默认不含演示数据：系统以空白架构启动，由用户通过「入库登记 / 数据导入」填充
@@ -4699,7 +4850,7 @@
   function saveAccounts(a){ try{localStorage.setItem('wms_accounts',JSON.stringify(a));}catch(e){} }
   function doLogin(user,pass){
     const a=loadAccounts();
-    for(const k of ROLE_ORDER){ if(a[k].user===user && a[k].pass===pass){ currentUser={role:a[k].role,name:a[k].name,roleName:a[k].roleName}; try{localStorage.setItem('wms_current',JSON.stringify(currentUser));}catch(e){} hideLogin(); applyPermissions(); updateNotifyBadge(); return true; } }
+    for(const k of ROLE_ORDER){ if(a[k].user===user && a[k].pass===pass){ currentUser={role:a[k].role,name:a[k].name,roleName:a[k].roleName}; try{localStorage.setItem('wms_current',JSON.stringify(currentUser));}catch(e){} hideLogin(); applyPermissions(); updateNotifyBadge(); if(cloudConfigured()) setTimeout(()=>pullCloud(), 500); return true; } }
     return false;
   }
   function hideLogin(){ document.getElementById('loginScreen').style.display='none'; document.body.style.overflow=''; document.documentElement.style.overflow=''; var app=document.querySelector('.app'); if(app) app.classList.add('ready'); refreshUserUI(); renderDashboard(); updateDataNote(); }
