@@ -1406,11 +1406,11 @@
             </div>
             <!-- 财务会计框架：年度汇总（期初/入库/出库/期末 勾稽平衡） -->
             <div class="card arch-panel" data-panel="trial">
-              <div class="panel-head ap-head" role="button" tabindex="0" aria-expanded="true">
+              <div class="panel-head ap-head" role="button" tabindex="0" aria-expanded="false">
                 <div><h3>年度库存汇总 · 试算平衡</h3><div class="sub" id="archiveTrialSub">期初结存 + 本期入库 − 本期出库 = 期末结存（数量勾稽）</div></div>
-                <span class="ap-toggle">收起 ▲</span>
+                <span class="ap-toggle">展开 ▼</span>
               </div>
-              <div class="ap-body">
+              <div class="ap-body" style="display:none">
                 <div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th class="num">期初结存</th><th class="num">本期入库</th><th class="num">本期出库</th><th class="num">期末结存</th><th>单位</th><th class="num">期末金额(元)</th><th>勾稽</th></tr></thead><tbody id="trialBody"></tbody><tfoot id="trialFoot" class="arch-foot"></tfoot></table></div>
               </div>
             </div>
