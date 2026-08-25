@@ -1944,7 +1944,18 @@
   let autoBackupEnabled=false;
   try{ autoBackupEnabled=localStorage.getItem('wms_autobackup_on')==='1'; }catch(e){}
   function _wmsLoad(){ try{ const r=localStorage.getItem(WMS_DB_KEY); const o=r&&JSON.parse(r); return (o&&Array.isArray(o.items))?o:null; }catch(e){ return null; } }
-  const _wmsData=_wmsLoad();
+  let _wmsData=_wmsLoad();
+  // 数据完整性兜底：主数据文件异常（损坏/为空）但存在有效自动备份时，自动还原，避免信息丢失
+  if(!_wmsData){
+    try{
+      const ab=readAutoBackup();
+      if(ab && ab.data && Array.isArray(ab.data.items) && ab.data.items.length){
+        localStorage.setItem(WMS_DB_KEY, JSON.stringify(ab.data));
+        _wmsData=ab.data; autoBackupEnabled=true;
+        setTimeout(()=>toast('已从自动备份恢复数据','warn','主数据文件读取异常，已用最近一次自动备份还原'),900);
+      }
+    }catch(e){}
+  }
   function wmsSave(){
     try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify({items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords,archivedRecords,lastCarryoverYear})); }catch(e){ console.warn('wms 保存失败',e); }
     if(autoBackupEnabled) writeAutoBackup();
@@ -1997,12 +2008,12 @@
       const inT=inTotalOf(i.n,i.c), outT=outTotalOf(i.n,i.c);
       return `<tr data-row-inv="${oi}">
         <td class="code">${code}-${String(idx+1).padStart(3,'0')}</td>
-        <td>${i.n}</td>
+        <td>${escHtml(i.n)}</td>
         <td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td>
-        <td>${i.b||'—'}</td>
-        <td>${i.s}</td><td>${i.u}</td>
-        <td class="num">${i.q} ${i.u}</td><td class="num">${i.safe} ${i.u}</td>
-        <td class="code">${latestInNo(i)}</td><td class="num">${inT} ${i.u}</td><td class="code">${latestOutNo(i)}</td><td class="num">${outT} ${i.u}</td>
+        <td>${escHtml(i.b||'—')}</td>
+        <td>${escHtml(i.s)}</td><td>${escHtml(i.u)}</td>
+        <td class="num">${i.q} ${escHtml(i.u)}</td><td class="num">${i.safe} ${escHtml(i.u)}</td>
+        <td class="code">${latestInNo(i)}</td><td class="num">${inT} ${escHtml(i.u)}</td><td class="code">${latestOutNo(i)}</td><td class="num">${outT} ${escHtml(i.u)}</td>
         ${warrantyMonthsCell(i)}
         ${warrantyCell(i)}
         <td><span class="status ${st}">${txt}</span></td>
@@ -2028,9 +2039,9 @@
       const m=catMeta[i.c];
       const real=(i.real!==undefined?i.real:i.sys);
       return `<tr data-row-check-item="${idx}">
-        <td>${i.n}</td>
+        <td>${escHtml(i.n)}</td>
         <td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td>
-        <td class="num">${i.sys} ${i.u}</td>
+        <td class="num">${i.sys} ${escHtml(i.u)}</td>
         <td><input class="real-input" type="number" value="${real}" data-sys="${i.sys}" data-idx="${idx}" /></td>
         <td class="num"><span class="diff ${(real-i.sys)===0?'zero':(real-i.sys)>0?'up':'down'}" id="diff-${idx}">${(real-i.sys)>0?'+':''}${real-i.sys}</span></td>
       </tr>`;
@@ -2062,7 +2073,7 @@
       const badge= stt? `<span class="status ${stt}">${planStatusText[stt]}</span>` : '';
       return `<div class="tl-item" data-rec-idx="${i}" role="button" tabindex="0" title="点击查看操作">`+
         `<div class="tl-dot ${r.dot}">${r.dot==='in'?'🧮':r.dot==='warn'?'⚠️':'🤝'}</div>`+
-        `<div class="tl-body"><div class="t1">${r.title}</div><div class="t2">${r.sub}</div></div>`+
+        `<div class="tl-body"><div class="t1">${escHtml(r.title)}</div><div class="t2">${escHtml(r.sub)}</div></div>`+
         `<div class="tl-right"><div class="tl-time">${r.date}</div>${badge}</div>`+
       `</div>`;
     }).join('');
@@ -2166,9 +2177,9 @@
     const tb=document.getElementById('planQuarterBody'); if(!tb) return;
     if(!checkPlansQuarter.length){ tb.innerHTML='<tr><td colspan="7" class="empty">暂无季度盘点计划，系统将按每季度月底自动生成</td></tr>'; return; }
     tb.innerHTML=checkPlansQuarter.map((p,i)=>`<tr data-row-plan-q="${i}">
-      <td>${p.period||'—'}</td>
-      <td class="code">${p.time||'—'}</td>
-      <td>${p.person||'—'}</td>
+      <td>${escHtml(p.period||'—')}</td>
+      <td class="code">${escHtml(p.time||'—')}</td>
+      <td>${escHtml(p.person||'—')}</td>
       <td><span class="pill self">🧑‍💼 自盘</span></td>
       <td><span class="status ${p.status}">${planStatusText[p.status]}</span></td>
       <td class="num">${p.diff!=null?p.diff:'—'}</td>
@@ -2179,10 +2190,10 @@
     const tb=document.getElementById('planYearBody'); if(!tb) return;
     if(!checkPlansYear.length){ tb.innerHTML='<tr><td colspan="7" class="empty">暂无年度盘点计划，系统将按 6 月底、12 月底自动生成</td></tr>'; return; }
     tb.innerHTML=checkPlansYear.map((p,i)=>`<tr data-row-plan-y="${i}">
-      <td>${p.name||'—'}</td>
-      <td class="code">${p.time||'—'}</td>
-      <td>${p.lead||'—'}</td>
-      <td>${p.watch||'—'}</td>
+      <td>${escHtml(p.name||'—')}</td>
+      <td class="code">${escHtml(p.time||'—')}</td>
+      <td>${escHtml(p.lead||'—')}</td>
+      <td>${escHtml(p.watch||'—')}</td>
       <td><span class="pill join">🤝 全面</span></td>
       <td><span class="status ${p.status}">${planStatusText[p.status]}</span></td>
       <td><span class="cell-act"><button type="button" class="btn-mini start" data-start-check-y="${i}">开始盘点</button></span></td>
@@ -2382,7 +2393,7 @@
       const d=real-sys; const st=d===0?'ok':d>0?'up':'down';
       const txt=d===0?'账实相符':(d>0?'盘盈 +'+d:'盘亏 '+d);
       const m=catMeta[it.c];
-      rows+=`<tr><td>${it.n}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="num">${sys} ${it.u}</td><td class="num">${real} ${it.u}</td><td class="num"><span class="diff ${st}">${(d>0?'+':'')+d}</span></td><td><span class="status ${st}">${txt}</span></td></tr>`;
+      rows+=`<tr><td>${escHtml(it.n)}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="num">${sys} ${escHtml(it.u)}</td><td class="num">${real} ${escHtml(it.u)}</td><td class="num"><span class="diff ${st}">${(d>0?'+':'')+d}</span></td><td><span class="status ${st}">${txt}</span></td></tr>`;
       items.push({n:it.n,c:m.t,u:it.u,sys,real,d,st:txt});
     });
     return {info,rows,items,type,scope,date,diffCount:items.filter(i=>i.d!==0).length};
@@ -2653,12 +2664,12 @@
       const ok=name&&cat&&!isNaN(stockNum); if(ok) valid++;
       const m=cat?catMeta[cat]:null;
       return `<tr>
-        <td>${name||'—'}</td>
+        <td>${escHtml(name||'—')}</td>
         <td>${m?`<span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span>`:`<span class="status out">未识别</span>`}</td>
-        <td>${brand??'—'}</td>
-        <td>${subSpec||'—'}</td>
-        <td>${unit??'—'}</td>
-        <td class="num">${stock??'—'}</td>
+        <td>${escHtml(brand??'—')}</td>
+        <td>${escHtml(subSpec||'—')}</td>
+        <td>${escHtml(unit??'—')}</td>
+        <td class="num">${escHtml(stock??'—')}</td>
         <td>${ok?'<span class="status ok">可导入</span>':'<span class="status low">待修正</span>'}</td>
       </tr>`;
     }).join('');
@@ -2675,7 +2686,7 @@
         document.getElementById('detailInfo').textContent=`共 ${recs.length} 笔（入库 ${inN} / 出库 ${outN}），以下为前 12 条样本`;
         document.getElementById('detailBody').innerHTML=recs.slice(0,12).map(r=>{
           const m=catMeta[r.category]||{t:r.category};
-          return `<tr><td>${r.type==='in'?'<span class="status ok">入库</span>':'<span class="status low">出库</span>'}</td><td class="code">${r.orderNo||'—'}</td><td>${r.date||'—'}</td><td>${r.name}</td><td>${m.t||r.category}</td><td class="num">${r.qty}</td><td>${r.operator||'—'}</td></tr>`;
+          return `<tr><td>${r.type==='in'?'<span class="status ok">入库</span>':'<span class="status low">出库</span>'}</td><td class="code">${r.orderNo||'—'}</td><td>${r.date||'—'}</td><td>${escHtml(r.name)}</td><td>${m.t||r.category}</td><td class="num">${r.qty}</td><td>${escHtml(r.operator||'—')}</td></tr>`;
         }).join('');
       }else{
         dp.style.display='none';
@@ -2868,7 +2879,7 @@
     const list=inboundRecords.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
     const el=document.getElementById('recentInList'); if(!el) return;
     const sub=document.getElementById('recentInSub'); if(sub) sub.textContent='共 '+inboundRecords.length+' 条';
-    el.innerHTML=list.length?list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${r.name} ×${r.qty} ${r.unit||''}</div><div class="rs">${(catMeta[r.category]||{}).t||r.category} · ${r.supplier||'—'} · ${r.handler||'—'}</div></div><div class="rq in">+${r.qty}</div></div>`).join('')
+    el.innerHTML=list.length?list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.name)} ×${r.qty} ${escHtml(r.unit||'')}</div><div class="rs">${(catMeta[r.category]||{}).t||r.category} · ${escHtml(r.supplier||'—')} · ${escHtml(r.handler||'—')}</div></div><div class="rq in">+${r.qty}</div></div>`).join('')
       :'<div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无入库记录</div>';
   }
   function renderRecentActivity(){
@@ -2878,7 +2889,7 @@
     const list=[...inRecs,...outRecs].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,6);
     const today=monthKey(new Date()); const yest=monthKey(new Date(Date.now()-86400000));
     const fmt=d=>{ if(!d) return '—'; if(d===today) return '今天'; if(d===yest) return '昨天'; const [yy,mm,dd]=String(d).split('-'); return `${mm}-${dd}`; };
-    el.innerHTML=list.length?list.map(r=>`<div class="tl-item"><div class="tl-dot ${r.dot}">${r.dot==='in'?'⬇️':'⬆️'}</div><div class="tl-body"><div class="t1">${r.title}</div><div class="t2">${r.sub}</div></div><div class="tl-time">${fmt(r.date)}</div></div>`).join('')
+    el.innerHTML=list.length?list.map(r=>`<div class="tl-item"><div class="tl-dot ${r.dot}">${r.dot==='in'?'⬇️':'⬆️'}</div><div class="tl-body"><div class="t1">${escHtml(r.title)}</div><div class="t2">${escHtml(r.sub)}</div></div><div class="tl-time">${fmt(r.date)}</div></div>`).join('')
       :'<div class="tl-item"><div class="tl-dot out">⬆️</div><div class="tl-body"><div class="t1">暂无业务流水</div><div class="t2">完成入库或出库后将在此展示</div></div><div class="tl-time">—</div></div>';
   }
 
@@ -2928,10 +2939,10 @@
       return `<tr><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="num">${fmtNum(iQ)}</td><td class="num">${fmtNum(oQ)}</td><td class="num">${fmtNum(q)}</td></tr>`;
     }).join('')||'<tr><td colspan="4" class="empty">暂无分类数据</td></tr>';
     const inRows=inY.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8)
-      .map(r=>`<tr><td class="code">${r.inNo||r.id||'—'}</td><td>${r.date||'—'}</td><td>${r.name}</td><td class="num">${r.qty}${r.unit||''}</td></tr>`).join('')
+      .map(r=>`<tr><td class="code">${r.inNo||r.id||'—'}</td><td>${r.date||'—'}</td><td>${escHtml(r.name)}</td><td class="num">${r.qty}${escHtml(r.unit||'')}</td></tr>`).join('')
       ||'<tr><td colspan="4" class="empty">本年暂无入库记录</td></tr>';
     const outRows=outY.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8)
-      .map(r=>`<tr><td class="code">${r.outNo||r.id||'—'}</td><td>${r.date||'—'}</td><td>${r.name}</td><td>${r.applicant||'—'}</td><td class="num">${r.qty}${r.unit||''}</td></tr>`).join('')
+      .map(r=>`<tr><td class="code">${r.outNo||r.id||'—'}</td><td>${r.date||'—'}</td><td>${escHtml(r.name)}</td><td>${escHtml(r.applicant||'—')}</td><td class="num">${r.qty}${escHtml(r.unit||'')}</td></tr>`).join('')
       ||'<tr><td colspan="5" class="empty">本年暂无领用记录</td></tr>';
     let html='';
     if(kpi==='cat'){
@@ -3047,7 +3058,7 @@
     outSel.forEach(r=>{ const k=r.name+'|'+(r.category||''); if(!itemMap[k]) itemMap[k]={n:r.name,c:r.category||'',qty:0}; itemMap[k].qty+=(+r.qty||0); });
     const itemRows=Object.values(itemMap).sort((a,b)=>b.qty-a.qty).slice(0,10).map(x=>{
       const m=catMeta[x.c];
-      return `<tr><td>${x.n}</td><td>${m?`<span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span>`:x.c}</td><td class="num">${fmtNum(x.qty)}</td></tr>`;
+      return `<tr><td>${escHtml(x.n)}</td><td>${m?`<span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span>`:x.c}</td><td class="num">${fmtNum(x.qty)}</td></tr>`;
     }).join('');
     const it=document.getElementById('repItemTable');
     if(it) it.innerHTML=itemRows||'<tr><td colspan="3" class="empty">该期间暂无领用记录</td></tr>';
@@ -3208,7 +3219,7 @@
         if(c.k==='category') return `<td>${catTag(r.category)}</td>`;
         if(c.k==='qty') return `<td class="num">${r.qty}</td>`;
         if(c.k==='price'||c.k==='amount') return `<td class="num">${r[c.k]}</td>`;
-        if(c.k==='status') return `<td><span class="status ${statusCls(r.status)}">${r.status}</span></td>`;
+        if(c.k==='status') return `<td><span class="status ${statusCls(r.status)}">${escHtml(r.status)}</span></td>`;
         if(c.k==='warranty') return warrantyMonthsCell(r);
         if(c.k==='expire') return warrantyCell(r);
         const v=r[c.k]; return `<td>${v==null||v===''?'—':v}</td>`;
@@ -3436,7 +3447,7 @@
       let v;
       if(c.k==='category') v=catTag(rec.category);
       else if(c.k==='qty') v=rec.qty;
-      else v=rec[c.k];
+      else v=escHtml(rec[c.k]);
       return `<dt>${c.t}</dt><dd>${v}</dd>`;
     }).join('');
     document.getElementById('recModal').classList.add('show');
@@ -3450,7 +3461,7 @@
   }
   function warRow(o){
     const m=catMeta[o.i.c]; const st=wStatus(o.dl);
-    return `<tr><td>${o.i.n}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="code">${o.i.expire}</td><td class="num">${o.dl}</td><td><span class="status ${st.cls}">${st.txt}</span></td></tr>`;
+    return `<tr><td>${escHtml(o.i.n)}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="code">${o.i.expire}</td><td class="num">${o.dl}</td><td><span class="status ${st.cls}">${st.txt}</span></td></tr>`;
   }
   function renderWarranty(){
     const list=warList();
@@ -3511,7 +3522,7 @@
       ['库存金额(估算)', '—']
     ];
     document.getElementById('invModalTitle').textContent='库存物资详情 · '+i.n;
-    document.getElementById('invModalBody').innerHTML=rows.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('');
+    document.getElementById('invModalBody').innerHTML=rows.map(r=>`<dt>${r[0]}</dt><dd>${escHtml(r[1])}</dd>`).join('');
     document.getElementById('invModal').classList.add('show');
   }
   document.querySelectorAll('#dataTabs .tab').forEach(t=>t.addEventListener('click',()=>{
@@ -3742,7 +3753,7 @@
       const bal=+(e.op+e.iq-e.oq-e.cl).toFixed(2);
       const amt=+((e.cl*(e.price||0)).toFixed(2));
       tOp+=e.op; tIn+=e.iq; tOut+=e.oq; tCl+=e.cl; tAmt+=amt; tBal+=bal;
-      return `<tr><td>${e.n}</td><td>${catMeta[e.c]?catMeta[e.c].t:e.c}</td><td class="num">${fmtNum(e.op)}</td><td class="num">${fmtNum(e.iq)}</td><td class="num">${fmtNum(e.oq)}</td><td class="num">${fmtNum(e.cl)}</td><td>${e.u}</td><td class="num">${fmtNum(amt)}</td><td><span class="status ${Math.abs(bal)<0.01?'ok':'down'}">${Math.abs(bal)<0.01?'平衡':'差异 '+bal}</span></td></tr>`;
+      return `<tr><td>${escHtml(e.n)}</td><td>${catMeta[e.c]?catMeta[e.c].t:e.c}</td><td class="num">${fmtNum(e.op)}</td><td class="num">${fmtNum(e.iq)}</td><td class="num">${fmtNum(e.oq)}</td><td class="num">${fmtNum(e.cl)}</td><td>${escHtml(e.u)}</td><td class="num">${fmtNum(amt)}</td><td><span class="status ${Math.abs(bal)<0.01?'ok':'down'}">${Math.abs(bal)<0.01?'平衡':'差异 '+bal}</span></td></tr>`;
     }).join('')||'<tr><td colspan="9" class="empty">该年度无库存数据</td></tr>';
     trialBody.innerHTML=rows;
     const trialFoot=document.getElementById('trialFoot');
@@ -3750,12 +3761,12 @@
     // ---- 期末结存明细（资产负债表 · 存货）----
     const sb=document.getElementById('snapBody');
     const snapAmt=closing.reduce((s,x)=>s+(+x.amount||+((+x.q||0)*(+x.price||0))||0),0);
-    sb.innerHTML=closing.length?closing.map(s=>`<tr><td>${s.n}</td><td>${catMeta[s.c]?catMeta[s.c].t:s.c}</td><td class="num">${s.price!=null?s.price:'—'}</td><td class="num">${s.q}</td><td>${s.u||'—'}</td><td class="num">${s.amount!=null?s.amount:(+(s.q*(s.price||0))).toFixed(2)}</td></tr>`).join('')+'<tr class="arch-total"><td colspan="4">期末结存合计</td><td></td><td class="num">'+fmtNum(snapAmt)+'</td></tr>':'<tr><td colspan="6" class="empty">无期末结存记录</td></tr>';
+    sb.innerHTML=closing.length?closing.map(s=>`<tr><td>${escHtml(s.n)}</td><td>${catMeta[s.c]?catMeta[s.c].t:s.c}</td><td class="num">${s.price!=null?s.price:'—'}</td><td class="num">${s.q}</td><td>${escHtml(s.u||'—')}</td><td class="num">${s.amount!=null?s.amount:(+(s.q*(s.price||0))).toFixed(2)}</td></tr>`).join('')+'<tr class="arch-total"><td colspan="4">期末结存合计</td><td></td><td class="num">'+fmtNum(snapAmt)+'</td></tr>':'<tr><td colspan="6" class="empty">无期末结存记录</td></tr>';
     const snapFoot=document.getElementById('snapFoot');
     if(snapFoot) snapFoot.innerHTML='';
     // ---- 入库明细账 ----
     const ib=document.getElementById('archInBody');
-    ib.innerHTML=inY.length?inY.map(r=>`<tr><td class="code">${r.inNo||r.id}</td><td>${r.date}</td><td>${r.name}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td class="num">${r.price!=null?r.price:'—'}</td><td class="num">${r.amount||'—'}</td><td>${r.supplier||'—'}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">无入库记录</td></tr>';
+    ib.innerHTML=inY.length?inY.map(r=>`<tr><td class="code">${r.inNo||r.id}</td><td>${r.date}</td><td>${escHtml(r.name)}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td class="num">${r.price!=null?r.price:'—'}</td><td class="num">${r.amount||'—'}</td><td>${escHtml(r.supplier||'—')}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">无入库记录</td></tr>';
     const inQty=inY.reduce((s,r)=>s+(+r.qty||0),0);
     const inAmt=inY.reduce((s,r)=>s+(+r.amount||0),0);
     const inFoot=document.getElementById('archInFoot');
@@ -3765,7 +3776,7 @@
     ob.innerHTML=outY.length?outY.map(r=>{
       const p=(r.price!=null)?r.price:0;
       const amt=(r.amount!=null)?r.amount:(+(+r.qty||0)*p).toFixed(2);
-      return `<tr><td class="code">${r.outNo||r.id}</td><td>${r.date}</td><td>${r.applicant||'—'}</td><td>${r.name}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td>${r.unit||'件'}</td><td class="num">${p||'—'}</td><td class="num">${amt}</td><td>${r.purpose||'—'}</td></tr>`;
+      return `<tr><td class="code">${r.outNo||r.id}</td><td>${r.date}</td><td>${escHtml(r.applicant||'—')}</td><td>${escHtml(r.name)}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td>${escHtml(r.unit||'件')}</td><td class="num">${p||'—'}</td><td class="num">${amt}</td><td>${escHtml(r.purpose||'—')}</td></tr>`;
     }).join(''):'<tr><td colspan="10" class="empty">无出库记录</td></tr>';
     // ---- 年度盘点档案（盘点联动 · 账实差异）----
     const cb=document.getElementById('archCheckBody');
@@ -3776,7 +3787,7 @@
         const net=c.diffNet!=null?(c.diffNet>0?'+'+c.diffNet:c.diffNet):'—';
         const abs=c.diffAbs!=null?c.diffAbs:'—';
         const concl=c.diffCount==null?'—':(c.diffCount>0?'存在差异':'账实相符');
-        return `<tr><td>${c.date||'—'}</td><td>${c.title||'盘点'}</td><td>${c.scope||'—'}</td><td class="num">${c.diffCount!=null?c.diffCount:'—'}</td><td class="num ${c.diffNet>0?'':'down'}">${net}</td><td class="num">${abs}</td><td><span class="status ${diffOk?'ok':'warn'}">${concl}</span></td></tr>`;
+        return `<tr><td>${c.date||'—'}</td><td>${escHtml(c.title||'盘点')}</td><td>${escHtml(c.scope||'—')}</td><td class="num">${c.diffCount!=null?c.diffCount:'—'}</td><td class="num ${c.diffNet>0?'':'down'}">${net}</td><td class="num">${abs}</td><td><span class="status ${diffOk?'ok':'warn'}">${concl}</span></td></tr>`;
       }).join(''):'<tr><td colspan="7" class="empty">该年度无盘点记录 · 建议每年结转前完成一次全面盘点</td></tr>';
     }
     const outQty=outY.reduce((s,r)=>s+(+r.qty||0),0);
@@ -3933,7 +3944,7 @@
     recomputeStocks();
     renderDataTables(); renderWarranty(); wmsSave();
     const rl=document.querySelector('#view-inbound .rec-list');
-    if(rl){ rl.insertAdjacentHTML('afterbegin', `<div class="rec"><div class="ri">${ICON[cat]}</div><div><div class="rt">${name} ×${qty} ${unit}</div><div class="rs">${catMeta[cat].t} · ${supplier||'—'} · ${handler}</div></div><div class="rq in">+${qty}</div></div>`); }
+    if(rl){ rl.insertAdjacentHTML('afterbegin', `<div class="rec"><div class="ri">${ICON[cat]}</div><div><div class="rt">${escHtml(name)} ×${qty} ${escHtml(unit)}</div><div class="rs">${catMeta[cat].t} · ${escHtml(supplier||'—')} · ${escHtml(handler)}</div></div><div class="rq in">+${qty}</div></div>`); }
     resetInbound();
     toast('入库成功','ok',`${name} ×${qty}${unit} 已登记并入库存`);
   });
@@ -4257,7 +4268,7 @@
   function renderRecentOut(){
     const list=outboundRecords.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
     const el=document.getElementById('recentOutList'); if(!el) return;
-    el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${r.applicant} 领用 ${r.name} ×${r.qty} ${r.unit||'件'}</div><div class="rs">${r.dept} · ${r.purpose||'—'} · ${r.date}</div></div><div class="rq out">−${r.qty} ${r.unit||'件'}</div></div>`).join('')
+    el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.applicant)} 领用 ${escHtml(r.name)} ×${r.qty} ${escHtml(r.unit||'件')}</div><div class="rs">${escHtml(r.dept)} · ${escHtml(r.purpose||'—')} · ${r.date}</div></div><div class="rq out">−${r.qty} ${escHtml(r.unit||'件')}</div></div>`).join('')
       : '<div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无出库记录</div>';
     const cnt=document.getElementById('recentOutCount'); if(cnt) cnt.textContent=list.length;
   }
@@ -4293,7 +4304,7 @@
     const icons={ok:'✓',warn:'!',err:'✕',info:'i'};
     const el=document.createElement('div');
     el.className='toast '+type;
-    el.innerHTML='<span class="ti">'+(icons[type]||'i')+'</span><div class="tx"><b>'+msg+'</b>'+(sub?'<span class="ts">'+sub+'</span>':'')+'</div>';
+    el.innerHTML='<span class="ti">'+(icons[type]||'i')+'</span><div class="tx"><b>'+escHtml(msg)+'</b>'+(sub?'<span class="ts">'+escHtml(sub)+'</span>':'')+'</div>';
     wrap.appendChild(el);
     requestAnimationFrame(()=>el.classList.add('show'));
     setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),360); }, type==='err'?3800:2600);
@@ -4324,7 +4335,7 @@
   function lsBytes(){ let t=0; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); const v=localStorage.getItem(k)||''; t+=v.length*2; } return t; } // UTF-16 码元×2≈字节
   function writeAutoBackup(){
     try{
-      const data={items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords};
+      const data={items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords,archivedRecords,lastCarryoverYear};
       localStorage.setItem(WMS_AUTO_KEY, JSON.stringify({ts:new Date().toISOString(),data}));
     }catch(e){ console.warn('自动备份失败',e); }
   }
@@ -4434,19 +4445,35 @@
     const outRows=[outCols.map(c=>c.t)].concat(outboundRecords.map(r=>outCols.map(c=> c.k==='category'? (catMeta[r.category]||{}).t : (r[c.k]==null?'':r[c.k]) )));
     const planRows=recordsToRows(checkPlansQuarter.concat(checkPlansYear));
     const recRows=recordsToRows(checkRecords);
-    buildWorkbook([
+    const sheets=[
       {name:'库存',rows:invRows},
       {name:'入库记录',rows:inRows},
       {name:'出库记录',rows:outRows},
       {name:'盘点计划',rows:planRows},
       {name:'盘点记录',rows:recRows}
-    ], fn);
+    ];
+    // 历史归档数据一并导出，保证整库信息完整
+    if(archivedRecords.length){
+      const archInRows=[['年度','入库单号','日期','名称','分类','数量','单位','供应商']].concat(
+        archivedRecords.flatMap(a=>(a.inbound||[]).map(r=>[a.year||a.label, r.inNo||r.id||'', r.date||'', r.name||'', (catMeta[r.category]||{}).t||r.category, r.qty, r.unit||'', r.supplier||'']))
+      );
+      const archOutRows=[['年度','出库单号','日期','领用人','名称','分类','数量','单位','用途']].concat(
+        archivedRecords.flatMap(a=>(a.outbound||[]).map(r=>[a.year||a.label, r.outNo||r.id||'', r.date||'', r.applicant||'', r.name||'', (catMeta[r.category]||{}).t||r.category, r.qty, r.unit||'', r.purpose||'']))
+      );
+      const archCheckRows=[['年度','盘点日期','标题','范围','差异项数','净差异','差异绝对值']].concat(
+        archivedRecords.flatMap(a=>(a.checks||[]).map(c=>[a.year||a.label, c.date||'', c.title||'', c.scope||'', c.diffCount==null?'':c.diffCount, c.diffNet==null?'':c.diffNet, c.diffAbs==null?'':c.diffAbs]))
+      );
+      sheets.push({name:'历史归档-入库',rows:archInRows});
+      sheets.push({name:'历史归档-出库',rows:archOutRows});
+      if(archivedRecords.some(a=>a.checks&&a.checks.length)) sheets.push({name:'历史归档-盘点',rows:archCheckRows});
+    }
+    buildWorkbook(sheets, fn);
     toast('正在导出','ok','已生成 Excel 工作簿');
   }
   function backupJSON(){
     const p=new Date(); const pad=n=>String(n).padStart(2,'0');
     const ts=p.getFullYear()+pad(p.getMonth()+1)+pad(p.getDate())+'_'+pad(p.getHours())+pad(p.getMinutes());
-    const full={ app:'wms-platform', version:2, exportedAt:new Date().toISOString(), data:{items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords}, accounts:loadAccounts() };
+    const full={ app:'wms-platform', version:3, exportedAt:new Date().toISOString(), data:{items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords,archivedRecords,lastCarryoverYear}, accounts:loadAccounts() };
     const blob=new Blob([JSON.stringify(full,null,2)],{type:'application/json'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='wms_backup_'+ts+'.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
     toast('已备份','ok','整库 JSON 已下载');
@@ -4464,7 +4491,8 @@
       try{
         localStorage.setItem(WMS_DB_KEY, JSON.stringify({
           items:data.items, inboundRecords:data.inboundRecords||[], outboundRecords:data.outboundRecords||[],
-          checkPlansQuarter:data.checkPlansQuarter||[], checkPlansYear:data.checkPlansYear||[], checkRecords:data.checkRecords||[]
+          checkPlansQuarter:data.checkPlansQuarter||[], checkPlansYear:data.checkPlansYear||[], checkRecords:data.checkRecords||[],
+          archivedRecords:data.archivedRecords||[], lastCarryoverYear:typeof data.lastCarryoverYear==='number'?data.lastCarryoverYear:0
         }));
         if(obj&&obj.accounts) saveAccounts(obj.accounts);
       }catch(e){ info.textContent='✕ 写入失败：存储空间不足'; toast('还原失败','err','存储空间不足'); return; }
@@ -4488,7 +4516,7 @@
     if(fill) fill.style.width=pct+'%';
     const color= pct>=85?'linear-gradient(90deg,#ff5d6c,#ff7a7a)': pct>=60?'linear-gradient(90deg,#ffc24b,#ffd486)':'linear-gradient(90deg,#2fe6a0,#27c06a)';
     if(fill) fill.style.background=color;
-    const dbSize=JSON.stringify({items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords}).length*2;
+    const dbSize=JSON.stringify({items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords,archivedRecords}).length*2;
     const accSize=(localStorage.getItem('wms_accounts')||'').length*2;
     const autoSize=(localStorage.getItem(WMS_AUTO_KEY)||'').length*2;
     const fullSize=(localStorage.getItem(WMS_FULL_KEY)||'').length*2;
@@ -4586,9 +4614,9 @@
       const[st,txt]=statusOf(i.q,eff);
       const overridden=isOverridden(idx);
       return `<tr data-idx="${idx}">
-        <td title="${i.n}">${i.n}</td>
-        <td class="num">${i.q}${i.u}</td>
-        <td class="num">${def}${i.u}</td>
+        <td title="${escHtml(i.n)}">${escHtml(i.n)}</td>
+        <td class="num">${i.q}${escHtml(i.u)}</td>
+        <td class="num">${def}${escHtml(i.u)}</td>
         <td><input class="real-input safe-input" type="number" min="0" value="${overridden?safeOverrides[idx]:''}" placeholder="${def}" data-idx="${idx}" /></td>
         <td><span class="status ${st}">${txt}</span>${overridden?'<span class="ov-tag">单独</span>':''}</td>
       </tr>`;
@@ -4705,8 +4733,8 @@
       const x=a[k];
       return `<div style="display:grid;grid-template-columns:170px 1fr 1fr;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px 14px">
         <div><div style="font-weight:700;font-size:14px">${x.roleName}</div><div class="plan-meta">${ROLE_PERM[k]}</div></div>
-        <div class="field" style="margin:0"><label>登录账号</label><input data-k="${k}" data-f="user" value="${x.user}" /></div>
-        <div class="field" style="margin:0"><label>密码</label><input data-k="${k}" data-f="pass" type="password" value="${x.pass}" /></div>
+        <div class="field" style="margin:0"><label>登录账号</label><input data-k="${k}" data-f="user" value="${escHtml(x.user)}" /></div>
+        <div class="field" style="margin:0"><label>密码</label><input data-k="${k}" data-f="pass" type="password" value="${escHtml(x.pass)}" /></div>
       </div>`;
     }).join('');
   }
@@ -4796,7 +4824,7 @@
     body.innerHTML=list.length? list.map((it,idx)=>{
       const m=catMeta[it.c];
       return '<tr class="'+(it.processed?'row-done':'')+'" data-alert="'+idx+'">'
-        +'<td>'+it.n+'</td>'
+        +'<td>'+escHtml(it.n)+'</td>'
         +'<td><span class="tag '+m.cls+'"><span class="d" style="background:'+m.col+'"></span>'+m.t+'</span></td>'
         +'<td class="num">'+it.q+' '+(it.u||'')+'</td>'
         +'<td class="num">'+it.safe+' '+(it.u||'')+'</td>'
@@ -4816,7 +4844,7 @@
       const st=it.st==='out'?'<span class="status out">缺货</span>':'<span class="status low">偏低</span>';
       const m=catMeta[it.c];
       return '<tr>'
-        +'<td>'+it.n+'</td>'
+        +'<td>'+escHtml(it.n)+'</td>'
         +'<td><span class="tag '+m.cls+'"><span class="d" style="background:'+m.col+'"></span>'+m.t+'</span></td>'
         +'<td class="num">'+it.q+' '+(it.u||'')+'</td>'
         +'<td class="num">'+it.safe+' '+(it.u||'')+'</td>'
