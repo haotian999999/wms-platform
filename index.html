@@ -2004,7 +2004,9 @@
     if(r.status===404) return null;
     if(!r.ok){ throw new Error('读取云端失败 HTTP '+r.status); }
     const j=await r.json();
-    return {sha:j.sha, content:decodeURIComponent(escape(atob(j.content)))};
+    const raw=decodeURIComponent(escape(atob(j.content)));
+    let parsed={}; try{ parsed=JSON.parse(raw)||{}; }catch(e){ parsed={}; }
+    return {sha:j.sha, content:parsed};
   }
   async function ghPut(path, content, sha){
     const body={message:'WMS 云端同步 '+new Date().toLocaleString(), content:btoa(unescape(encodeURIComponent(content)))};
