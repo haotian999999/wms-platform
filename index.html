@@ -1228,7 +1228,7 @@
               <div class="plan-meta" style="padding:0 20px 6px">每季度末由仓库管理员自行盘点，每年 4 次（全盘）。</div>
               <div class="table-scroll">
                 <table class="plan-table">
-                  <thead><tr><th>盘点周期</th><th>计划时间</th><th>盘点人</th><th>方式</th><th>状态</th><th>差异</th><th>开始盘点</th></tr></thead>
+                  <thead><tr><th>盘点周期</th><th>计划时间</th><th>牵头（仓库）</th><th>监盘（财务）</th><th>状态</th><th>差异</th><th>开始盘点</th></tr></thead>
                   <tbody id="planQuarterBody"></tbody>
                 </table>
               </div>
@@ -1240,7 +1240,7 @@
               <div class="plan-meta" style="padding:0 20px 6px">每半年与年末开展联合盘点，仓库管理员牵头、财务监盘人员共同参与，全面盘点，每年 2 次。</div>
               <div class="table-scroll">
                 <table class="plan-table">
-                  <thead><tr><th>盘点名称</th><th>计划时间</th><th>牵头（仓库）</th><th>监盘（财务）</th><th>范围</th><th>状态</th><th>开始盘点</th></tr></thead>
+                  <thead><tr><th>盘点名称</th><th>计划时间</th><th>盘点人</th><th>方式</th><th>范围</th><th>状态</th><th>开始盘点</th></tr></thead>
                   <tbody id="planYearBody"></tbody>
                 </table>
               </div>
@@ -2401,13 +2401,13 @@
     const fields=isQ?[
       {k:'period',t:'盘点周期',v:p.period,ty:'text'},
       {k:'time',t:'计划时间(MM-DD)',v:p.time,ty:'text'},
-      {k:'person',t:'盘点人',v:p.person,ty:'text'},
+      {k:'person',t:'牵头（仓库）',v:p.person,ty:'text'},
       {k:'status',t:'状态',v:p.status,ty:'select',opts:[['ok','已完成'],['low','进行中'],['out','待开始']]}
     ]:[
       {k:'name',t:'盘点名称',v:p.name,ty:'text'},
       {k:'time',t:'计划时间(MM-DD)',v:p.time,ty:'text'},
-      {k:'lead',t:'牵头（仓库）',v:p.lead,ty:'text'},
-      {k:'watch',t:'监盘（财务）',v:p.watch,ty:'text'},
+      {k:'lead',t:'盘点人',v:p.lead,ty:'text'},
+      {k:'watch',t:'方式',v:p.watch,ty:'text'},
       {k:'status',t:'状态',v:p.status,ty:'select',opts:[['ok','已完成'],['low','进行中'],['out','待开始']]}
     ];
     document.getElementById('planEditBody').innerHTML=summary+fields.map(f=>{
