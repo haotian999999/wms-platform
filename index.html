@@ -3707,23 +3707,27 @@
     const m=catMeta[i.c]; const[st,txt]=statusOf(i.q,i.safe);
     const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
     // ===== 第一部分：物品档案信息 =====
+    const estAmount = i.price && +i.price>0 && +i.q>0 ? (+i.price * +i.q).toFixed(2) : null;
     const archRows=[
-      ['编号', code+'-'+String(idx+1).padStart(3,'0')],
-      ['物资名称', i.n],
-      ['分类', catTag(i.c)],
-      ['品牌', i.b||'—'],
-      ['规格', i.s],
-      ['单位', i.u],
-      ['库存数量', i.q+' '+i.u],
-      ['安全库存', (i.safe||0)+' '+i.u],
-      ['库存状态', `<span class="status ${st}">${txt}</span>`],
-      ['质保期(月)', i.warranty? i.warranty+' 个月':'无'],
-      ['入库日期', i.inDate||'—'],
-      ['到期日', i.expire||'—'],
-      ['剩余天数', i.expire? (()=>{const dl=daysLeft(i.expire); return `<span class="status ${wStatus(dl).cls}">${wStatus(dl).txt}</span>`;})():'—'],
-      ['库存金额(估算)', '—']
+      {label:'编号', value:code+'-'+String(idx+1).padStart(3,'0')},
+      {label:'物资名称', value:i.n},
+      {label:'分类', value:catTag(i.c), html:true},
+      {label:'品牌', value:i.b||'—'},
+      {label:'规格', value:i.s},
+      {label:'单位', value:i.u},
+      {label:'库存数量', value:i.q+' '+i.u},
+      {label:'安全库存', value:(i.safe||0)+' '+i.u},
+      {label:'库存状态', value:`<span class="status ${st}">${txt}</span>`, html:true},
+      {label:'质保期(月)', value:i.warranty? i.warranty+' 个月':'无'},
+      {label:'入库日期', value:i.inDate||'—'},
+      {label:'到期日', value:i.expire||'—'},
+      {label:'剩余天数', value:i.expire? (()=>{const dl=daysLeft(i.expire); return `<span class="status ${wStatus(dl).cls}">${wStatus(dl).txt}</span>`;})():'—', html:true},
+      {label:'库存金额(估算)', value:estAmount ? `¥${estAmount}` : '—'}
     ];
-    document.getElementById('invArchiveBody').innerHTML=archRows.map(r=>`<dt>${r[0]}</dt><dd>${escHtml(r[1])}</dd>`).join('');
+    document.getElementById('invArchiveBody').innerHTML=archRows.map(r=>{
+      const v = r.html ? r.value : escHtml(r.value);
+      return `<dt>${r.label}</dt><dd>${v}</dd>`;
+    }).join('');
 
     // ===== 第二部分：入库明细（按时间倒序，最新在最上，含该物品全部入库记录） =====
     const inRs=inboundRecords.filter(r=>r.name===i.n && r.category===i.c)
