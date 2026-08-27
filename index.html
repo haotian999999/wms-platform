@@ -474,15 +474,18 @@
   .lnk.dl{color:#ffb088}
   .lnk+.lnk{margin-left:10px}
   /* 数据管理/库存表格：表头加大、单元格居中、字号统一、比例协调 */
-  .table-scroll{overflow:auto;max-height:calc(100vh - 300px);padding:0 18px 6px;-webkit-overflow-scrolling:touch;position:relative}
+  .table-scroll{overflow:auto;max-height:calc(100dvh - 300px);min-height:160px;padding:0 18px 6px;-webkit-overflow-scrolling:touch;position:relative;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.3) transparent}
   .table-scroll::-webkit-scrollbar{width:8px;height:8px}
-  .table-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.22);border-radius:8px}
-  .table-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.35)}
-  [data-theme="light"] .table-scroll::-webkit-scrollbar-thumb{background:rgba(20,30,60,.22)}
+  .table-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3);border-radius:8px}
+  .table-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.5)}
+  [data-theme="light"] .table-scroll{scrollbar-color:rgba(20,30,60,.3) transparent}
+  [data-theme="light"] .table-scroll::-webkit-scrollbar-thumb{background:rgba(20,30,60,.28)}
   [data-theme="light"] .data-table thead th{background:linear-gradient(180deg,rgba(255,255,255,.99),rgba(245,248,255,.97));color:#33405c}
   [data-theme="light"] .plan-table thead th{background:linear-gradient(180deg,rgba(255,255,255,.99),rgba(245,248,255,.97));color:#33405c}
-  .table-scroll.has-overflow::after{content:'';position:absolute;top:0;right:0;bottom:8px;width:40px;background:linear-gradient(90deg,transparent,rgba(0,0,0,.35));pointer-events:none;border-top-right-radius:10px}
-  [data-theme="light"] .table-scroll.has-overflow::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.55))}
+  .table-scroll.has-overflow-x::after{content:'';position:absolute;top:0;right:0;bottom:8px;width:40px;background:linear-gradient(90deg,transparent,rgba(0,0,0,.35));pointer-events:none;border-top-right-radius:10px}
+  [data-theme="light"] .table-scroll.has-overflow-x::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.55))}
+  .table-scroll.has-overflow-y::after{content:'';position:absolute;left:0;right:0;bottom:0;height:40px;background:linear-gradient(0deg,rgba(0,0,0,.35),transparent);pointer-events:none;border-bottom-left-radius:10px;border-bottom-right-radius:10px}
+  [data-theme="light"] .table-scroll.has-overflow-y::after{background:linear-gradient(0deg,rgba(255,255,255,.55),transparent)}
   .scroll-hint{font-size:11px;color:var(--ink-3);text-align:center;padding:8px 18px 0;display:none}
   .scroll-hint.show{display:block}
   .table-scroll.has-overflow + .scroll-hint{display:block}
@@ -2126,8 +2129,11 @@
   function statusOf(q,safe){if(q<=0)return['out','缺货'];if(q<safe)return['low','偏低'];return['ok','充足'];}
   function checkTableOverflow(){
     document.querySelectorAll('.table-scroll').forEach(el=>{
-      const has=el.scrollWidth>el.clientWidth+2;
-      el.classList.toggle('has-overflow',has);
+      const ox=el.scrollWidth>el.clientWidth+2;
+      const oy=el.scrollHeight>el.clientHeight+2;
+      el.classList.toggle('has-overflow-x',ox);
+      el.classList.toggle('has-overflow-y',oy);
+      el.classList.toggle('has-overflow',ox||oy);
     });
   }
   // ---- 质保期 / 到期日 工具 ----
@@ -5040,11 +5046,11 @@
 </script>
 <script>
   // 注册 Service Worker：同源静态资源（HTML/JS/CSS/字体）进入浏览器缓存，二次打开秒开、可离线使用
-  // 注册 URL 带 ?v=3 版本号：让浏览器把它当作“新的 SW 脚本”强制重新拉取，绕开旧版 SW 缓存，
+  // 注册 URL 带 ?v=4 版本号：让浏览器把它当作“新的 SW 脚本”强制重新拉取，绕开旧版 SW 缓存，
   // 已被旧缓存卡住的用户也能借此拿到最新 SW 并自我更新。部署新版本时同步把 ?v=N 递增。
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('./sw.js?v=3').then(function (reg) {
+      navigator.serviceWorker.register('./sw.js?v=4').then(function (reg) {
         // 若已有等待中的新版本，立即让其接管（配合 sw.js 的 skipWaiting 消息）
         if (reg && reg.waiting) { try { reg.waiting.postMessage('skipWaiting'); } catch (e) {} }
         // 新版本 SW 接管页面时自动刷新一次，加载最新 HTML/JS（避免停留在旧缓存）
