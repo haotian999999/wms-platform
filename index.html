@@ -757,6 +757,32 @@
   .rec-detail{display:grid;grid-template-columns:108px 1fr;gap:13px 16px;margin-top:6px}
   .rec-detail dt{color:var(--ink-3);font-size:13px;margin:0}
   .rec-detail dd{margin:0;font-size:14px;font-weight:400;color:var(--ink)}
+  /* 库存物资详情弹窗：三部分结构（档案 / 入库明细 / 出库明细） */
+  .inv-sec{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+  .inv-sec:first-child{border-top:none;margin-top:8px;padding-top:0}
+  .inv-sec-h{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--ink);margin-bottom:10px}
+  .inv-sec-no{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:7px;background:var(--primary);color:#fff;font-size:13px;font-weight:800;flex:0 0 auto}
+  .inv-sec-count{margin-left:auto;font-size:12px;font-weight:600;color:var(--ink-3);background:rgba(255,255,255,.06);padding:3px 10px;border-radius:20px}
+  .inv-rec-wrap{display:flex;flex-direction:column;gap:10px;max-height:312px;overflow:auto;padding-right:4px}
+  .inv-rec-card{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:12px 14px;transition:border-color .2s var(--ease-soft)}
+  .inv-rec-card:hover{border-color:rgba(91,140,255,.45)}
+  .inv-rec-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  .inv-rec-no{font-size:13px;color:var(--ink-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .inv-rec-no b{color:var(--ink);font-weight:700}
+  .inv-rec-date{font-size:13px;font-weight:600;color:var(--primary);flex:0 0 auto}
+  .inv-rec-grid{grid-template-columns:96px 1fr;gap:8px 14px;margin-top:0}
+  .inv-rec-grid dt{font-size:12px}
+  .inv-rec-grid dd{font-size:13px;font-weight:400}
+  .qty-in{color:var(--success);font-weight:700}
+  .qty-out{color:var(--danger);font-weight:700}
+  .inv-empty{font-size:13px;color:var(--ink-3);text-align:center;padding:16px 0;border:1px dashed var(--line);border-radius:12px}
+  [data-theme="light"] .inv-sec{border-top-color:#e4eaf5}
+  [data-theme="light"] .inv-rec-card{background:rgba(91,140,255,.04);border-color:#e4eaf5}
+  [data-theme="light"] .inv-rec-card:hover{border-color:var(--primary-deep)}
+  [data-theme="light"] .inv-sec-count{background:rgba(91,140,255,.08);color:#3a5bf0}
+  [data-theme="light"] .inv-rec-no b{color:#1d2433}
+  [data-theme="light"] .qty-in{color:#1aa06a}
+  [data-theme="light"] .qty-out{color:#e05060}
   .kpi-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
   .kpi-sum>div{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
   .kpi-sum b{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
@@ -1708,20 +1734,34 @@
 
   <!-- 库存物资详情弹窗 -->
   <div class="modal-mask" id="invModal">
-    <div class="modal">
-      <div class="modal-head">
-        <h3 id="invModalTitle">库存物资详情</h3>
-        <button class="modal-close" id="invModalClose">✕</button>
-      </div>
-      <div class="modal-body">
-        <dl class="rec-detail" id="invModalBody"></dl>
-        <div class="modal-actions">
-          <button class="btn btn-primary" id="invModalEdit">✏️ 编辑物资</button>
-          <button class="btn btn-ghost" id="invModalDelete" style="color:#ff7a7a;border-color:rgba(255,90,90,.5)">🗑️ 删除物资</button>
-          <button class="btn btn-ghost" id="invModalCloseBtn">关闭</button>
+      <div class="modal" style="--mw:660px">
+        <div class="modal-head">
+          <h3 id="invModalTitle">库存物资详情</h3>
+          <button class="modal-close" id="invModalClose">✕</button>
+        </div>
+        <div class="modal-body" id="invModalBody">
+          <!-- 第一部分：物品档案信息 -->
+          <div class="inv-sec">
+            <div class="inv-sec-h"><span class="inv-sec-no">①</span>物品档案信息</div>
+            <dl class="rec-detail" id="invArchiveBody"></dl>
+          </div>
+          <!-- 第二部分：入库明细（按时间顺序） -->
+          <div class="inv-sec">
+            <div class="inv-sec-h"><span class="inv-sec-no">②</span>入库明细<span class="inv-sec-count" id="invInCount"></span></div>
+            <div class="inv-rec-wrap" id="invInList"></div>
+          </div>
+          <!-- 第三部分：出库明细（按时间顺序） -->
+          <div class="inv-sec">
+            <div class="inv-sec-h"><span class="inv-sec-no">③</span>出库明细<span class="inv-sec-count" id="invOutCount"></span></div>
+            <div class="inv-rec-wrap" id="invOutList"></div>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-primary" id="invModalEdit">✏️ 编辑物资</button>
+            <button class="btn btn-ghost" id="invModalDelete" style="color:#ff7a7a;border-color:rgba(255,90,90,.5)">🗑️ 删除物资</button>
+            <button class="btn btn-ghost" id="invModalCloseBtn">关闭</button>
+          </div>
         </div>
       </div>
-    </div>
   </div>
 
   <!-- 质保期预警提示窗口 -->
@@ -3666,14 +3706,16 @@
     currentInvIdx=idx;
     const m=catMeta[i.c]; const[st,txt]=statusOf(i.q,i.safe);
     const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
-    const rows=[
+    // ===== 第一部分：物品档案信息 =====
+    const archRows=[
       ['编号', code+'-'+String(idx+1).padStart(3,'0')],
       ['物资名称', i.n],
       ['分类', catTag(i.c)],
+      ['品牌', i.b||'—'],
       ['规格', i.s],
       ['单位', i.u],
       ['库存数量', i.q+' '+i.u],
-      ['安全库存', i.safe+' '+i.u],
+      ['安全库存', (i.safe||0)+' '+i.u],
       ['库存状态', `<span class="status ${st}">${txt}</span>`],
       ['质保期(月)', i.warranty? i.warranty+' 个月':'无'],
       ['入库日期', i.inDate||'—'],
@@ -3681,8 +3723,55 @@
       ['剩余天数', i.expire? (()=>{const dl=daysLeft(i.expire); return `<span class="status ${wStatus(dl).cls}">${wStatus(dl).txt}</span>`;})():'—'],
       ['库存金额(估算)', '—']
     ];
+    document.getElementById('invArchiveBody').innerHTML=archRows.map(r=>`<dt>${r[0]}</dt><dd>${escHtml(r[1])}</dd>`).join('');
+
+    // ===== 第二部分：入库明细（按时间顺序，含该物品全部入库记录） =====
+    const inRs=inboundRecords.filter(r=>r.name===i.n && r.category===i.c)
+      .slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+    document.getElementById('invInCount').textContent='共 '+inRs.length+' 次';
+    document.getElementById('invInList').innerHTML = inRs.length ? inRs.map(r=>`
+      <div class="inv-rec-card">
+        <div class="inv-rec-top"><span class="inv-rec-no">入库单号（申购单号）：<b>${escHtml(r.inNo||r.id)}</b></span><span class="inv-rec-date">${escHtml(r.date||'—')}</span></div>
+        <dl class="rec-detail inv-rec-grid">
+          <dt>物资名称</dt><dd>${escHtml(r.name||'—')}</dd>
+          <dt>分类</dt><dd>${catTag(r.category)}</dd>
+          <dt>品牌</dt><dd>${escHtml(r.brand||'—')}</dd>
+          <dt>规格</dt><dd>${escHtml(r.spec||'—')}</dd>
+          <dt>单位</dt><dd>${escHtml(r.unit||'—')}</dd>
+          <dt>数量</dt><dd><span class="qty-in">+${r.qty}</span> ${escHtml(r.unit||'')}</dd>
+          <dt>单价(元)</dt><dd>${r.price!=null?r.price:'0'}</dd>
+          <dt>金额(元)</dt><dd>${r.amount!=null?r.amount:'0'}</dd>
+          <dt>供应商</dt><dd>${escHtml(r.supplier||'—')}</dd>
+          <dt>经办人</dt><dd>${escHtml(r.handler||'—')}</dd>
+          <dt>入库仓库</dt><dd>${escHtml(r.warehouse||'—')}</dd>
+          <dt>质保期</dt><dd>${r.warranty?r.warranty+' 个月':'—'}</dd>
+          <dt>到期日</dt><dd>${escHtml(r.expire||'—')}</dd>
+          <dt>状态</dt><dd><span class="status ok">${escHtml(r.status||'已入库')}</span></dd>
+        </dl>
+      </div>`).join('') : '<div class="inv-empty">暂无入库记录</div>';
+
+    // ===== 第三部分：出库明细（按时间顺序，含该物品全部出库记录） =====
+    const outRs=outboundRecords.filter(r=>r.name===i.n && r.category===i.c)
+      .slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+    document.getElementById('invOutCount').textContent='共 '+outRs.length+' 次';
+    document.getElementById('invOutList').innerHTML = outRs.length ? outRs.map(r=>`
+      <div class="inv-rec-card">
+        <div class="inv-rec-top"><span class="inv-rec-no">出库单号（审批编号）：<b>${escHtml(r.outNo||r.id)}</b></span><span class="inv-rec-date">${escHtml(r.date||'—')}</span></div>
+        <dl class="rec-detail inv-rec-grid">
+          <dt>物资名称</dt><dd>${escHtml(r.name||'—')}</dd>
+          <dt>分类</dt><dd>${catTag(r.category)}</dd>
+          <dt>规格</dt><dd>${escHtml(r.spec||'—')}</dd>
+          <dt>单位</dt><dd>${escHtml(r.unit||'—')}</dd>
+          <dt>数量</dt><dd><span class="qty-out">−${r.qty}</span> ${escHtml(r.unit||'')}</dd>
+          <dt>领用人</dt><dd>${escHtml(r.applicant||'—')}</dd>
+          <dt>部门</dt><dd>${escHtml(r.dept||'—')}</dd>
+          <dt>用途</dt><dd>${escHtml(r.purpose||'—')}</dd>
+          <dt>经办人</dt><dd>${escHtml(r.handler||'—')}</dd>
+          <dt>状态</dt><dd><span class="status ok">${escHtml(r.status||'已出库')}</span></dd>
+        </dl>
+      </div>`).join('') : '<div class="inv-empty">暂无出库记录</div>';
+
     document.getElementById('invModalTitle').textContent='库存物资详情 · '+i.n;
-    document.getElementById('invModalBody').innerHTML=rows.map(r=>`<dt>${r[0]}</dt><dd>${escHtml(r[1])}</dd>`).join('');
     document.getElementById('invModal').classList.add('show');
   }
   document.querySelectorAll('#dataTabs .tab').forEach(t=>t.addEventListener('click',()=>{
