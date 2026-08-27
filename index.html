@@ -760,8 +760,8 @@
   /* 库存物资详情弹窗：三部分结构（档案 / 入库明细 / 出库明细） */
   .inv-sec{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
   .inv-sec:first-child{border-top:none;margin-top:8px;padding-top:0}
-  .inv-sec-h{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--ink);margin-bottom:10px}
-  .inv-sec-no{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:7px;background:var(--primary);color:#fff;font-size:13px;font-weight:800;flex:0 0 auto}
+  .inv-sec-h{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--ink);margin:14px 0 10px}
+  .inv-sec-bar{width:3px;height:12px;border-radius:2px;background:var(--primary);flex:0 0 auto}
   .inv-sec-count{margin-left:auto;font-size:12px;font-weight:600;color:var(--ink-3);background:rgba(255,255,255,.06);padding:3px 10px;border-radius:20px}
   .inv-rec-wrap{display:flex;flex-direction:column;gap:10px;max-height:312px;overflow:auto;padding-right:4px}
   .inv-rec-card{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:12px 14px;transition:border-color .2s var(--ease-soft)}
@@ -1742,17 +1742,17 @@
         <div class="modal-body" id="invModalBody">
           <!-- 第一部分：物品档案信息 -->
           <div class="inv-sec">
-            <div class="inv-sec-h"><span class="inv-sec-no">①</span>物品档案信息</div>
+            <div class="inv-sec-h"><span class="inv-sec-bar"></span>物品档案信息</div>
             <dl class="rec-detail" id="invArchiveBody"></dl>
           </div>
           <!-- 第二部分：入库明细（按时间顺序） -->
           <div class="inv-sec">
-            <div class="inv-sec-h"><span class="inv-sec-no">②</span>入库明细<span class="inv-sec-count" id="invInCount"></span></div>
+            <div class="inv-sec-h"><span class="inv-sec-bar"></span>入库明细<span class="inv-sec-count" id="invInCount"></span></div>
             <div class="inv-rec-wrap" id="invInList"></div>
           </div>
           <!-- 第三部分：出库明细（按时间顺序） -->
           <div class="inv-sec">
-            <div class="inv-sec-h"><span class="inv-sec-no">③</span>出库明细<span class="inv-sec-count" id="invOutCount"></span></div>
+            <div class="inv-sec-h"><span class="inv-sec-bar"></span>出库明细<span class="inv-sec-count" id="invOutCount"></span></div>
             <div class="inv-rec-wrap" id="invOutList"></div>
           </div>
           <div class="modal-actions">
@@ -3725,9 +3725,9 @@
     ];
     document.getElementById('invArchiveBody').innerHTML=archRows.map(r=>`<dt>${r[0]}</dt><dd>${escHtml(r[1])}</dd>`).join('');
 
-    // ===== 第二部分：入库明细（按时间顺序，含该物品全部入库记录） =====
+    // ===== 第二部分：入库明细（按时间倒序，最新在最上，含该物品全部入库记录） =====
     const inRs=inboundRecords.filter(r=>r.name===i.n && r.category===i.c)
-      .slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+      .slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     document.getElementById('invInCount').textContent='共 '+inRs.length+' 次';
     document.getElementById('invInList').innerHTML = inRs.length ? inRs.map(r=>`
       <div class="inv-rec-card">
@@ -3750,9 +3750,9 @@
         </dl>
       </div>`).join('') : '<div class="inv-empty">暂无入库记录</div>';
 
-    // ===== 第三部分：出库明细（按时间顺序，含该物品全部出库记录） =====
+    // ===== 第三部分：出库明细（按时间倒序，最新在最上，含该物品全部出库记录） =====
     const outRs=outboundRecords.filter(r=>r.name===i.n && r.category===i.c)
-      .slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+      .slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     document.getElementById('invOutCount').textContent='共 '+outRs.length+' 次';
     document.getElementById('invOutList').innerHTML = outRs.length ? outRs.map(r=>`
       <div class="inv-rec-card">
