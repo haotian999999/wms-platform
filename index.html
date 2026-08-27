@@ -2304,10 +2304,10 @@
   function seedCheckPlans(){
     const y=new Date().getFullYear();
     if(!checkPlansQuarter.length){
-      QUARTER_SLOTS.forEach(s=>checkPlansQuarter.push({period:`${y} Q${s.q}`,time:s.t,person:'',status:'out',diff:'—',key:`${y}-Q${s.q}`}));
+      QUARTER_SLOTS.forEach(s=>checkPlansQuarter.push({period:`${y} Q${s.q}`,time:s.t,person:'',watch:'',status:'out',diff:'—',key:`${y}-Q${s.q}`}));
     }
     if(!checkPlansYear.length){
-      YEAR_SLOTS.forEach(s=>checkPlansYear.push({name:`${y} ${s.label}全面盘点`,time:s.t,lead:'',watch:'',status:'out',key:`${y}-${s.t==='06-30'?'mid':'year-end'}`}));
+      YEAR_SLOTS.forEach(s=>checkPlansYear.push({name:`${y} ${s.label}全面盘点`,time:s.t,lead:'',watch:'',mode:'全面',status:'out',key:`${y}-${s.t==='06-30'?'mid':'year-end'}`}));
     }
   }
   function normalizeCheckPlans(){
@@ -2318,7 +2318,7 @@
     checkPlansQuarter.length=0;
     QUARTER_SLOTS.forEach(s=>{
       const p=qCanon[s.t]; if(!p) return;
-      const old=p.key; p.period=`${y} Q${s.q}`; p.time=s.t; p.key=`${y}-Q${s.q}`;
+      const old=p.key; p.period=`${y} Q${s.q}`; p.time=s.t; p.key=`${y}-Q${s.q}`; if(p.watch==null)p.watch='';
       if(old!==p.key) keyMap[old]=p.key; checkPlansQuarter.push(p);
     });
     const yCanon={};
@@ -2326,7 +2326,7 @@
     checkPlansYear.length=0;
     YEAR_SLOTS.forEach(s=>{
       const p=yCanon[s.t]; if(!p) return;
-      const old=p.key; p.name=`${y} ${s.label}全面盘点`; p.time=s.t; p.key=`${y}-${s.t==='06-30'?'mid':'year-end'}`;
+      const old=p.key; p.name=`${y} ${s.label}全面盘点`; p.time=s.t; p.key=`${y}-${s.t==='06-30'?'mid':'year-end'}`; if(p.mode==null)p.mode='全面';
       if(old!==p.key) keyMap[old]=p.key; checkPlansYear.push(p);
     });
     if(Object.keys(keyMap).length) checkRecords.forEach(r=>{ if(r.planKey && keyMap[r.planKey]) r.planKey=keyMap[r.planKey]; });
@@ -2339,7 +2339,7 @@
       <td>${escHtml(p.period||'—')}</td>
       <td class="code">${escHtml(p.time||'—')}</td>
       <td>${escHtml(p.person||'—')}</td>
-      <td><span class="pill self">🧑‍💼 自盘</span></td>
+      <td>${escHtml(p.watch||'—')}</td>
       <td><span class="status ${p.status}">${planStatusText[p.status]}</span></td>
       <td class="num">${p.diff!=null?p.diff:'—'}</td>
       <td><span class="cell-act"><button type="button" class="btn-mini start" data-start-check-q="${i}">开始盘点</button></span></td>
@@ -2352,7 +2352,7 @@
       <td>${escHtml(p.name||'—')}</td>
       <td class="code">${escHtml(p.time||'—')}</td>
       <td>${escHtml(p.lead||'—')}</td>
-      <td>${escHtml(p.watch||'—')}</td>
+      <td>${escHtml(p.mode||'—')}</td>
       <td><span class="pill join">🤝 全面</span></td>
       <td><span class="status ${p.status}">${planStatusText[p.status]}</span></td>
       <td><span class="cell-act"><button type="button" class="btn-mini start" data-start-check-y="${i}">开始盘点</button></span></td>
@@ -2402,12 +2402,13 @@
       {k:'period',t:'盘点周期',v:p.period,ty:'text'},
       {k:'time',t:'计划时间(MM-DD)',v:p.time,ty:'text'},
       {k:'person',t:'牵头（仓库）',v:p.person,ty:'text'},
+      {k:'watch',t:'监盘（财务）',v:p.watch,ty:'text'},
       {k:'status',t:'状态',v:p.status,ty:'select',opts:[['ok','已完成'],['low','进行中'],['out','待开始']]}
     ]:[
       {k:'name',t:'盘点名称',v:p.name,ty:'text'},
       {k:'time',t:'计划时间(MM-DD)',v:p.time,ty:'text'},
       {k:'lead',t:'盘点人',v:p.lead,ty:'text'},
-      {k:'watch',t:'方式',v:p.watch,ty:'text'},
+      {k:'mode',t:'方式',v:p.mode,ty:'select',opts:[['全面','全面盘点'],['联合','联合盘点'],['自盘','自盘']]},
       {k:'status',t:'状态',v:p.status,ty:'select',opts:[['ok','已完成'],['low','进行中'],['out','待开始']]}
     ];
     document.getElementById('planEditBody').innerHTML=summary+fields.map(f=>{
@@ -2423,7 +2424,7 @@
       const used=new Set(checkPlansQuarter.map(p=>String(p.time||'')));
       const slot=slots.find(s=>!used.has(s.t));
       if(!slot){ toast('季度盘点计划已达上限','warn','每年最多 4 次季度盘点，分别位于每季度月底'); return; }
-      checkPlansQuarter.push({period:slot.n,time:slot.t,person:'',status:'out',diff:'—',key:slot.k});
+      checkPlansQuarter.push({period:slot.n,time:slot.t,person:'',watch:'',status:'out',diff:'—',key:slot.k});
       renderPlanQuarter(); renderCheckKpi(); wmsSave();
       planEditCtx={type:'q',idx:checkPlansQuarter.length-1,isNew:true};
       openPlanEdit('q',checkPlansQuarter.length-1);
@@ -2432,7 +2433,7 @@
       const used=new Set(checkPlansYear.map(p=>String(p.time||'')));
       const slot=slots.find(s=>!used.has(s.t));
       if(!slot){ toast('年度盘点计划已达上限','warn','每年最多 2 次年度盘点，分别为 6 月底和 12 月底'); return; }
-      checkPlansYear.push({name:slot.n,time:slot.t,lead:'',watch:'',status:'out',key:slot.k});
+      checkPlansYear.push({name:slot.n,time:slot.t,lead:'',watch:'',mode:'全面',status:'out',key:slot.k});
       renderPlanYear(); renderCheckKpi(); wmsSave();
       planEditCtx={type:'y',idx:checkPlansYear.length-1,isNew:true};
       openPlanEdit('y',checkPlansYear.length-1);
@@ -2441,7 +2442,7 @@
   function savePlanEdit(){
     if(!planEditCtx) return;
     const p=(planEditCtx.type==='q'?checkPlansQuarter:checkPlansYear)[planEditCtx.idx]; if(!p) return;
-    const keys=planEditCtx.type==='q'?['period','time','person','status']:['name','time','lead','watch','status'];
+    const keys=planEditCtx.type==='q'?['period','time','person','watch','status']:['name','time','lead','mode','status'];
     keys.forEach(k=>{ const el=document.getElementById('planF_'+k); if(el) p[k]=el.value; });
     closePlanEdit(); renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); wmsSave();
     toast('已保存','ok','盘点计划已保存');
