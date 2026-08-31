@@ -2022,7 +2022,7 @@
     }catch(e){}
   }
   function dbSnapshot(){
-    return {items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords,archivedRecords,lastCarryoverYear,updatedAt:Date.now()};
+    return {items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords,archivedRecords,deletedKeys,lastCarryoverYear,updatedAt:Date.now()};
   }
   function wmsSave(){
     try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify(dbSnapshot())); }catch(e){ console.warn('wms 保存失败',e); }
@@ -2059,23 +2059,57 @@
     return (await r.json()).content.sha;
   }
   // 合并两库：所有业务数据取并集去重（双方录入互不覆盖丢失），updatedAt 取较新值
+  // 冲突消解：优先取 updatedAt 较新者（标准 LWW）；双方都无时间戳时，取字段更完整的一条
+  function pickNewer(a,b){
+    const ta=+a.updatedAt||0, tb=+b.updatedAt||0;
+    if(tb>ta) return b;
+    if(ta>tb) return a;
+    if(!ta && !tb){
+      const ka=Object.keys(a||{}).length, kb=Object.keys(b||{}).length;
+      return kb>ka? b : a;
+    }
+    return a;
+  }
+  // 物资档案合并：q 为派生值（由 recomputeStocks 统一重算），合并时忽略；
+  // 期初 initQty 取较大值，避免跨设备合并导致库存倒退；其余档案字段本地优先、空值由云端补全
+  function mergeItem(a,b){
+    const ta=+a.updatedAt||0, tb=+b.updatedAt||0;
+    if(ta||tb){ const w=(tb>ta?b:a); const o=Object.assign({},w); o.q=0; return o; }
+    const o=Object.assign({},a);
+    Object.keys(b||{}).forEach(k=>{
+      if(k==='q') return;
+      if(k==='initQty'){ o.initQty=Math.max(+a.initQty||0,+b.initQty||0); return; }
+      const va=o[k], vb=b[k];
+      const empty=v=>v==null||v===''||v==='—';
+      if(empty(va) && !empty(vb)) o[k]=vb;
+    });
+    o.q=0;
+    return o;
+  }
   function mergeCloud(cloud){
     const local=dbSnapshot();
     const c=cloud||{};
-    const union=(la,ca)=>{
+    // ---- 墓碑：双方删除标记取并集，保证任一设备删除后都不会被对方「复活」 ----
+    const del=new Set();
+    (local.deletedKeys||[]).forEach(k=>del.add(k));
+    (c.deletedKeys||[]).forEach(k=>del.add(k));
+    // 按业务主键 upsert 合并：同一主键只保留一条，杜绝 JSON 全量并集造成的重复条目
+    const byKey=(la,ca,keyFn,prefix,mergeFn)=>{
       const m=new Map();
-      (la||[]).forEach(x=>{ const k=JSON.stringify(x); if(!m.has(k)) m.set(k,x); });
-      (ca||[]).forEach(x=>{ const k=JSON.stringify(x); if(!m.has(k)) m.set(k,x); });
+      (la||[]).forEach(x=>{ const k=keyFn(x); if(k==null) return; if(prefix&&del.has(prefix+':'+k)) return; m.set(k,x); });
+      (ca||[]).forEach(x=>{ const k=keyFn(x); if(k==null) return; if(prefix&&del.has(prefix+':'+k)) return;
+        m.set(k, m.has(k) ? (mergeFn? mergeFn(m.get(k),x) : pickNewer(m.get(k),x)) : x); });
       return Array.from(m.values());
     };
     const merged={
-      items: union(local.items, c.items),
-      inboundRecords: union(local.inboundRecords, c.inboundRecords),
-      outboundRecords: union(local.outboundRecords, c.outboundRecords),
-      checkPlansQuarter: union(local.checkPlansQuarter, c.checkPlansQuarter),
-      checkPlansYear: union(local.checkPlansYear, c.checkPlansYear),
-      checkRecords: union(local.checkRecords, c.checkRecords),
-      archivedRecords: union(local.archivedRecords, c.archivedRecords),
+      items: byKey(local.items,c.items, x=>x.n+'|'+x.c, 'item', mergeItem),
+      inboundRecords: byKey(local.inboundRecords,c.inboundRecords, x=>x.id||x.inNo, 'in'),
+      outboundRecords: byKey(local.outboundRecords,c.outboundRecords, x=>x.id||x.outNo, 'out'),
+      checkPlansQuarter: byKey(local.checkPlansQuarter,c.checkPlansQuarter, x=>x.key, ''),
+      checkPlansYear: byKey(local.checkPlansYear,c.checkPlansYear, x=>x.key, ''),
+      checkRecords: byKey(local.checkRecords,c.checkRecords, x=>x.planKey||(x.title+'|'+x.date), ''),
+      archivedRecords: byKey(local.archivedRecords,c.archivedRecords, x=>String(x.year||x.label||''), ''),
+      deletedKeys: Array.from(del),
       lastCarryoverYear: Math.max(
         (typeof c.lastCarryoverYear==='number'?c.lastCarryoverYear:0),
         (typeof local.lastCarryoverYear==='number'?local.lastCarryoverYear:0)
@@ -2092,7 +2126,9 @@
     checkPlansYear.length=0; (m.checkPlansYear||[]).forEach(x=>checkPlansYear.push(x));
     checkRecords.length=0; (m.checkRecords||[]).forEach(x=>checkRecords.push(x));
     archivedRecords.length=0; (m.archivedRecords||[]).forEach(x=>archivedRecords.push(x));
-    lastCarryoverYear=m.lastCarryoverYear;
+    deletedKeys.length=0; (m.deletedKeys||[]).forEach(x=>deletedKeys.push(x));
+    lastCarryoverYear=(typeof m.lastCarryoverYear==='number'?m.lastCarryoverYear:0);
+    recomputeStocks(); // 合并结果的 q 为占位 0，统一由「期初+入库-出库」重新派生，保证账实一致
     wmsSave();
   }
   async function pushCloud(){
@@ -2247,11 +2283,13 @@
     }).join('');
     body.querySelectorAll('.real-input').forEach(inp=>{
       inp.addEventListener('input',()=>{
-        const sys=+inp.dataset.sys, real=+inp.value||0, d=real-sys;
+        const sys=+inp.dataset.sys, raw=+inp.value;
+        const real=isNaN(raw)?0:Math.max(0,raw); // 实盘不允许为负；空/非法输入按 0 处理
+        if(String(real)!==inp.value.trim()) inp.value=real; // 输入负数/非法时即时回写修正值
+        const d=real-sys;
         checkItems[+inp.dataset.idx].real=real;
         const el=document.getElementById('diff-'+inp.dataset.idx);
-        el.textContent=(d>0?'+':'')+d;
-        el.className='diff '+(d===0?'zero':d>0?'up':'down');
+        if(el){ el.textContent=(d>0?'+':'')+d; el.className='diff '+(d===0?'zero':d>0?'up':'down'); }
         renderCheckKpi();
       });
     });
@@ -3359,6 +3397,11 @@
   const inboundRecords=[];
   // 出库记录：默认空（不含演示数据），由「出库领用」产生
   const outboundRecords=[];
+  // 墓碑（tombstone）：跨设备同步用的「已删除标识」集合。
+  // 云同步采用并集合并，若不做删除标记，A 机删除的记录会被 B 机重新拉回（删除复活）。
+  // 元素格式：'item:名称|分类'、'in:单号'、'out:单号'
+  let deletedKeys=[];
+  function tombstone(key){ if(key && deletedKeys.indexOf(key)<0) deletedKeys.push(key); }
   // 年度结转：按年归档（上一年度流水 + 结存快照），活动数据只保留本年口径，库存经 SSOT 冻结为本年期初
   const archivedRecords=[]; // [{label,year,inbound:[],outbound:[],snapshot:[],carriedAt}]
   let lastCarryoverYear=0;  // 最近一次成功结转的年度（用于 UI 提示，避免重复结转）
@@ -3382,12 +3425,18 @@
   // 单一事实来源（SSOT）：当前库存 = 期初结存 + 累计入库 − 累计出库
   // 所有增删改只动 records / initQty，统一由 recomputeStocks() 派生 item.q，杜绝「双写库存」漂移
   function recomputeStocks(){
+    // 一次遍历建立「名称|分类 → 数量」索引，将 O(物资数×流水数) 降为 O(物资数+流水数)，数据量大时不卡顿
+    const inIdx=new Map(), outIdx=new Map();
+    const add=(map,name,cat,q)=>{ const k=name+'|'+cat; map.set(k,(map.get(k)||0)+q); };
+    for(const r of inboundRecords) add(inIdx,r.name,r.category,(+r.qty||0));
+    for(const r of outboundRecords) add(outIdx,r.name,r.category,(+r.qty||0));
     items.forEach(i=>{
+      const ik=i.n+'|'+i.c, inQ=inIdx.get(ik)||0, outQ=outIdx.get(ik)||0;
       if(typeof i.initQty!=='number' || isNaN(i.initQty)){
         // 旧数据无期初字段：以当前 q 为基准反推期初，冻结现状，避免线上数据跳变
-        i.initQty = (+i.q||0) - inTotalOf(i.n,i.c) + outTotalOf(i.n,i.c);
+        i.initQty = (+i.q||0) - inQ + outQ;
       }
-      const derived = i.initQty + inTotalOf(i.n,i.c) - outTotalOf(i.n,i.c);
+      const derived = i.initQty + inQ - outQ;
       i.q = Math.max(0, derived); // 库存不为负
     });
   }
@@ -3399,13 +3448,15 @@
       if(Array.isArray(_wmsData[k])){ arr.length=0; _wmsData[k].forEach(x=>arr.push(x)); }
     });
     if(typeof _wmsData.lastCarryoverYear==='number') lastCarryoverYear=_wmsData.lastCarryoverYear;
+    // 墓碑同步恢复：删除标记必须在 init 时载入，否则跨设备合并时已删除记录会被拉回
+    if(Array.isArray(_wmsData.deletedKeys)){ deletedKeys.length=0; _wmsData.deletedKeys.forEach(x=>deletedKeys.push(x)); }
     // 盘点明细从最新库存重建，确保各模块数据一致
     recomputeStocks();
     checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
   } else { wmsSave(); } // 首次运行：写入种子，保证后续刷新一致
   renderInv('all');
   function catTag(c){const m=catMeta[c];return `<span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span>`;}
-  function statusCls(s){ if(s.indexOf('待')>=0)return 'low'; if(s.indexOf('驳')>=0||s.indexOf('取')>=0)return 'out'; return 'ok'; }
+  function statusCls(s){ s=s||''; if(s.indexOf('待')>=0)return 'low'; if(s.indexOf('驳')>=0||s.indexOf('取')>=0)return 'out'; return 'ok'; } // 防御缺字段历史/导入数据
   let activeDataTab='in';
   function renderData(type,filter){
     const cols=type==='in'?inCols:outCols;
@@ -4186,13 +4237,13 @@
     const inNo=document.getElementById('inNo').value.trim();
     const recId=inNo||genId('RK');
     const amount=+(qty*price).toFixed(2);
-    const rec={id:recId,inNo:inNo||recId,date,name,category:cat,brand,spec,unit,qty,price,amount,supplier,handler,warehouse,status:'已入库',warranty};
+    const rec={id:recId,inNo:inNo||recId,date,name,category:cat,brand,spec,unit,qty,price,amount,supplier,handler,warehouse,status:'已入库',warranty,updatedAt:Date.now()};
     if(warranty) rec.expire=addMonths(date,warranty);
     inboundRecords.unshift(rec);
     updateDataNote();
     const exist=items.find(i=>i.n===name && i.c===cat);
-    if(exist){ if(brand) exist.b=brand; if(spec!=='—') exist.s=spec; if(safe) exist.safe=safe; if(warranty&&!exist.warranty){exist.warranty=warranty; exist.inDate=date; exist.expire=addMonths(date,warranty);} }
-    else { const ni={c:cat,n:name,b:brand,s:spec,u:unit,safe:safe||catDefault[cat]||10,initQty:0,warranty:warranty||undefined,inDate:date}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
+    if(exist){ if(brand) exist.b=brand; if(spec!=='—') exist.s=spec; if(safe) exist.safe=safe; if(warranty&&!exist.warranty){exist.warranty=warranty; exist.inDate=date; exist.expire=addMonths(date,warranty);} exist.updatedAt=Date.now(); }
+    else { const ni={c:cat,n:name,b:brand,s:spec,u:unit,safe:safe||catDefault[cat]||10,initQty:0,warranty:warranty||undefined,inDate:date,updatedAt:Date.now()}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
     const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all');
     recomputeStocks();
     renderDataTables(); renderWarranty(); wmsSave();
@@ -4353,14 +4404,23 @@
     const approver=document.getElementById('outHandler').value.trim()||'admin';
     const purpose=document.getElementById('outPurpose').value.trim();
     if(!applicant||!cat||!name||isNaN(qty)||qty<=0){ toast('请完整填写领用人/分类/名称/数量','warn','以上为必填项'); return; }
+    const unit0=document.getElementById('outUnit').value.trim()||'件';
+    // 【库存充足性校验】超量出库会导致账面「欠量」被静默归零，必须显式提示并由用户确认
+    const _it=items.find(i=>i.n===name && i.c===cat);
+    const _stock=_it? (+_it.q||0) : 0;
+    if(!_it){
+      if(!confirm('⚠️ 物资「'+name+'」当前不在库存台账中（无库存记录）。\n\n继续将按「0 库存」建档并登记本次出库，系统库存为 0。\n如名称/分类填写有误，请点「取消」核对后再提交。')) return;
+    } else if(qty>_stock){
+      if(!confirm('⚠️ 库存不足：当前「'+name+'」账面库存仅 '+_stock+' '+unit0+'，本次申请出库 '+qty+' '+unit0+'（超出 '+(qty-_stock)+' '+unit0+'）。\n\n继续将按「超量出库」登记，系统库存归零，超出部分形成账实缺口。\n如属数据录入错误，请点「取消」核对后再提交。')) return;
+    }
     const outNo=document.getElementById('outNo').value.trim();
     const recId=outNo||genId('CK');
     const unit=document.getElementById('outUnit').value.trim()||'件';
     const spec=document.getElementById('outSpec').value.trim();
-    const rec={id:recId,outNo:outNo||recId,date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit,spec,purpose,handler:approver,status:'已出库'};
+    const rec={id:recId,outNo:outNo||recId,date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit,spec,purpose,handler:approver,status:'已出库',updatedAt:Date.now()};
     outboundRecords.unshift(rec);
     const exist=items.find(i=>i.n===name && i.c===cat);
-    if(!exist){ items.push({c:cat,n:name,s:spec||'—',u:unit,safe:catDefault[cat]||10,initQty:0}); }
+    if(!exist){ items.push({c:cat,n:name,s:spec||'—',u:unit,safe:catDefault[cat]||10,initQty:0,updatedAt:Date.now()}); }
     renderRecentOut();
     recomputeStocks();
     renderDataTables(); renderInv('all'); wmsSave();
@@ -4416,13 +4476,13 @@
     if(!n){ toast('请填写物资名称','warn'); return; }
     if(isNaN(q)||q<0){ toast('库存数量无效','warn'); return; }
     if(invEditIdx>=0){ const i=items[invEditIdx];
-      i.c=c;i.n=n;i.b=b;i.s=s;i.u=u;i.safe=safe;i.inDate=inDate;i.warranty=warranty||undefined;
+      i.c=c;i.n=n;i.b=b;i.s=s;i.u=u;i.safe=safe;i.inDate=inDate;i.warranty=warranty||undefined;i.updatedAt=Date.now();
       if(warranty){ i.expire=addMonths(inDate||'2026-01-01',warranty); } else { i.expire=undefined; }
       // 「库存数量」作为目标库存：反推期初，使其与出入库流水保持自洽（改名/改分类时以目标值作为新期初）
       i.initQty = q - inTotalOf(i.n,i.c) + outTotalOf(i.n,i.c);
       i.q=q;
     } else {
-      const ni={c,n,b,s,u,safe,initQty:q,inDate,warranty:warranty||undefined};
+      const ni={c,n,b,s,u,safe,initQty:q,inDate,warranty:warranty||undefined,updatedAt:Date.now()};
       if(warranty) ni.expire=addMonths(inDate||'2026-01-01',warranty);
       items.push(ni);
     }
@@ -4437,8 +4497,9 @@
     const inRel=inboundRecords.filter(r=>r.name===i.n && r.category===i.c);
     const outRel=outboundRecords.filter(r=>r.name===i.n && r.category===i.c);
     if(!confirm('确定删除该物资「'+i.n+'」吗？\n（将同步删除关联入库 '+inRel.length+' 条 / 出库 '+outRel.length+' 条记录）')) return;
-    for(let k=inboundRecords.length-1;k>=0;k--){ const r=inboundRecords[k]; if(r.name===i.n && r.category===i.c) inboundRecords.splice(k,1); }
-    for(let k=outboundRecords.length-1;k>=0;k--){ const r=outboundRecords[k]; if(r.name===i.n && r.category===i.c) outboundRecords.splice(k,1); }
+    for(let k=inboundRecords.length-1;k>=0;k--){ const r=inboundRecords[k]; if(r.name===i.n && r.category===i.c){ tombstone('in:'+(r.id||r.inNo)); inboundRecords.splice(k,1); } }
+    for(let k=outboundRecords.length-1;k>=0;k--){ const r=outboundRecords[k]; if(r.name===i.n && r.category===i.c){ tombstone('out:'+(r.id||r.outNo)); outboundRecords.splice(k,1); } }
+    tombstone('item:'+i.n+'|'+i.c); // 墓碑：防止其他设备同步时把已删除物资拉回
     items.splice(idx,1);
     recomputeStocks();
     checkItems=items.map(x=>({n:x.n,c:x.c,u:x.u,sys:x.q,real:x.q}));
@@ -4493,6 +4554,7 @@
     const oldQty=rec.qty;
     recEditFields[recEditType].forEach(f=>{ const el=document.getElementById('recF_'+f.k); if(el) rec[f.k]=(f.ty==='number')?(parseFloat(el.value)||0):el.value; });
     if(recEditType==='in'){
+      rec.updatedAt=Date.now(); // 供跨设备合并时做「最新写入胜出」判定
       rec.amount=+(rec.qty*(rec.price||0)).toFixed(2); if(rec.warranty) rec.expire=addMonths(rec.date,rec.warranty); else rec.expire=undefined;
       adjustInventory(rec.name,rec.category,(rec.qty-oldQty),+1);   // 已入库：按数量差同步库存（状态固定「已入库」）
     } else {
@@ -4508,8 +4570,8 @@
     const arr=(type==='in'?inboundRecords:outboundRecords);
     const rec=arr[idx]; if(!rec) return;
     if(!confirm('确定删除该记录「'+rec.id+'」吗？此操作不可撤销。')) return;
-    if(type==='in'){ inboundRecords.splice(idx,1); }
-    else { outboundRecords.splice(idx,1); }
+    if(type==='in'){ tombstone('in:'+(rec.id||rec.inNo)); inboundRecords.splice(idx,1); }
+    else { tombstone('out:'+(rec.id||rec.outNo)); outboundRecords.splice(idx,1); } // 墓碑：防止其他设备同步时把已删除记录拉回
     adjustInventory(rec.name,rec.category,rec.qty, type==='in'?-1:1); // 先删记录再统一重算，确保库存与流水同步
     renderDataTables(); renderInv('all'); renderRecentOut(); wmsSave();
     updateDataNote();
