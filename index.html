@@ -3550,7 +3550,7 @@
         }
       }
       // 对齐策略：文本居中、数字居右、名称居左
-      const rightKeys=['金额','数量','单价','库存','差异','次数','件数','占比','现存量','默认值','剩余天数','建议补货','净变化','期初结存','本期入库','本期出库','期末结存','期末金额','净差异','差异绝对值','差异项数','系统库存','实盘数量'];
+      const rightKeys=['金额','数量','单价','库存','差异','次数','件数','占比','现存量','默认值','剩余天数','建议补货','净变化','期初结存','本期入库','本期出库','期末结存','期末金额','净差异','差异绝对值','差异项数','系统库存','实盘数量','累计','合计'];
       const centerKeys=['单号','编号','日期','到期日','状态','单位','仓库','分类','部门','经办人','用途','质保期','领用人','盘点类型','盘点范围','结论','勾稽','类型','方式','盘点人','盘点周期','开始盘点','单独预警','序号'];
       const leftKeys=['物资名称','名称','规格','供应商','品牌','备注','标题','描述'];
       const headerWords=[].concat(rightKeys,centerKeys,leftKeys);
@@ -3561,20 +3561,29 @@
         if(centerKeys.some(k=>s.includes(k))) return 'center';
         return 'center';
       };
-      // 自动识别表头行（支持多表格工作簿，如年度归档报表）
-      const isHeaderRow=row=>{
+      // 自动识别表头行（支持多表格工作簿，如年度归档报表）。
+      // 三重判定：① 全为字符串且无空值；② 命中表头关键词的单元格数 ≥ max(3, 列数×40%)——
+      // 真实表头命中率通常 ≥80%，数据行即使夹杂“状态/库存/规格/名称”等词也难以过半；
+      // ③ 结构性校验：表头上方必须是标题/信息行（<3 列）、分节标题或空行，
+      //    彻底杜绝表格中部被误染蓝色加粗表头样式。
+      const isHeaderRow=(row,r)=>{
         if(!Array.isArray(row) || row.length<3) return false;
         if(row.some(cell=>cell==null || String(cell).trim()==='')) return false;
         if(!row.every(cell=>typeof cell==='string')) return false;
         let matched=0;
         for(const h of row) if(headerWords.some(k=>h.includes(k))) matched++;
-        return matched>=2;
+        if(matched < Math.max(3, Math.ceil(row.length*0.4))) return false;
+        if(r>0){
+          const prev=rows[r-1];
+          if(Array.isArray(prev) && prev.length>=3) return false;
+        }
+        return true;
       };
       const headerRows=[];
       const sectionRows=[];
       for(let r=0;r<rowCount;r++){
         const row=rows[r];
-        if(isHeaderRow(row)){ headerRows.push(r); continue; }
+        if(isHeaderRow(row,r)){ headerRows.push(r); continue; }
         if(Array.isArray(row) && row.length===1 && row[0]!=null && typeof row[0]==='string' && r>0){
           const s=row[0];
           if(/明细|档案|汇总|平衡|盘点单|实盘单|补货建议|趋势对比|库存管理|入库记录|出库记录/.test(s)) sectionRows.push(r);
@@ -3588,6 +3597,9 @@
           ws[ref].s=Object.assign({},ws[ref].s,titleStyle);
         }
       } else if(rowCount>0 && Array.isArray(rows[0]) && rows[0].length===1 && typeof rows[0][0]==='string' && /报表|单/.test(rows[0][0])){
+        // 单单元格主标题：跨列合并为通栏标题，避免蓝色块只落在首列
+        if(!ws['!merges']) ws['!merges']=[];
+        if(colCount>1) ws['!merges'].push({s:{r:0,c:0},e:{r:0,c:colCount-1}});
         const ref=XLSX.utils.encode_cell({r:0,c:0});
         if(ws[ref]) ws[ref].s=Object.assign({},ws[ref].s,titleStyle);
       }
@@ -4434,7 +4446,7 @@
     const ac=document.querySelector('#invChips .chip.active'); const cat=ac?ac.dataset.cat:'all';
     const list=cat==='all'?items:items.filter(i=>i.c===cat);
     const header=['讯号','物资名称','分类','品牌','规格','单位','库存数量','安全库存','入库单号（申购单号）','入库累计','出库单号（审批编号）','出库累计','质保期(月)','到期日','状态'];
-    const body=list.map((i,idx)=>{ const m=catMeta[i.c]; const[st]=statusOf(i.q,i.safe); const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
+    const body=list.map((i,idx)=>{ const m=catMeta[i.c]; const st=statusOf(i.q,i.safe)[1]; const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
       return [code+'-'+String(items.indexOf(i)+1).padStart(3,'0'), i.n, m.t, i.b||'—', i.s, i.u, i.q+' '+i.u, i.safe+' '+i.u, latestInNo(i), inTotalOf(i.n,i.c)+' '+i.u, latestOutNo(i), outTotalOf(i.n,i.c)+' '+i.u, i.warranty?i.warranty+' 个月':'—', i.expire||'—', st]; });
     exportXLSX([header].concat(body), '库存管理_'+(cat==='all'?'全部':catMeta[cat].t)+'.xlsx');
     toast('已导出库存','ok','库存清单已生成 .xlsx');
@@ -4696,7 +4708,7 @@
     const border={top:thin,bottom:thin,left:thin,right:thin};
     const defaultStyle={font:{name:'Microsoft YaHei',sz:10,color:{rgb:'333333'}},alignment:{horizontal:'left',vertical:'center',wrapText:true},border};
     const headerStyle={font:{name:'Microsoft YaHei',sz:10,bold:true,color:{rgb:'FFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'5BC0DE'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border};
-    const rightKeys=['金额','数量','单价','库存','差异','次数','件数','占比','现存量','默认值','剩余天数','建议补货','净变化','期初结存','本期入库','本期出库','期末结存','期末金额','净差异','差异绝对值','差异项数','系统库存','实盘数量'];
+    const rightKeys=['金额','数量','单价','库存','差异','次数','件数','占比','现存量','默认值','剩余天数','建议补货','净变化','期初结存','本期入库','本期出库','期末结存','期末金额','净差异','差异绝对值','差异项数','系统库存','实盘数量','累计','合计'];
     const centerKeys=['单号','编号','日期','到期日','状态','单位','仓库','分类','部门','经办人','用途','质保期','领用人','盘点类型','盘点范围','结论','勾稽','类型','方式','盘点人','盘点周期','开始盘点','单独预警','序号'];
     const leftKeys=['物资名称','名称','规格','供应商','品牌','备注','标题','描述'];
     const headerWords=[].concat(rightKeys,centerKeys,leftKeys);
@@ -4726,9 +4738,10 @@
           ws[ref].s=Object.assign({},ws[ref].s||{},defaultStyle);
         }
       }
-      const isHeaderRow=row=>Array.isArray(row) && row.length>=3 && row.every(cell=>cell!=null && String(cell).trim()!=='') && row.every(cell=>typeof cell==='string') && row.filter(h=>headerWords.some(k=>h.includes(k))).length>=2;
+      // 与 exportXLSX 相同的三重判定：命中率 ≥ max(3, 列数×40%)，且表头上方不得是完整数据行
+      const isHeaderRow=(row,r)=>Array.isArray(row) && row.length>=3 && row.every(cell=>cell!=null && String(cell).trim()!=='') && row.every(cell=>typeof cell==='string') && row.filter(h=>headerWords.some(k=>h.includes(k))).length>=Math.max(3,Math.ceil(row.length*0.4)) && !(r>0 && Array.isArray(rows[r-1]) && rows[r-1].length>=3);
       let headerRowIdx=-1;
-      for(let r=0;r<rowCount;r++) if(isHeaderRow(rows[r])){ headerRowIdx=r; break; }
+      for(let r=0;r<rowCount;r++) if(isHeaderRow(rows[r],r)){ headerRowIdx=r; break; }
       // 兜底：把首行当表头
       if(headerRowIdx===-1 && rowCount>0 && Array.isArray(rows[0]) && rows[0].length>1) headerRowIdx=0;
       if(headerRowIdx>=0){
