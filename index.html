@@ -2024,7 +2024,13 @@
   function dbSnapshot(){
     return {items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords,archivedRecords,deletedKeys,lastCarryoverYear,updatedAt:Date.now()};
   }
+  // ============ 流水汇总索引缓存（供 flowIndex/inTotalOf/latestInNo 等复用）============
+  // 声明位置刻意前置：wmsSave()/recomputeStocks() 等在初始化阶段就可能被调用，
+  // 若 let 声明在其后，会触发暂时性死区（TDZ）导致白屏
+  let _flowIdx=null, _flowKey='';
+  function invalidateFlowIndex(){ _flowIdx=null; _flowKey=''; }
   function wmsSave(){
+    invalidateFlowIndex(); // 兜底：所有写操作最终都会保存，统一在此失效流水索引，防止渲染读到过期汇总
     try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify(dbSnapshot())); }catch(e){ console.warn('wms 保存失败',e); }
     if(autoBackupEnabled) writeAutoBackup();
     scheduleCloudSync();
@@ -2244,8 +2250,11 @@
     const f=(filter===undefined?(fInput?fInput.value:''):filter).trim().toLowerCase();
     let list=cat==='all'?items.slice():items.filter(i=>i.c===cat);
     if(f){ list=list.filter(i=>{ const m=catMeta[i.c]; const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; const statusText=statusOf(i.q,i.safe)[1]; const text=[code, i.n, m.t, i.b||'', i.s, i.u, String(i.q), String(i.safe), statusText].join(' ').toLowerCase(); return text.includes(f); }); }
+    // 预建「物资对象 → 在 items 中的下标」映射：原实现每行 items.indexOf(i) 是全表扫描，
+    // 2000 条物资即 400 万次比较（O(N²)），是切表/导入后卡顿的隐形元凶
+    const posOf=new Map(); for(let k=0;k<items.length;k++) posOf.set(items[k],k);
     body.innerHTML=list.map((i,idx)=>{
-      const oi=items.indexOf(i);
+      const oi=posOf.has(i)?posOf.get(i):idx;
       const m=catMeta[i.c];const[st,txt]=statusOf(i.q,i.safe);
       const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
       const inT=inTotalOf(i.n,i.c), outT=outTotalOf(i.n,i.c);
@@ -2269,9 +2278,15 @@
     document.querySelectorAll('#invChips .chip').forEach(c=>c.classList.remove('active'));
     ch.classList.add('active');renderInv(ch.dataset.cat);
   }));
+  // 搜索防抖：每按一个键就全量重渲染整表（含筛选+HTML 拼接）在大列表下会明显掉帧，
+  // 160ms 防抖后仅渲染最后一次，输入流畅度显著提升
+  let invSearchTimer=null;
   document.getElementById('invSearch').addEventListener('input',()=>{
-    const ac=document.querySelector('#invChips .chip.active');
-    renderInv(ac?ac.dataset.cat:'all');
+    clearTimeout(invSearchTimer);
+    invSearchTimer=setTimeout(()=>{
+      const ac=document.querySelector('#invChips .chip.active');
+      renderInv(ac?ac.dataset.cat:'all');
+    },160);
   });
 
   // ---- 盘点管理 ----
@@ -2807,22 +2822,35 @@
     const m=s.match(/^[+-]?(\d+\.?\d*|\.\d+)/);
     return m?parseFloat(m[0]):NaN;
   }
+  // 关键词预转小写（加载时一次性完成）：避免「每个单元格 × 每个关键词」重复 toLowerCase，
+  // 表头识别阶段调用极密集，这是导入解析里的一处隐性热点
+  const FIELDS_LC=Object.keys(FIELDS).map(f=>({f:f,keys:FIELDS[f].map(k=>k.toLowerCase())}));
   function matchField(header){
     const h=String(header).trim().toLowerCase();
-    for(const f in FIELDS){ if(FIELDS[f].some(k=>h.includes(k.toLowerCase()))) return f; }
+    for(let i=0;i<FIELDS_LC.length;i++){
+      const e=FIELDS_LC[i];
+      for(let j=0;j<e.keys.length;j++){ if(h.indexOf(e.keys[j])>=0) return e.f; }
+    }
     return '';
   }
   function handleFile(file){
     if(typeof XLSX==='undefined'){ alert('表格组件未加载，请检查网络后重试'); return; }
+    const _si=document.getElementById('sheetInfo');
+    if(_si) _si.textContent=`正在读取「${file.name}」…（${(file.size/1024).toFixed(0)} KB，文件较大时请稍候）`;
     const reader=new FileReader();
     reader.onload=e=>{
+      // 先把「正在解析」渲染到屏幕上，再执行同步解析：XLSX.read 会阻塞主线程，
+      // 若不先让出一帧，用户看到的是无反馈的假死
+      setTimeout(()=>{
       try{
+        if(_si) _si.textContent=`正在解析「${file.name}」…`;
         const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
         // 智能选表：优先选取「库存总表 / 总览」（名称含 总/览/库存 且不含 出入/明细）
         const totalName=(wb.SheetNames.find(s=>/(总|览|库存)/.test(s)&&!/(出入|明细)/.test(s)))||wb.SheetNames[0];
         const detailName=wb.SheetNames.find(s=>/(出入|明细)/.test(s));
         const totalRows=XLSX.utils.sheet_to_json(wb.Sheets[totalName],{header:1,defval:null,blankrows:false});
-        buildImport(totalRows,totalName,file.name);
+        // renderNow=false：推迟预览，待明细表解析完成后统一渲染一次，消除重复渲染
+        buildImport(totalRows,totalName,file.name,false);
         // 第二层：若含「出入库明细表」，解析主行/分号子行/结余行，生成入库/出库流水
         if(detailName){
           const dRows=XLSX.utils.sheet_to_json(wb.Sheets[detailName],{header:1,defval:null,blankrows:false});
@@ -2835,7 +2863,8 @@
         renderPreview();
         const dInfo=importState.hasDetail?` · 同步解析「${detailName}」：将从 ${importState.detail.count} 笔流水生成入库/出库记录`:'';
         document.getElementById('sheetInfo').textContent=`库存总表：${totalName}${detailName?` · 明细表：${detailName}`:''} · 共 ${importState.dataRows.length} 项物资${dInfo}`;
-      }catch(err){ alert('解析失败：'+err.message); }
+      }catch(err){ if(_si) _si.textContent='解析失败'; alert('解析失败：'+err.message); }
+      },0);
     };
     reader.readAsArrayBuffer(file);
   }
@@ -2888,7 +2917,7 @@
     }
     return {count:records.length,records,samples:records.slice(0,12)};
   }
-  function buildImport(rows,sheetName,fileName){
+  function buildImport(rows,sheetName,fileName,renderNow){
     // 表头识别加固：命中字段数 ≥ max(2, 非空列数×40%)，且表头上方不得是同样像数据行的完整行，
     // 防止把标题行/数据行误抓为表头
     let hdrIdx=0;
@@ -2916,7 +2945,10 @@
     };
     const dataRows=rows.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&String(c).trim()!=='')&&!isTotalsRow(r));
     importState={headers,mapping,dataRows,sheetName,fileName:fileName||'',detail:{count:0,records:[],samples:[]},hasDetail:false};
-    renderMapping();renderPreview();
+    renderMapping();
+    // renderNow!==false 时立即渲染预览（默认行为，保持原有调用契约）；
+    // handleFile 传 false，等明细表解析完再统一渲染一次，避免同一份数据被连续渲染两遍
+    if(renderNow!==false) renderPreview();
     document.getElementById('importResult').style.display='block';
     document.getElementById('sheetInfo').textContent=`工作表：${sheetName} · 表头第 ${hdrIdx+1} 行 · 共 ${dataRows.length} 行物资`;
     document.getElementById('importMsg').textContent='';
@@ -2934,8 +2966,9 @@
   }
   function renderPreview(){
     const body=document.getElementById('prevBody');
-    const get=(row,f)=>{ const i=importState.mapping.findIndex(m=>m.field===f); return i>=0?row[i]:null; };
-    const catOf=row=>detectCatFromName(importState.fileName)||normCat(get(row,'category'))||'';
+    const get=makeGetter(); // 字段→列下标预建映射，取代每行每字段的 findIndex 全表扫描
+    const fileCat=detectCatFromName(importState.fileName)||''; // 文件名分类为常量，循环外算一次
+    const catOf=row=>fileCat||normCat(get(row,'category'))||'';
     const rows=importState.dataRows.slice(0,50);
     let valid=0;
     body.innerHTML=rows.map(r=>{
@@ -2957,8 +2990,11 @@
       </tr>`;
     }).join('');
     const total=importState.dataRows.length;
-    document.getElementById('prevInfo').textContent=`预览前 ${rows.length} 行（共 ${total} 行），其中 ${valid} 行校验通过`+(importState.hasDetail?'（含明细表时，库存以期初数量为基准、叠加明细流水）':'');
-    document.getElementById('importCount').textContent=valid;
+    // 以下节点全部做空值兜底：任一缺失都不能让预览渲染整体崩溃（曾因按钮内 span 被覆盖导致导入功能失效）
+    const _pi=document.getElementById('prevInfo');
+    if(_pi) _pi.textContent=`预览前 ${rows.length} 行（共 ${total} 行），其中 ${valid} 行校验通过`+(importState.hasDetail?'（含明细表时，库存以期初数量为基准、叠加明细流水）':'');
+    const _ic=document.getElementById('importCount');
+    if(_ic) _ic.textContent=valid;
     // 第二层：明细流水预览
     const dp=document.getElementById('detailPreview');
     if(dp){
@@ -2966,8 +3002,10 @@
         dp.style.display='block';
         const recs=importState.detail.records;
         const inN=recs.filter(x=>x.type==='in').length, outN=recs.filter(x=>x.type==='out').length;
-        document.getElementById('detailInfo').textContent=`共 ${recs.length} 笔（入库 ${inN} / 出库 ${outN}），以下为前 12 条样本`;
-        document.getElementById('detailBody').innerHTML=recs.slice(0,12).map(r=>{
+        const _di=document.getElementById('detailInfo');
+        if(_di) _di.textContent=`共 ${recs.length} 笔（入库 ${inN} / 出库 ${outN}），以下为前 12 条样本`;
+        const _db=document.getElementById('detailBody');
+        if(_db) _db.innerHTML=recs.slice(0,12).map(r=>{
           const m=catMeta[r.category]||{t:r.category};
           return `<tr><td>${r.type==='in'?'<span class="status ok">入库</span>':'<span class="status low">出库</span>'}</td><td class="code">${escHtml(r.orderNo)||'—'}</td><td>${escHtml(r.date)||'—'}</td><td>${escHtml(r.name)}</td><td>${m.t||r.category}</td><td class="num">${r.qty}</td><td>${escHtml(r.operator)||'—'}</td></tr>`;
         }).join('');
@@ -2976,14 +3014,58 @@
       }
     }
   }
+  // 字段取值器：预建「字段 → 列下标」映射，避免每行每字段都 findIndex 全表扫描
+  function makeGetter(){
+    const idx={};
+    importState.mapping.forEach((m,i)=>{ if(m.field && idx[m.field]===undefined) idx[m.field]=i; });
+    return (row,f)=>{ const i=idx[f]; return i===undefined?null:row[i]; };
+  }
+  // 分片执行：每片结束后让出主线程，避免大数据量导入时页面假死（配合进度文案实时反馈）
+  const CHUNK=300;
+  const nextTick=()=>new Promise(res=>setTimeout(res,0));
+  async function chunkedRun(total,size,fn,onProgress){
+    for(let s=0;s<total;s+=size){
+      const end=Math.min(s+size,total);
+      for(let j=s;j<end;j++) fn(j);
+      if(onProgress) onProgress(end,total);
+      if(end<total) await nextTick();
+    }
+  }
+  function setImportProgress(done,total,label){
+    const el=document.getElementById('importMsg');
+    const pct=total?Math.round(done/total*100):100;
+    // 只写提示区，绝不改按钮内容：按钮内含 <span id="importCount">，
+    // 一旦用 textContent/innerHTML 覆盖就会永久删除该节点，导致下次导入 renderPreview 崩溃
+    if(el) el.textContent=`${label} ${done}/${total}（${pct}%）…`;
+  }
+  let importRunning=false;
   document.getElementById('confirmImport').addEventListener('click',()=>{
-    const get=(row,f)=>{ const i=importState.mapping.findIndex(m=>m.field===f); return i>=0?row[i]:null; };
+    if(importRunning) return; // 防重入：导入进行中重复点击不叠加任务
+    if(!importState||!importState.dataRows.length){ toast('请先选择文件','warn','未检测到待导入数据'); return; }
+    importRunning=true;
+    const btn=document.getElementById('confirmImport');
+    if(btn) btn.disabled=true; // 仅禁用按钮，保留其子节点（importCount）完好
+    const finish=err=>{
+      importRunning=false;
+      if(btn) btn.disabled=false;
+      if(err) toast('导入失败','warn',String(err&&err.message||err));
+    };
+    runImport().then(()=>finish(null)).catch(finish);
+  });
+  async function runImport(){
+    const get=makeGetter();
     const catOf=row=>detectCatFromName(importState.fileName)||normCat(get(row,'category'))||'';
     const useDetail=!!importState.hasDetail;
     let added=0,updated=0;
-    importState.dataRows.forEach(r=>{
+    // 一次性构建查重索引：把 O(导入行数 × 已有数据量) 降为 O(导入行数 + 已有数据量)
+    const itemIdx=new Map();
+    for(const it of items){ const k=it.c+'|'+normName(it.n); if(!itemIdx.has(k)) itemIdx.set(k,it); }
+    const FI=flowIndex(); // 流水汇总索引（反推期初用，O(1) 查询）
+    const fileCat=detectCatFromName(importState.fileName)||''; // 文件名分类是常量，循环外算一次
+    await chunkedRun(importState.dataRows.length,CHUNK,j=>{
+      const r=importState.dataRows[j];
       const name=normName(get(r,'name')),brand=get(r,'brand'),spec=get(r,'spec'),catRaw=get(r,'category'),unit=get(r,'unit'),safe=get(r,'safe');
-      const cat=catOf(r);
+      const cat=fileCat||normCat(catRaw)||'';
       // initQty 来源：含明细表→期初数量(真正期初，叠加流水后 q=期末)；否则→期末数量(=当前库存)
       let initFinal;
       if(useDetail){ const a=toNum(get(r,'initQty')); initFinal=isNaN(a)?toNum(get(r,'stock')):a; }
@@ -2992,7 +3074,8 @@
       initFinal=Math.max(0,initFinal); // 库存不允许为负
       // 规格列合并「类别」子类型；顶层分类由文件名决定
       const subSpec=[catRaw,spec].filter(v=>v!=null&&String(v).trim()!=='').join(' · ');
-      const exist=items.find(it=>it.c===cat && it.n===name);
+      const key=cat+'|'+name;
+      const exist=itemIdx.get(key);
       if(exist){ // 同名同分类：更新而非重复新增
         if(brand) exist.b=String(brand);
         if(subSpec) exist.s=subSpec;
@@ -3001,7 +3084,8 @@
           exist.initQty=initFinal; // 明细模式：导入值为真正期初，叠加流水后 q=期末
         }else{
           // 非明细模式：导入值=目标库存（期末），反推期初冻结，重算后 q 恒等于导入值
-          exist.initQty = initFinal - inTotalOf(exist.n,exist.c) + outTotalOf(exist.n,exist.c);
+          const fk=exist.n+'|'+exist.c;
+          exist.initQty = initFinal - (FI.inQ.get(fk)||0) + (FI.outQ.get(fk)||0);
           exist.q = initFinal;
         }
         exist.updatedAt=Date.now(); // 云同步 LWW 需要时间戳
@@ -3009,43 +3093,65 @@
         updated++;
       }else{
         const sv=toNum(safe);
-        items.push({c:cat,n:name,b:brand?String(brand):'—',s:subSpec||'—',u:unit?String(unit):'件',
+        const ni={c:cat,n:name,b:brand?String(brand):'—',s:subSpec||'—',u:unit?String(unit):'件',
           q:initFinal, initQty:initFinal,
           safe:!isNaN(sv)?Math.max(0,sv):(catDefault[cat]||Math.ceil(initFinal*0.3)),
-          updatedAt:Date.now()});
+          updatedAt:Date.now()};
+        items.push(ni);
+        itemIdx.set(key,ni); // 同批次内出现重复行时也命中更新，绝不产生重复物资
         added++;
       }
-    });
+    },(done,total)=>setImportProgress(done,total,'正在合并物资'));
     // 第二层：明细表流水 → 入库/出库记录（带申购单号/审批编号/日期/经办人）
+    // 查重由 some() 全表扫描改为 Set 索引 O(1)；新增记录先 push 到临时数组，
+    // 最后一次性批量插入表头，避免逐条 unshift 造成的 O(N²) 元素搬移
     let inN=0,outN=0;
     if(useDetail&&importState.detail&&importState.detail.records.length){
       const nowTs=Date.now();
-      importState.detail.records.forEach(rec=>{
+      const inNoSet=new Set(), inFpSet=new Set(), outNoSet=new Set(), outFpSet=new Set();
+      for(const r of inboundRecords){ if(r.inNo) inNoSet.add(r.inNo); if(r.fprint) inFpSet.add(r.fprint); }
+      for(const r of outboundRecords){ if(r.outNo) outNoSet.add(r.outNo); if(r.fprint) outFpSet.add(r.fprint); }
+      const newIn=[], newOut=[];
+      const recs=importState.detail.records;
+      await chunkedRun(recs.length,CHUNK,j=>{
+        const rec=recs[j];
         if(rec.type==='in'){
           // 防重复导入：优先按申购单号查重；无单号行按业务指纹（物资+日期+数量）查重，重导同一文件不再翻倍
-          if(rec.orderNo && inboundRecords.some(x=>x.inNo===rec.orderNo)) return;
-          if(rec.fprint && inboundRecords.some(x=>x.fprint===rec.fprint)) return;
+          if(rec.orderNo && inNoSet.has(rec.orderNo)) return;
+          if(rec.fprint && inFpSet.has(rec.fprint)) return;
           const recId=rec.orderNo||genId('RK');
-          inboundRecords.unshift({id:recId,inNo:recId,date:rec.date,name:rec.name,category:rec.category,brand:rec.brand,spec:rec.spec,unit:rec.unit,qty:rec.qty,price:0,amount:0,supplier:'—',handler:rec.operator||'—',warehouse:'—',status:'已入库',warranty:0,fprint:rec.fprint,updatedAt:nowTs});
+          if(rec.orderNo) inNoSet.add(rec.orderNo);
+          if(rec.fprint) inFpSet.add(rec.fprint);
+          newIn.push({id:recId,inNo:recId,date:rec.date,name:rec.name,category:rec.category,brand:rec.brand,spec:rec.spec,unit:rec.unit,qty:rec.qty,price:0,amount:0,supplier:'—',handler:rec.operator||'—',warehouse:'—',status:'已入库',warranty:0,fprint:rec.fprint,updatedAt:nowTs});
           inN++;
         }else{
-          if(rec.orderNo && outboundRecords.some(x=>x.outNo===rec.orderNo)) return;
-          if(rec.fprint && outboundRecords.some(x=>x.fprint===rec.fprint)) return;
+          if(rec.orderNo && outNoSet.has(rec.orderNo)) return;
+          if(rec.fprint && outFpSet.has(rec.fprint)) return;
           const recId=rec.orderNo||genId('CK');
-          outboundRecords.unshift({id:recId,outNo:recId,date:rec.date,applicant:rec.applicant||rec.operator||'—',dept:'—',name:rec.name,category:rec.category,qty:rec.qty,unit:rec.unit,purpose:'—',handler:rec.operator||'admin',status:'已出库',fprint:rec.fprint,updatedAt:nowTs});
+          if(rec.orderNo) outNoSet.add(rec.orderNo);
+          if(rec.fprint) outFpSet.add(rec.fprint);
+          newOut.push({id:recId,outNo:recId,date:rec.date,applicant:rec.applicant||rec.operator||'—',dept:'—',name:rec.name,category:rec.category,qty:rec.qty,unit:rec.unit,purpose:'—',handler:rec.operator||'admin',status:'已出库',fprint:rec.fprint,updatedAt:nowTs});
           outN++;
         }
-      });
+      },(done,total)=>setImportProgress(done,total,'正在生成流水'));
+      // 一次性批量插入表头（最新在前）；按 1000 条分片 splice，规避参数展开上限
+      const bulkUnshift=(arr,head)=>{ for(let i=head.length;i>0;i-=1000) arr.splice(0,0,...head.slice(Math.max(0,i-1000),i)); };
+      bulkUnshift(inboundRecords,newIn);
+      bulkUnshift(outboundRecords,newOut);
     }
+    setImportProgress(1,1,'正在重算库存');
+    await nextTick();
+    invalidateFlowIndex(); // 流水已变更，索引必须重建后再重算
     recomputeStocks(); // 统一重算，确保 q 与 initQty/流水一致（q=期初+入-出=期末）
     document.querySelectorAll('#invChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.cat==='all'));
+    await nextTick();
     renderInv('all');
     const flowMsg=useDetail?`，并生成入库 ${inN} 笔、出库 ${outN} 笔历史流水`:'';
     toast('批量导入完成','ok',`已并入库存 ${added+updated} 条物资${useDetail?`、流水 ${inN+outN} 笔`:''}`);
     wmsSave();
     const _ir=document.getElementById('importResult'); if(_ir) _ir.style.display='none';
     const _fi=document.getElementById('fileInput'); if(_fi) _fi.value='';
-  });
+  }
   const dropzone=document.getElementById('dropzone'), fileInput=document.getElementById('fileInput');
   dropzone.addEventListener('click',()=>fileInput.click());
   fileInput.addEventListener('change',()=>{ if(fileInput.files[0]) handleFile(fileInput.files[0]); });
@@ -3464,33 +3570,56 @@
   // 年度结转：按年归档（上一年度流水 + 结存快照），活动数据只保留本年口径，库存经 SSOT 冻结为本年期初
   const archivedRecords=[]; // [{label,year,inbound:[],outbound:[],snapshot:[],carriedAt}]
   let lastCarryoverYear=0;  // 最近一次成功结转的年度（用于 UI 提示，避免重复结转）
-  function inTotalOf(name,cat){ return inboundRecords.filter(r=>r.name===name && r.category===cat).reduce((s,r)=>s+(+r.qty||0),0); }
-  function outTotalOf(name,cat){ return outboundRecords.filter(r=>r.name===name && r.category===cat).reduce((s,r)=>s+(+r.qty||0),0); }
+  // ============ 流水汇总索引（性能核心）============
+  // 原实现：renderInv / 导出 每行都 filter+reduce 全量流水，latestInNo 甚至每行 sort 一次
+  // → 复杂度 O(物资数 × 流水数 × log流水数)，2000 物资 × 5000 流水 即上亿次比较，是导入/切表卡顿的元凶。
+  // 现改为：一次遍历 O(流水数) 建索引，渲染时每行 O(1) 查询 → 总复杂度 O(物资数 + 流水数)。
+  // 缓存带长度指纹，写操作经 wmsSave()/recomputeStocks() 统一失效，保证数据新鲜。
+  // 注意：_flowIdx / _flowKey 声明已上移到文件前部（见 invalidateFlowIndex 定义处），
+  // 避免初始化阶段 wmsSave() 等早期调用触发 let 暂时性死区（TDZ）
+  function flowIndex(){
+    const key=inboundRecords.length+':'+outboundRecords.length;
+    if(_flowIdx && _flowKey===key) return _flowIdx;
+    const inQ=new Map(), outQ=new Map(), inCnt=new Map(), outCnt=new Map(), inLatest=new Map(), outLatest=new Map();
+    const addQ=(m,k,n)=>m.set(k,(m.get(k)||0)+n);
+    for(const r of inboundRecords){
+      const k=(r.name||'')+'|'+(r.category||'');
+      addQ(inQ,k,(+r.qty||0)); addQ(inCnt,k,1);
+      const prev=inLatest.get(k);
+      if(prev===undefined || String(r.date||'') > String(prev.date||'')) inLatest.set(k,r);
+    }
+    for(const r of outboundRecords){
+      const k=(r.name||'')+'|'+(r.category||'');
+      addQ(outQ,k,(+r.qty||0)); addQ(outCnt,k,1);
+      const prev=outLatest.get(k);
+      if(prev===undefined || String(r.date||'') > String(prev.date||'')) outLatest.set(k,r);
+    }
+    _flowIdx={inQ,outQ,inCnt,outCnt,inLatest,outLatest}; _flowKey=key;
+    return _flowIdx;
+  }
+  function inTotalOf(name,cat){ return flowIndex().inQ.get(name+'|'+cat)||0; }
+  function outTotalOf(name,cat){ return flowIndex().outQ.get(name+'|'+cat)||0; }
   // 库存档案关联单据号：取该物资最新一笔入库/出库记录的单号（多笔时标注 +N），实现库存↔出入库记录接洽同步
   function latestInNo(item){
-    const rs=inboundRecords.filter(r=>r.name===item.n && r.category===item.c);
-    if(!rs.length) return '—';
-    rs.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-    const t=rs[0].inNo||rs[0].id;
-    return rs.length>1 ? t+' (+'+(rs.length-1)+')' : t;
+    const FI=flowIndex(), k=item.n+'|'+item.c;
+    const r=FI.inLatest.get(k); if(!r) return '—';
+    const t=r.inNo||r.id, n=FI.inCnt.get(k)||0;
+    return n>1 ? t+' (+'+(n-1)+')' : t;
   }
   function latestOutNo(item){
-    const rs=outboundRecords.filter(r=>r.name===item.n && r.category===item.c);
-    if(!rs.length) return '—';
-    rs.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-    const t=rs[0].outNo||rs[0].id;
-    return rs.length>1 ? t+' (+'+(rs.length-1)+')' : t;
+    const FI=flowIndex(), k=item.n+'|'+item.c;
+    const r=FI.outLatest.get(k); if(!r) return '—';
+    const t=r.outNo||r.id, n=FI.outCnt.get(k)||0;
+    return n>1 ? t+' (+'+(n-1)+')' : t;
   }
   // 单一事实来源（SSOT）：当前库存 = 期初结存 + 累计入库 − 累计出库
   // 所有增删改只动 records / initQty，统一由 recomputeStocks() 派生 item.q，杜绝「双写库存」漂移
   function recomputeStocks(){
-    // 一次遍历建立「名称|分类 → 数量」索引，将 O(物资数×流水数) 降为 O(物资数+流水数)，数据量大时不卡顿
-    const inIdx=new Map(), outIdx=new Map();
-    const add=(map,name,cat,q)=>{ const k=name+'|'+cat; map.set(k,(map.get(k)||0)+q); };
-    for(const r of inboundRecords) add(inIdx,r.name,r.category,(+r.qty||0));
-    for(const r of outboundRecords) add(outIdx,r.name,r.category,(+r.qty||0));
+    // 复用全局流水索引（O(物资数+流水数)）：重算前强制失效，确保读到最新流水
+    invalidateFlowIndex();
+    const FI=flowIndex();
     items.forEach(i=>{
-      const ik=i.n+'|'+i.c, inQ=inIdx.get(ik)||0, outQ=outIdx.get(ik)||0;
+      const ik=i.n+'|'+i.c, inQ=FI.inQ.get(ik)||0, outQ=FI.outQ.get(ik)||0;
       if(typeof i.initQty!=='number' || isNaN(i.initQty)){
         // 旧数据无期初字段：以当前 q 为基准反推期初，冻结现状，避免线上数据跳变
         i.initQty = (+i.q||0) - inQ + outQ;
