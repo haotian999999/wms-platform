@@ -2029,10 +2029,25 @@
   // 若 let 声明在其后，会触发暂时性死区（TDZ）导致白屏
   let _flowIdx=null, _flowKey='';
   function invalidateFlowIndex(){ _flowIdx=null; _flowKey=''; }
+  // 自动备份延迟合并：主库保存已做一次全量 JSON.stringify，备份若紧随其后立刻再序列化一遍
+  // 会在数据量大时翻倍放大同步写盘耗时（二次导入后数据翻倍 → 保存成本翻倍），
+  // 改为 12s 合并写一次 + 页面卸载（pagehide）兜底写，保底备份新鲜度且不阻塞交互。
+  let _autoBkTimer=null;
+  function scheduleAutoBackup(){
+    if(!autoBackupEnabled) return;
+    clearTimeout(_autoBkTimer);
+    _autoBkTimer=setTimeout(()=>{ _autoBkTimer=null; writeAutoBackup(); },12000);
+  }
+  window.addEventListener('pagehide',()=>{ if(_autoBkTimer){ clearTimeout(_autoBkTimer); _autoBkTimer=null; if(autoBackupEnabled) writeAutoBackup(); } });
   function wmsSave(){
     invalidateFlowIndex(); // 兜底：所有写操作最终都会保存，统一在此失效流水索引，防止渲染读到过期汇总
-    try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify(dbSnapshot())); }catch(e){ console.warn('wms 保存失败',e); }
-    if(autoBackupEnabled) writeAutoBackup();
+    let ok=false;
+    try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify(dbSnapshot())); ok=true; }catch(e){ console.warn('wms 保存失败',e); }
+    if(!ok){
+      // 存储配额不足（库存/流水量大时）：先删自动备份腾出空间，再重试主库一次，避免静默丢数据
+      try{ localStorage.removeItem(WMS_AUTO_KEY); localStorage.setItem(WMS_DB_KEY, JSON.stringify(dbSnapshot())); ok=true; }catch(e2){ console.warn('wms 保存失败(重试)',e2); }
+    }
+    if(autoBackupEnabled) scheduleAutoBackup();
     scheduleCloudSync();
   }
 
@@ -2248,7 +2263,7 @@
     const body=document.getElementById('invBody');
     const fInput=document.getElementById('invSearch');
     const f=(filter===undefined?(fInput?fInput.value:''):filter).trim().toLowerCase();
-    let list=cat==='all'?items.slice():items.filter(i=>i.c===cat);
+    const list=cat==='all'?items:items.filter(i=>i.c===cat); // 全量视图直接复用 items 引用，不再 slice() 拷贝（数据翻倍时省一次 O(N) 复制）
     if(f){ list=list.filter(i=>{ const m=catMeta[i.c]; const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; const statusText=statusOf(i.q,i.safe)[1]; const text=[code, i.n, m.t, i.b||'', i.s, i.u, String(i.q), String(i.safe), statusText].join(' ').toLowerCase(); return text.includes(f); }); }
     // 预建「物资对象 → 在 items 中的下标」映射：原实现每行 items.indexOf(i) 是全表扫描，
     // 2000 条物资即 400 万次比较（O(N²)），是切表/导入后卡顿的隐形元凶
@@ -3657,9 +3672,9 @@
     const body=type==='in'?document.getElementById('inBody'):document.getElementById('outBody');
     const all=type==='in'?inboundRecords:outboundRecords;
     const f=(filter||'').trim().toLowerCase();
-    const list=all.map((r,i)=>({r,i})).filter(o=>!f || Object.values(o.r).join(' ').toLowerCase().includes(f));
-    if(!list.length){ body.innerHTML='<tr><td colspan="'+(cols.length)+'" class="empty">'+(type==='in'?'暂无入库记录，请通过「入库登记」添加':'暂无出库记录')+'</td></tr>'; return 0; }
-    body.innerHTML=list.map(({r,i})=>{
+    const emptyHtml='<tr><td colspan="'+(cols.length)+'" class="empty">'+(type==='in'?'暂无入库记录，请通过「入库登记」添加':'暂无出库记录')+'</td></tr>';
+    // 行构建器：索引 i 必须为全量数组下标（行点击详情 openRec 依赖 data-row-rec 中的原数组索引）
+    const buildRow=(r,i)=>{
       const cells=cols.slice(1).map(c=>{
         if(c.k==='category') return `<td>${catTag(r.category)}</td>`;
         if(c.k==='qty') return `<td class="num">${escHtml(r.qty)}</td>`;
@@ -3669,18 +3684,29 @@
         if(c.k==='expire') return warrantyCell(r);
         const v=r[c.k]; return `<td>${v==null||v===''?'—':escHtml(v)}</td>`;
       }).join('');
-      const codeVal = type==='in' ? (r.inNo||r.id) : (r.outNo||r.id);
+      const codeVal=type==='in'?(r.inNo||r.id):(r.outNo||r.id);
       return `<tr data-row-rec="${type}:${i}"><td class="code">${escHtml(codeVal)}</td>${cells}</tr>`;
-    }).join('');
-    return list.length;
+    };
+    if(!f){
+      // 无搜索：直接全量渲染。原实现先 all.map 造 {r,i} 临时对象再 filter，
+      // 数据翻倍时产生海量垃圾对象（GC 压力），且每次都遍历全表
+      if(!all.length){ body.innerHTML=emptyHtml; return 0; }
+      body.innerHTML=all.map(buildRow).join('');
+      return all.length;
+    }
+    // 有搜索：仅构建搜索文本并记录命中行（索引保留全量数组下标）
+    const rows=[];
+    for(let i=0;i<all.length;i++){ const r=all[i]; if(Object.values(r).join(' ').toLowerCase().includes(f)) rows.push(i); }
+    if(!rows.length){ body.innerHTML=emptyHtml; return 0; }
+    body.innerHTML=rows.map(i=>buildRow(all[i],i)).join('');
+    return rows.length;
   }
   function renderDataTables(){
     if(activeDataTab==='archive') return; // 历史归档走 renderArchive
     const f=document.getElementById('dataSearch').value;
-    const nIn=renderData('in',f);
-    const nOut=renderData('out',f);
-    const cnt=activeDataTab==='in'?nIn:nOut;
-    document.getElementById('dataCount').textContent=(activeDataTab==='in'?'入库':'出库')+'共 '+cnt+' 条';
+    // 只渲染当前激活页签：隐藏面板无渲染必要，数据翻倍后可省一半全量 HTML 拼接 + innerHTML 解析成本
+    const n=renderData(activeDataTab,f);
+    document.getElementById('dataCount').textContent=(activeDataTab==='in'?'入库':'出库')+'共 '+n+' 条';
     checkTableOverflow();
   }
   // 导出防公式注入（CSV/Formula Injection）：单元格文本以 = + - @ 等开头时，
@@ -4064,7 +4090,13 @@
     activeDataTab=t.dataset.tab;
     if(activeDataTab==='archive'){ renderArchive(); renderCarryoverCard(); apCount(); } else renderDataTables();
   }));
-  document.getElementById('dataSearch').addEventListener('input',renderDataTables);
+  // 搜索防抖：大数据量下每按一个键全量重渲染整表会明显掉帧（与库存搜索同款 160ms 防抖），
+  // 防抖后仅渲染最后一次输入，输入流畅度显著提升
+  let dataSearchTimer=null;
+  document.getElementById('dataSearch').addEventListener('input',()=>{
+    clearTimeout(dataSearchTimer);
+    dataSearchTimer=setTimeout(renderDataTables,160);
+  });
   document.getElementById('downloadAll').addEventListener('click',downloadAll);
   document.getElementById('recModalClose').addEventListener('click',()=>document.getElementById('recModal').classList.remove('show'));
   document.getElementById('recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') document.getElementById('recModal').classList.remove('show'); });
