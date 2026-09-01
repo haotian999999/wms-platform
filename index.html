@@ -2088,7 +2088,7 @@
     const o=Object.assign({},a);
     Object.keys(b||{}).forEach(k=>{
       if(k==='q') return;
-      if(k==='initQty'){ o.initQty=Math.max(+a.initQty||0,+b.initQty||0); return; }
+      if(k==='initQty'){ const ha=typeof a.initQty==='number', hb=typeof b.initQty==='number'; if(ha&&hb) o.initQty=Math.max(a.initQty,b.initQty); else if(!ha&&hb) o.initQty=b.initQty; return; } // 负期初（欠量）保留：与 recomputeStocks 语义一致，避免合并时被 0 覆盖
       const va=o[k], vb=b[k];
       const empty=v=>v==null||v===''||v==='—';
       if(empty(va) && !empty(vb)) o[k]=vb;
@@ -2117,7 +2117,7 @@
       outboundRecords: byKey(local.outboundRecords,c.outboundRecords, x=>x.id||x.outNo, 'out'),
       checkPlansQuarter: byKey(local.checkPlansQuarter,c.checkPlansQuarter, x=>x.key, ''),
       checkPlansYear: byKey(local.checkPlansYear,c.checkPlansYear, x=>x.key, ''),
-      checkRecords: byKey(local.checkRecords,c.checkRecords, x=>x.planKey||(x.title+'|'+x.date), ''),
+      checkRecords: byKey(local.checkRecords,c.checkRecords, x=>(x.planKey? x.planKey+'|'+(x.date||'') : (x.title+'|'+x.date)), ''),
       archivedRecords: byKey(local.archivedRecords,c.archivedRecords, x=>String(x.year||x.label||''), ''),
       deletedKeys: Array.from(del),
       lastCarryoverYear: Math.max(
@@ -2227,7 +2227,7 @@
     });
   }
   // ---- 质保期 / 到期日 工具 ----
-  function addMonths(dateStr,m){ const d=new Date(dateStr+'T00:00:00'); d.setMonth(d.getMonth()+m); const y=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); return `${y}-${mm}-${dd}`; }
+  function addMonths(dateStr,m){ const d=new Date(String(dateStr||'')+'T00:00:00'); if(isNaN(d.getTime())) return ''; d.setMonth(d.getMonth()+m); const y=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); return `${y}-${mm}-${dd}`; }
   // 顶部「数据截至」日期：与最新入库记录的日期同步
   function fmtCNDate(s){ if(!s) return ''; const [y,m,d]=s.split('-'); return `${y}年${parseInt(m,10)}月${parseInt(d,10)}日`; }
   function latestInboundDate(){ return inboundRecords.reduce((m,r)=> (r.date && r.date>m) ? r.date : m, ''); }
@@ -2236,13 +2236,13 @@
     const latest=latestInboundDate();
     // 只显示「数据截至 YYYY年M月D日」实时信息：有数据 → 最新入库日期；无数据 → 暂无入库记录
     el.innerHTML = latest
-      ? '<span class="do-dot in"></span>📅 数据截至 <b>'+fmtCNDate(latest)+'</b>'
+      ? '<span class="do-dot in"></span>📅 数据截至 <b>'+escHtml(fmtCNDate(latest))+'</b>'
       : '<span class="do-dot none"></span>📅 暂无入库记录';
     el.className='date-note';
   }
   function daysLeft(expireStr){ if(!expireStr) return null; return Math.round((new Date(expireStr+'T00:00:00')-new Date())/86400000); }
   function wStatus(dl){ if(dl===null) return {cls:'',txt:'—'}; if(dl<0) return {cls:'out',txt:'已过期'}; if(dl<=90) return {cls:'low',txt:'临期 '+dl+'天'}; return {cls:'ok',txt:'正常'}; }
-  function warrantyCell(it){ if(!it.warranty) return '<td>—</td>'; const exp=it.expire||addMonths(it.inDate||'2026-01-01',it.warranty); const dl=daysLeft(exp); const st=wStatus(dl); const col=st.cls==='out'?'var(--danger)':st.cls==='low'?'var(--accent)':'var(--ink-3)'; return `<td><span style="color:${col};font-weight:600">${exp}</span></td>`; }
+  function warrantyCell(it){ if(!it.warranty) return '<td>—</td>'; const exp=it.expire||addMonths(it.inDate||'2026-01-01',it.warranty); const dl=daysLeft(exp); const st=wStatus(dl); const col=st.cls==='out'?'var(--danger)':st.cls==='low'?'var(--accent)':'var(--ink-3)'; return `<td><span style="color:${col};font-weight:600">${escHtml(exp)}</span></td>`; }
   function warrantyMonthsCell(it){ return `<td>${it.warranty? it.warranty+' 个月':'—'}</td>`; }
   function renderInv(cat,filter){
     const body=document.getElementById('invBody');
@@ -2255,7 +2255,7 @@
     const posOf=new Map(); for(let k=0;k<items.length;k++) posOf.set(items[k],k);
     body.innerHTML=list.map((i,idx)=>{
       const oi=posOf.has(i)?posOf.get(i):idx;
-      const m=catMeta[i.c];const[st,txt]=statusOf(i.q,i.safe);
+      const m=safeMeta(i.c);const[st,txt]=statusOf(i.q,i.safe);
       const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
       const inT=inTotalOf(i.n,i.c), outT=outTotalOf(i.n,i.c);
       return `<tr data-row-inv="${oi}">
@@ -2265,7 +2265,7 @@
         <td>${escHtml(i.b||'—')}</td>
         <td>${escHtml(i.s)}</td><td>${escHtml(i.u)}</td>
         <td class="num">${i.q} ${escHtml(i.u)}</td><td class="num">${i.safe} ${escHtml(i.u)}</td>
-        <td class="code">${latestInNo(i)}</td><td class="num">${inT} ${escHtml(i.u)}</td><td class="code">${latestOutNo(i)}</td><td class="num">${outT} ${escHtml(i.u)}</td>
+        <td class="code">${escHtml(latestInNo(i))}</td><td class="num">${inT} ${escHtml(i.u)}</td><td class="code">${escHtml(latestOutNo(i))}</td><td class="num">${outT} ${escHtml(i.u)}</td>
         ${warrantyMonthsCell(i)}
         ${warrantyCell(i)}
         <td><span class="status ${st}">${txt}</span></td>
@@ -2294,7 +2294,7 @@
   function renderCheck(){
     const body=document.getElementById('checkBody');
     body.innerHTML=checkItems.map((i,idx)=>{
-      const m=catMeta[i.c];
+      const m=safeMeta(i.c);
       const real=(i.real!==undefined?i.real:i.sys);
       return `<tr data-row-check-item="${idx}">
         <td>${escHtml(i.n)}</td>
@@ -2334,7 +2334,7 @@
       return `<div class="tl-item" data-rec-idx="${i}" role="button" tabindex="0" title="点击查看操作">`+
         `<div class="tl-dot ${r.dot}">${r.dot==='in'?'🧮':r.dot==='warn'?'⚠️':'🤝'}</div>`+
         `<div class="tl-body"><div class="t1">${escHtml(r.title)}</div><div class="t2">${escHtml(r.sub)}</div></div>`+
-        `<div class="tl-right"><div class="tl-time">${r.date}</div>${badge}</div>`+
+        `<div class="tl-right"><div class="tl-time">${escHtml(r.date)}</div>${badge}</div>`+
       `</div>`;
     }).join('');
   }
@@ -2352,7 +2352,7 @@
       {k:'dot',t:'类型',v:r.dot,ty:'select',opts:[['in','正常'],['warn','警示'],['out','待办']]},
     ].map(f=>{
       if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="rcF_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${f.v===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
-      return `<div class="field"><label>${f.t}</label><input id="rcF_${f.k}" type="text" value="${f.v}" /></div>`;
+      return `<div class="field"><label>${f.t}</label><input id="rcF_${f.k}" type="text" value="${escHtml(f.v)}" /></div>`;
     }).join('');
     document.getElementById('recCheckEditModal').classList.add('show');
   }
@@ -2579,7 +2579,7 @@
       {k:'u',t:'单位',v:it.u,ty:'text'},
     ].map(f=>{
       if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="ciF_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${f.v===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
-      return `<div class="field"><label>${f.t}</label><input id="ciF_${f.k}" type="${f.ty}" value="${f.v}" /></div>`;
+      return `<div class="field"><label>${f.t}</label><input id="ciF_${f.k}" type="${f.ty}" value="${escHtml(f.v)}" /></div>`;
     }).join('');
     document.getElementById('checkItemEditModal').classList.add('show');
   }
@@ -2653,7 +2653,7 @@
       const sys=it.sys; const real=realInputs[idx]?(+realInputs[idx].value||0):(it.real!==undefined?it.real:sys);
       const d=real-sys; const st=d===0?'ok':d>0?'up':'down';
       const txt=d===0?'账实相符':(d>0?'盘盈 +'+d:'盘亏 '+d);
-      const m=catMeta[it.c];
+      const m=safeMeta(it.c);
       rows+=`<tr><td>${escHtml(it.n)}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="num">${sys} ${escHtml(it.u)}</td><td class="num">${real} ${escHtml(it.u)}</td><td class="num"><span class="diff ${st}">${(d>0?'+':'')+d}</span></td><td><span class="status ${st}">${txt}</span></td></tr>`;
       items.push({n:it.n,c:m.t,u:it.u,sys,real,d,st:txt});
     });
@@ -3007,7 +3007,7 @@
         const _db=document.getElementById('detailBody');
         if(_db) _db.innerHTML=recs.slice(0,12).map(r=>{
           const m=catMeta[r.category]||{t:r.category};
-          return `<tr><td>${r.type==='in'?'<span class="status ok">入库</span>':'<span class="status low">出库</span>'}</td><td class="code">${escHtml(r.orderNo)||'—'}</td><td>${escHtml(r.date)||'—'}</td><td>${escHtml(r.name)}</td><td>${m.t||r.category}</td><td class="num">${r.qty}</td><td>${escHtml(r.operator)||'—'}</td></tr>`;
+          return `<tr><td>${r.type==='in'?'<span class="status ok">入库</span>':'<span class="status low">出库</span>'}</td><td class="code">${escHtml(r.orderNo)||'—'}</td><td>${escHtml(r.date)||'—'}</td><td>${escHtml(r.name)}</td><td>${m.t||r.category}</td><td class="num">${escHtml(r.qty)}</td><td>${escHtml(r.operator)||'—'}</td></tr>`;
         }).join('');
       }else{
         dp.style.display='none';
@@ -3282,7 +3282,7 @@
     const list=inboundRecords.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
     const el=document.getElementById('recentInList'); if(!el) return;
     const sub=document.getElementById('recentInSub'); if(sub) sub.textContent='共 '+inboundRecords.length+' 条';
-    el.innerHTML=list.length?list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.name)} ×${r.qty} ${escHtml(r.unit||'')}</div><div class="rs">${(catMeta[r.category]||{}).t||r.category} · ${escHtml(r.supplier||'—')} · ${escHtml(r.handler||'—')}</div></div><div class="rq in">+${r.qty}</div></div>`).join('')
+    el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.name)} ×${escHtml(r.qty)} ${escHtml(r.unit||'')}</div><div class="rs">${(catMeta[r.category]||{}).t||r.category} · ${escHtml(r.supplier||'—')} · ${escHtml(r.handler||'—')}</div></div><div class="rq in">+${escHtml(r.qty)}</div></div>`).join('')
       :'<div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无入库记录</div>';
   }
   function renderRecentActivity(){
@@ -3292,7 +3292,7 @@
     const list=[...inRecs,...outRecs].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,6);
     const today=monthKey(new Date()); const yest=monthKey(new Date(Date.now()-86400000));
     const fmt=d=>{ if(!d) return '—'; if(d===today) return '今天'; if(d===yest) return '昨天'; const [yy,mm,dd]=String(d).split('-'); return `${mm}-${dd}`; };
-    el.innerHTML=list.length?list.map(r=>`<div class="tl-item"><div class="tl-dot ${r.dot}">${r.dot==='in'?'⬇️':'⬆️'}</div><div class="tl-body"><div class="t1">${escHtml(r.title)}</div><div class="t2">${escHtml(r.sub)}</div></div><div class="tl-time">${fmt(r.date)}</div></div>`).join('')
+    el.innerHTML=list.length?list.map(r=>`<div class="tl-item"><div class="tl-dot ${r.dot}">${r.dot==='in'?'⬇️':'⬆️'}</div><div class="tl-body"><div class="t1">${escHtml(r.title)}</div><div class="t2">${escHtml(r.sub)}</div></div><div class="tl-time">${escHtml(fmt(r.date))}</div></div>`).join('')
       :'<div class="tl-item"><div class="tl-dot out">⬆️</div><div class="tl-body"><div class="t1">暂无业务流水</div><div class="t2">完成入库或出库后将在此展示</div></div><div class="tl-time">—</div></div>';
   }
 
@@ -3342,10 +3342,10 @@
       return `<tr><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="num">${fmtNum(iQ)}</td><td class="num">${fmtNum(oQ)}</td><td class="num">${fmtNum(q)}</td></tr>`;
     }).join('')||'<tr><td colspan="4" class="empty">暂无分类数据</td></tr>';
     const inRows=inY.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8)
-      .map(r=>`<tr><td class="code">${r.inNo||r.id||'—'}</td><td>${r.date||'—'}</td><td>${escHtml(r.name)}</td><td class="num">${r.qty}${escHtml(r.unit||'')}</td></tr>`).join('')
+      .map(r=>`<tr><td class="code">${escHtml(r.inNo||r.id||'—')}</td><td>${escHtml(r.date||'—')}</td><td>${escHtml(r.name)}</td><td class="num">${escHtml(r.qty)}${escHtml(r.unit||'')}</td></tr>`).join('')
       ||'<tr><td colspan="4" class="empty">本年暂无入库记录</td></tr>';
     const outRows=outY.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8)
-      .map(r=>`<tr><td class="code">${r.outNo||r.id||'—'}</td><td>${r.date||'—'}</td><td>${escHtml(r.name)}</td><td>${escHtml(r.applicant||'—')}</td><td class="num">${r.qty}${escHtml(r.unit||'')}</td></tr>`).join('')
+      .map(r=>`<tr><td class="code">${escHtml(r.outNo||r.id||'—')}</td><td>${escHtml(r.date||'—')}</td><td>${escHtml(r.name)}</td><td>${escHtml(r.applicant||'—')}</td><td class="num">${escHtml(r.qty)}${escHtml(r.unit||'')}</td></tr>`).join('')
       ||'<tr><td colspan="5" class="empty">本年暂无领用记录</td></tr>';
     let html='';
     if(kpi==='cat'){
@@ -3648,7 +3648,8 @@
     checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
   } else { wmsSave(); } // 首次运行：写入种子，保证后续刷新一致
   renderInv('all');
-  function catTag(c){const m=catMeta[c];return `<span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span>`;}
+  function catTag(c){const m=catMeta[c]||{cls:'office',t:'未分类',col:'var(--c-office)'};return `<span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${escHtml(m.t)}</span>`;}
+  function safeMeta(c){ return catMeta[c]||{cls:'office',t:'未分类',col:'var(--c-office)',icon:'📦'}; } // 未知分类兜底：防御异常数据导致表格整体崩溃
   function statusCls(s){ s=s||''; if(s.indexOf('待')>=0)return 'low'; if(s.indexOf('驳')>=0||s.indexOf('取')>=0)return 'out'; return 'ok'; } // 防御缺字段历史/导入数据
   let activeDataTab='in';
   function renderData(type,filter){
@@ -3661,15 +3662,15 @@
     body.innerHTML=list.map(({r,i})=>{
       const cells=cols.slice(1).map(c=>{
         if(c.k==='category') return `<td>${catTag(r.category)}</td>`;
-        if(c.k==='qty') return `<td class="num">${r.qty}</td>`;
-        if(c.k==='price'||c.k==='amount') return `<td class="num">${r[c.k]}</td>`;
+        if(c.k==='qty') return `<td class="num">${escHtml(r.qty)}</td>`;
+        if(c.k==='price'||c.k==='amount') return `<td class="num">${escHtml(r[c.k])}</td>`;
         if(c.k==='status') return `<td><span class="status ${statusCls(r.status)}">${escHtml(r.status)}</span></td>`;
         if(c.k==='warranty') return warrantyMonthsCell(r);
         if(c.k==='expire') return warrantyCell(r);
-        const v=r[c.k]; return `<td>${v==null||v===''?'—':v}</td>`;
+        const v=r[c.k]; return `<td>${v==null||v===''?'—':escHtml(v)}</td>`;
       }).join('');
       const codeVal = type==='in' ? (r.inNo||r.id) : (r.outNo||r.id);
-      return `<tr data-row-rec="${type}:${i}"><td class="code">${codeVal}</td>${cells}</tr>`;
+      return `<tr data-row-rec="${type}:${i}"><td class="code">${escHtml(codeVal)}</td>${cells}</tr>`;
     }).join('');
     return list.length;
   }
@@ -3930,8 +3931,8 @@
       .sort((a,b)=>a.dl-b.dl);
   }
   function warRow(o){
-    const m=catMeta[o.i.c]; const st=wStatus(o.dl);
-    return `<tr><td>${escHtml(o.i.n)}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="code">${o.i.expire}</td><td class="num">${o.dl}</td><td><span class="status ${st.cls}">${st.txt}</span></td></tr>`;
+    const m=safeMeta(o.i.c); const st=wStatus(o.dl);
+    return `<tr><td>${escHtml(o.i.n)}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="code">${escHtml(o.i.expire)}</td><td class="num">${o.dl}</td><td><span class="status ${st.cls}">${st.txt}</span></td></tr>`;
   }
   function renderWarranty(){
     const list=warList();
@@ -4012,9 +4013,9 @@
           <dt>品牌</dt><dd>${escHtml(r.brand||'—')}</dd>
           <dt>规格</dt><dd>${escHtml(r.spec||'—')}</dd>
           <dt>单位</dt><dd>${escHtml(r.unit||'—')}</dd>
-          <dt>数量</dt><dd><span class="qty-in">+${r.qty}</span> ${escHtml(r.unit||'')}</dd>
-          <dt>单价(元)</dt><dd>${r.price!=null?r.price:'0'}</dd>
-          <dt>金额(元)</dt><dd>${r.amount!=null?r.amount:'0'}</dd>
+          <dt>数量</dt><dd><span class="qty-in">+${escHtml(r.qty)}</span> ${escHtml(r.unit||'')}</dd>
+          <dt>单价(元)</dt><dd>${escHtml(r.price!=null?r.price:'0')}</dd>
+          <dt>金额(元)</dt><dd>${escHtml(r.amount!=null?r.amount:'0')}</dd>
           <dt>供应商</dt><dd>${escHtml(r.supplier||'—')}</dd>
           <dt>经办人</dt><dd>${escHtml(r.handler||'—')}</dd>
           <dt>入库仓库</dt><dd>${escHtml(r.warehouse||'—')}</dd>
@@ -4036,7 +4037,7 @@
           <dt>分类</dt><dd>${catTag(r.category)}</dd>
           <dt>规格</dt><dd>${escHtml(r.spec||'—')}</dd>
           <dt>单位</dt><dd>${escHtml(r.unit||'—')}</dd>
-          <dt>数量</dt><dd><span class="qty-out">−${r.qty}</span> ${escHtml(r.unit||'')}</dd>
+          <dt>数量</dt><dd><span class="qty-out">−${escHtml(r.qty)}</span> ${escHtml(r.unit||'')}</dd>
           <dt>领用人</dt><dd>${escHtml(r.applicant||'—')}</dd>
           <dt>部门</dt><dd>${escHtml(r.dept||'—')}</dd>
           <dt>用途</dt><dd>${escHtml(r.purpose||'—')}</dd>
@@ -4114,7 +4115,8 @@
           '<div class="kp-stat"><span class="kp-stat-v">'+items.length+'</span><span class="kp-stat-l">库存物资</span></div>'+
         '</div>'+
         (pf.noPrice? '<div class="kp-status warn"><span>完整性预检</span><b>⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
-          : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>');
+          : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
+        (pf.checkCount>0? '<div class="kp-status ok"><span>盘点联动</span><b>'+pf.checkCount+' 条已完成年度盘点记录将随结转一并封存（盘盈/盘亏/相符 + 净差异）</b></div>' : '');
       if(btn) btn.disabled=true; if(msg) msg.textContent=done?'已无需结转':'已是最新年度';
       updateCarryoverBadge();
       return;
@@ -4127,7 +4129,8 @@
     '</div>'+
     '<div class="kp-status ok"><span>财务口径</span><b>期初 + 入库 − 出库 = 期末 · 逐年勾稽平衡；本年（'+s.cur+' 年）数据保留为本期流水，不受影响</b></div>'+
     (pf.noPrice? '<div class="kp-status warn"><span>完整性预检</span><b>⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
-      : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>');
+      : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
+    (pf.checkCount>0? '<div class="kp-status ok"><span>盘点联动</span><b>'+pf.checkCount+' 条已完成年度盘点记录将随结转一并封存（盘盈/盘亏/相符 + 净差异）</b></div>' : '');
     if(btn) btn.disabled=false; if(msg) msg.textContent='';
     updateCarryoverBadge();
   }
@@ -4284,12 +4287,12 @@
     // ---- 期末结存明细（资产负债表 · 存货）----
     const sb=document.getElementById('snapBody');
     const snapAmt=closing.reduce((s,x)=>s+(+x.amount||+((+x.q||0)*(+x.price||0))||0),0);
-    sb.innerHTML=closing.length?closing.map(s=>`<tr><td>${escHtml(s.n)}</td><td>${catMeta[s.c]?catMeta[s.c].t:s.c}</td><td class="num">${s.price!=null?s.price:'—'}</td><td class="num">${s.q}</td><td>${escHtml(s.u||'—')}</td><td class="num">${s.amount!=null?s.amount:(+(s.q*(s.price||0))).toFixed(2)}</td></tr>`).join('')+'<tr class="arch-total"><td colspan="4">期末结存合计</td><td></td><td class="num">'+fmtNum(snapAmt)+'</td></tr>':'<tr><td colspan="6" class="empty">无期末结存记录</td></tr>';
+    sb.innerHTML=closing.length?closing.map(s=>`<tr><td>${escHtml(s.n)}</td><td>${catMeta[s.c]?catMeta[s.c].t:'未分类'}</td><td class="num">${escHtml(s.price!=null?s.price:'—')}</td><td class="num">${escHtml(s.q)}</td><td>${escHtml(s.u||'—')}</td><td class="num">${escHtml(s.amount!=null?s.amount:(+(s.q*(s.price||0))).toFixed(2))}</td></tr>`).join('')+'<tr class="arch-total"><td colspan="4">期末结存合计</td><td></td><td class="num">'+fmtNum(snapAmt)+'</td></tr>':'<tr><td colspan="6" class="empty">无期末结存记录</td></tr>';
     const snapFoot=document.getElementById('snapFoot');
     if(snapFoot) snapFoot.innerHTML='';
     // ---- 入库明细账 ----
     const ib=document.getElementById('archInBody');
-    ib.innerHTML=inY.length?inY.map(r=>`<tr><td class="code">${r.inNo||r.id}</td><td>${r.date}</td><td>${escHtml(r.name)}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td class="num">${r.price!=null?r.price:'—'}</td><td class="num">${r.amount||'—'}</td><td>${escHtml(r.supplier||'—')}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">无入库记录</td></tr>';
+    ib.innerHTML=inY.length?inY.map(r=>`<tr><td class="code">${escHtml(r.inNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.name)}</td><td>${catMeta[r.category]?catMeta[r.category].t:'未分类'}</td><td class="num">${escHtml(r.qty)}</td><td class="num">${escHtml(r.price!=null?r.price:'—')}</td><td class="num">${escHtml(r.amount||'—')}</td><td>${escHtml(r.supplier||'—')}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">无入库记录</td></tr>';
     const inQty=inY.reduce((s,r)=>s+(+r.qty||0),0);
     const inAmt=inY.reduce((s,r)=>s+(+r.amount||0),0);
     const inFoot=document.getElementById('archInFoot');
@@ -4299,7 +4302,7 @@
     ob.innerHTML=outY.length?outY.map(r=>{
       const p=(r.price!=null)?r.price:0;
       const amt=(r.amount!=null)?r.amount:(+(+r.qty||0)*p).toFixed(2);
-      return `<tr><td class="code">${r.outNo||r.id}</td><td>${r.date}</td><td>${escHtml(r.applicant||'—')}</td><td>${escHtml(r.name)}</td><td>${catMeta[r.category]?catMeta[r.category].t:r.category}</td><td class="num">${r.qty}</td><td>${escHtml(r.unit||'件')}</td><td class="num">${p||'—'}</td><td class="num">${amt}</td><td>${escHtml(r.purpose||'—')}</td></tr>`;
+      return `<tr><td class="code">${escHtml(r.outNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.applicant||'—')}</td><td>${escHtml(r.name)}</td><td>${catMeta[r.category]?catMeta[r.category].t:'未分类'}</td><td class="num">${escHtml(r.qty)}</td><td>${escHtml(r.unit||'件')}</td><td class="num">${escHtml(p||'—')}</td><td class="num">${escHtml(amt)}</td><td>${escHtml(r.purpose||'—')}</td></tr>`;
     }).join(''):'<tr><td colspan="10" class="empty">无出库记录</td></tr>';
     // ---- 年度盘点档案（盘点联动 · 账实差异）----
     const cb=document.getElementById('archCheckBody');
@@ -4310,7 +4313,7 @@
         const net=c.diffNet!=null?(c.diffNet>0?'+'+c.diffNet:c.diffNet):'—';
         const abs=c.diffAbs!=null?c.diffAbs:'—';
         const concl=c.diffCount==null?'—':(c.diffCount>0?'存在差异':'账实相符');
-        return `<tr><td>${c.date||'—'}</td><td>${escHtml(c.title||'盘点')}</td><td>${escHtml(c.scope||'—')}</td><td class="num">${c.diffCount!=null?c.diffCount:'—'}</td><td class="num ${c.diffNet>0?'':'down'}">${net}</td><td class="num">${abs}</td><td><span class="status ${diffOk?'ok':'warn'}">${concl}</span></td></tr>`;
+        return `<tr><td>${escHtml(c.date||'—')}</td><td>${escHtml(c.title||'盘点')}</td><td>${escHtml(c.scope||'—')}</td><td class="num">${c.diffCount!=null?c.diffCount:'—'}</td><td class="num ${c.diffNet>0?'':'down'}">${escHtml(net)}</td><td class="num">${escHtml(abs)}</td><td><span class="status ${diffOk?'ok':'warn'}">${concl}</span></td></tr>`;
       }).join(''):'<tr><td colspan="7" class="empty">该年度无盘点记录 · 建议每年结转前完成一次全面盘点</td></tr>';
     }
     const outQty=outY.reduce((s,r)=>s+(+r.qty||0),0);
@@ -4512,7 +4515,7 @@
       html+='<div class="is-group-title">'+g.t+'</div>';
       g.items.forEach(it=>{
         flat.push(it);
-        const m=catMeta[it.c];
+        const m=safeMeta(it.c);
         const st=statusOf(it.q,it.safe)[1];
         const isExact=g.t.indexOf('完全')>=0;
         html+='<div class="is-item" data-idx="'+(flat.length-1)+'">'+
@@ -4581,7 +4584,7 @@
       html+='<div class="is-group-title">'+g.t+'</div>';
       g.items.forEach(it=>{
         flat.push(it);
-        const m=catMeta[it.c];
+        const m=safeMeta(it.c);
         const st=statusOf(it.q,it.safe)[1];
         const isExact=g.t.indexOf('完全')>=0;
         html+='<div class="is-item" data-idx="'+(flat.length-1)+'">'+
@@ -4783,7 +4786,7 @@
     document.getElementById('recEditBody').innerHTML=recEditFields[type].map(f=>{
       let ctrl;
       if(f.ty==='select'){ ctrl=`<select id="recF_${f.k}">${f.opts.map(o=>`<option ${rec[f.k]===o?'selected':''}>${o}</option>`).join('')}</select>`; }
-      else { const val=(rec[f.k]!==undefined&&rec[f.k]!==null)?rec[f.k]:''; ctrl=`<input id="recF_${f.k}" type="${f.ty}" value="${val}" />`; }
+      else { const val=(rec[f.k]!==undefined&&rec[f.k]!==null)?rec[f.k]:''; ctrl=`<input id="recF_${f.k}" type="${f.ty}" value="${escHtml(val)}" />`; }
       return `<div class="field"><label>${f.t}</label>${ctrl}</div>`;
     }).join('');
     document.getElementById('recEditModal').classList.add('show');
@@ -4824,7 +4827,7 @@
   function renderRecentOut(){
     const list=outboundRecords.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
     const el=document.getElementById('recentOutList'); if(!el) return;
-    el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.applicant)} 领用 ${escHtml(r.name)} ×${r.qty} ${escHtml(r.unit||'件')}</div><div class="rs">${escHtml(r.dept)} · ${escHtml(r.purpose||'—')} · ${r.date}</div></div><div class="rq out">−${r.qty} ${escHtml(r.unit||'件')}</div></div>`).join('')
+    el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.applicant)} 领用 ${escHtml(r.name)} ×${escHtml(r.qty)} ${escHtml(r.unit||'件')}</div><div class="rs">${escHtml(r.dept)} · ${escHtml(r.purpose||'—')} · ${escHtml(r.date)}</div></div><div class="rq out">−${escHtml(r.qty)} ${escHtml(r.unit||'件')}</div></div>`).join('')
       : '<div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无出库记录</div>';
     const cnt=document.getElementById('recentOutCount'); if(cnt) cnt.textContent=list.length;
   }
@@ -5190,7 +5193,7 @@
         <td title="${escHtml(i.n)}">${escHtml(i.n)}</td>
         <td class="num">${i.q}${escHtml(i.u)}</td>
         <td class="num">${def}${escHtml(i.u)}</td>
-        <td><input class="real-input safe-input" type="number" min="0" value="${overridden?safeOverrides[idx]:''}" placeholder="${def}" data-idx="${idx}" /></td>
+        <td><input class="real-input safe-input" type="number" min="0" value="${escHtml(overridden?safeOverrides[idx]:'')}" placeholder="${escHtml(def)}" data-idx="${idx}" /></td>
         <td><span class="status ${st}">${txt}</span>${overridden?'<span class="ov-tag">单独</span>':''}</td>
       </tr>`;
     }).join('');
@@ -5395,7 +5398,7 @@
     const body=document.getElementById('alertBody'); if(!body) return;
     const list=getLowStock();
     body.innerHTML=list.length? list.map((it,idx)=>{
-      const m=catMeta[it.c];
+      const m=safeMeta(it.c);
       return '<tr class="'+(it.processed?'row-done':'')+'" data-alert="'+idx+'">'
         +'<td>'+escHtml(it.n)+'</td>'
         +'<td><span class="tag '+m.cls+'"><span class="d" style="background:'+m.col+'"></span>'+m.t+'</span></td>'
