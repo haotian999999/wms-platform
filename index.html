@@ -2898,7 +2898,7 @@
         if(nm!=null&&String(nm).trim()!==''){
           const cs=C.catSub>=0&&r[C.catSub]!=null?String(r[C.catSub]).trim():'';
           const sp=C.spec>=0&&r[C.spec]!=null?String(r[C.spec]).trim():'';
-          cur={name:String(nm).trim(),brand:C.brand>=0&&r[C.brand]!=null?String(r[C.brand]).trim():'—',spec:[cs,sp].filter(Boolean).join(' · '),unit:C.unit>=0&&r[C.unit]!=null?String(r[C.unit]).trim():'件',category:cat};
+          cur={name:sanitizeText(nm).trim(),brand:sanitizeText(C.brand>=0&&r[C.brand]!=null?String(r[C.brand]).trim():'—'),spec:[sanitizeText(cs),sanitizeText(sp)].filter(Boolean).join(' · '),unit:sanitizeText(C.unit>=0&&r[C.unit]!=null?String(r[C.unit]).trim():'件'),category:cat};
         }
         continue;
       }
@@ -2907,9 +2907,9 @@
       if(isNaN(inV)&&isNaN(outV)) continue; // 空分号行(如 " | 5-1")跳过
       if(!cur) continue;
       const date=C.date>=0?toDate(r[C.date]):'';
-      const operator=C.operator>=0&&r[C.operator]!=null?String(r[C.operator]).trim():'';
-      const purchaseNo=C.purchaseNo>=0&&r[C.purchaseNo]!=null?String(r[C.purchaseNo]).trim():'';
-      const approvalNo=C.approvalNo>=0&&r[C.approvalNo]!=null?String(r[C.approvalNo]).trim():'';
+      const operator=C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'';
+      const purchaseNo=C.purchaseNo>=0&&r[C.purchaseNo]!=null?sanitizeText(r[C.purchaseNo]).trim():'';
+      const approvalNo=C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'';
       if(!isNaN(inV)&&inV>0) records.push({type:'in',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:inV,date,operator,orderNo:purchaseNo,category:cur.category,
         fprint:'in|'+cur.name+'|'+cur.category+'|'+date+'|'+inV+(purchaseNo?'|'+purchaseNo:'')});
       if(!isNaN(outV)&&outV>0) records.push({type:'out',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:outV,date,operator,orderNo:approvalNo,applicant:operator,category:cur.category,
@@ -2943,7 +2943,7 @@
       const t=String(first).trim().replace(/[：:：（）()\s]/g,'');
       return /^(合计|总计|小计|共计|累计|平均|总额|total|sum)$/i.test(t) || /回到顶部|最后一条/.test(String(first));
     };
-    const dataRows=rows.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&String(c).trim()!=='')&&!isTotalsRow(r));
+    const dataRows=rows.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&String(c).trim()!=='')&&!isTotalsRow(r)).map(r=>r.map(sanitizeText)); // 入口层消毒：剥离 < > 字节（XSS 纵深防御）
     importState={headers,mapping,dataRows,sheetName,fileName:fileName||'',detail:{count:0,records:[],samples:[]},hasDetail:false};
     renderMapping();
     // renderNow!==false 时立即渲染预览（默认行为，保持原有调用契约）；
@@ -3696,6 +3696,13 @@
     if(c==='-'){ if(/^-\d[\d,.]*%?$/.test(s)) return v; return "'"+v; }
     if(c==='\t'||c==='\r'||c==='\n') return "'"+v;
     return v;
+  }
+  // 导入入口层消毒（纵深防御第二道闸）：文本字段中的 < > 替换为全角字符，
+  // 保证进入数据层的字符串永不含可被解析为 HTML 标签的字节。
+  // 即便未来新增渲染路径漏掉 escHtml，导入数据也无法构成存储型 XSS（渲染层转义为第一道闸）。
+  function sanitizeText(v){
+    if(v==null) return '';
+    return String(v).replace(/</g,'＜').replace(/>/g,'＞');
   }
   function exportXLSX(rows,filename,opts){
     try{
