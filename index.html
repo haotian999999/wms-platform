@@ -2514,7 +2514,7 @@
     ];
     document.getElementById('planEditBody').innerHTML=summary+fields.map(f=>{
       if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="planF_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${f.v===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
-      return `<div class="field"><label>${f.t}</label><input id="planF_${f.k}" type="text" value="${f.v==null?'':f.v}" /></div>`;
+      return `<div class="field"><label>${f.t}</label><input id="planF_${f.k}" type="text" value="${escHtml(f.v==null?'':f.v)}" /></div>`;
     }).join('');
     document.getElementById('planEditModal').classList.add('show');
   }
@@ -3229,7 +3229,7 @@
   syncFsIcon();
 
   // ---- 工作台/统计报表 数据驱动辅助函数（取消演示数据后，全部基于真实业务数据计算） ----
-  function fmtNum(n){ return Math.round(n||0).toLocaleString('en-US'); }
+  function fmtNum(n){ const v=+n||0; return v.toLocaleString('en-US',{maximumFractionDigits:2}); }
   function monthKey(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'); return `${y}-${m}`; }
   function prevMonthKey(ym){ const [y,m]=ym.split('-').map(Number); const d=new Date(y,m-2,1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
   function monthLabel(ym){ return +ym.split('-')[1]+'月'; }
@@ -3494,6 +3494,8 @@
 
   function initCharts(v){
     if(typeof window.Chart === 'undefined') return;
+    // 防御：若该视图已有实例（任何调用路径），先销毁再重建，杜绝 canvas 上实例叠加泄漏
+    if(charts[v]){ Object.values(charts[v]).forEach(c=>{ try{ c.destroy(); }catch(e){} }); delete charts[v]; }
     if(v==='dashboard'){
       const td=buildTrendData(), cd=buildCatData();
       charts.dashboard={};
@@ -3621,7 +3623,10 @@
     items.forEach(i=>{
       const ik=i.n+'|'+i.c, inQ=FI.inQ.get(ik)||0, outQ=FI.outQ.get(ik)||0;
       if(typeof i.initQty!=='number' || isNaN(i.initQty)){
-        // 旧数据无期初字段：以当前 q 为基准反推期初，冻结现状，避免线上数据跳变
+        // 旧数据无期初字段：以当前 q 为基准反推期初，冻结现状，避免线上数据跳变。
+        // 反推可能为负（旧系统迁移：当前存量 < 历史累计出入库差），属迁移合理产物，
+        // 必须保留原值参与推导，否则 q 会被流水冲成与现状不符的数值（数据跳变）。
+        // 显式手输负期初压低库存属 SSOT 正常语义（期初 -N = 账上欠 N），不作钳制。
         i.initQty = (+i.q||0) - inQ + outQ;
       }
       const derived = i.initQty + inQ - outQ;
@@ -3677,13 +3682,27 @@
     document.getElementById('dataCount').textContent=(activeDataTab==='in'?'入库':'出库')+'共 '+cnt+' 条';
     checkTableOverflow();
   }
+  // 导出防公式注入（CSV/Formula Injection）：单元格文本以 = + - @ 等开头时，
+  // Excel/WPS 打开会当作公式执行（可外链数据/污染公式）。对“形似公式”的文本前置
+  // 单引号使其成为纯文本；纯数字（负数/千分位/百分比）不受影响，数字类型原样保留
+  function xlsxSafe(v){
+    if(typeof v!=='string') return v;
+    const s=v.trim();
+    if(!s) return v;
+    const c=s.charAt(0);
+    if(c==='=') return "'"+v;
+    if(c==='+'||c==='@') return "'"+v;
+    if(c==='-'){ if(/^-\d[\d,.]*%?$/.test(s)) return v; return "'"+v; }
+    if(c==='\t'||c==='\r'||c==='\n') return "'"+v;
+    return v;
+  }
   function exportXLSX(rows,filename,opts){
     try{
       opts=opts||{};
       const headerAt=(typeof opts.headerAt==='number')?opts.headerAt:null;
       const titleMerge=!!opts.titleMerge;
       if(typeof XLSX==='undefined'){ alert('表格组件未加载，请联网后重试'); return; }
-      const ws=XLSX.utils.aoa_to_sheet(rows);
+      const ws=XLSX.utils.aoa_to_sheet(rows.map(r=>Array.isArray(r)?r.map(xlsxSafe):r));
       const colCount=rows.reduce((m,r)=>Math.max(m,Array.isArray(r)?r.length:0),0);
       const rowCount=rows.length;
       // 列宽：按每列最长内容估算（中文按 2 个字符计）
@@ -4215,7 +4234,7 @@
       return;
     }
     sel.disabled=false;
-    sel.innerHTML=archivedRecords.map((a,i)=>`<option value="${i}">${a.label||a.year||i} 年（${a.inbound.length+a.outbound.length} 笔）</option>`).join('');
+    sel.innerHTML=archivedRecords.map((a,i)=>`<option value="${i}">${escHtml(a.label||a.year||i)} 年（${a.inbound.length+a.outbound.length} 笔）</option>`).join('');
     const totalRecs=archivedRecords.reduce((s,a)=>s+a.inbound.length+a.outbound.length,0);
     const st=document.getElementById('archiveStats'); if(st) st.innerHTML=`<div class="kp-stat"><span class="kp-stat-v">${archivedRecords.length}</span><span class="kp-stat-l">已归档年度</span></div><div class="kp-stat"><span class="kp-stat-v">${totalRecs}</span><span class="kp-stat-l">出入库流水</span></div>`;
     if(expBtn) expBtn.disabled=false; if(delBtn) delBtn.disabled=false;
@@ -4439,9 +4458,14 @@
     const amount=+(qty*price).toFixed(2);
     const rec={id:recId,inNo:inNo||recId,date,name,category:cat,brand,spec,unit,qty,price,amount,supplier,handler,warehouse,status:'已入库',warranty,updatedAt:Date.now()};
     if(warranty) rec.expire=addMonths(date,warranty);
+    if(inNo && inboundRecords.some(r=>r.inNo===inNo)){ toast('单号已存在','warn','入库单号「'+inNo+'」已登记过，请核对或留空自动生成'); return; }
+    const _nm=normName(name);
+    const exist=items.find(i=>i.c===cat && normName(i.n)===_nm);
+    if(exist){ // 主键对齐：流水采用档案标准名/分类，保证「名称|分类」键一致，重算时库存才能正确归集
+      rec.name=exist.n; rec.category=exist.c;
+    }
     inboundRecords.unshift(rec);
     updateDataNote();
-    const exist=items.find(i=>i.n===name && i.c===cat);
     if(exist){ if(brand) exist.b=brand; if(spec!=='—') exist.s=spec; if(safe) exist.safe=safe; if(warranty&&!exist.warranty){exist.warranty=warranty; exist.inDate=date; exist.expire=addMonths(date,warranty);} exist.updatedAt=Date.now(); }
     else { const ni={c:cat,n:name,b:brand,s:spec,u:unit,safe:safe||catDefault[cat]||10,initQty:0,warranty:warranty||undefined,inDate:date,updatedAt:Date.now()}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
     const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all');
@@ -4606,7 +4630,8 @@
     if(!applicant||!cat||!name||isNaN(qty)||qty<=0){ toast('请完整填写领用人/分类/名称/数量','warn','以上为必填项'); return; }
     const unit0=document.getElementById('outUnit').value.trim()||'件';
     // 【库存充足性校验】超量出库会导致账面「欠量」被静默归零，必须显式提示并由用户确认
-    const _it=items.find(i=>i.n===name && i.c===cat);
+    const _nm=normName(name);
+    const _it=items.find(i=>i.c===cat && normName(i.n)===_nm);
     const _stock=_it? (+_it.q||0) : 0;
     if(!_it){
       if(!confirm('⚠️ 物资「'+name+'」当前不在库存台账中（无库存记录）。\n\n继续将按「0 库存」建档并登记本次出库，系统库存为 0。\n如名称/分类填写有误，请点「取消」核对后再提交。')) return;
@@ -4614,12 +4639,16 @@
       if(!confirm('⚠️ 库存不足：当前「'+name+'」账面库存仅 '+_stock+' '+unit0+'，本次申请出库 '+qty+' '+unit0+'（超出 '+(qty-_stock)+' '+unit0+'）。\n\n继续将按「超量出库」登记，系统库存归零，超出部分形成账实缺口。\n如属数据录入错误，请点「取消」核对后再提交。')) return;
     }
     const outNo=document.getElementById('outNo').value.trim();
+    if(outNo && outboundRecords.some(r=>r.outNo===outNo)){ toast('单号已存在','warn','出库单号「'+outNo+'」已登记过，请核对或留空自动生成'); return; }
     const recId=outNo||genId('CK');
     const unit=document.getElementById('outUnit').value.trim()||'件';
     const spec=document.getElementById('outSpec').value.trim();
     const rec={id:recId,outNo:outNo||recId,date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit,spec,purpose,handler:approver,status:'已出库',updatedAt:Date.now()};
+    if(_it){ // 主键对齐：流水采用档案标准名/分类，保证「名称|分类」键一致，重算时库存才能正确归集
+      rec.name=_it.n; rec.category=_it.c;
+    }
     outboundRecords.unshift(rec);
-    const exist=items.find(i=>i.n===name && i.c===cat);
+    const exist=_it;
     if(!exist){ items.push({c:cat,n:name,s:spec||'—',u:unit,safe:catDefault[cat]||10,initQty:0,updatedAt:Date.now()}); }
     renderRecentOut();
     recomputeStocks();
@@ -4930,7 +4959,7 @@
     const alignOf=h=>{ const s=String(h||''); if(leftKeys.some(k=>s.includes(k))) return 'left'; if(rightKeys.some(k=>s.includes(k))) return 'right'; if(centerKeys.some(k=>s.includes(k))) return 'center'; return 'center'; };
     sheets.forEach(s=>{
       const rows=s.rows;
-      const ws=XLSX.utils.aoa_to_sheet(rows);
+      const ws=XLSX.utils.aoa_to_sheet(rows.map(r=>Array.isArray(r)?r.map(xlsxSafe):r));
       const colCount=rows.reduce((m,r)=>Math.max(m,Array.isArray(r)?r.length:0),0);
       const rowCount=rows.length;
       // 列宽按内容估算
