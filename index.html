@@ -2058,6 +2058,10 @@
     if(!r.ok){ throw new Error('写入云端失败 HTTP '+r.status); }
     return (await r.json()).content.sha;
   }
+  async function ghDelete(path, sha){
+    const r=await fetch('https://api.github.com/repos/'+WMS_REPO+'/contents/'+path, {method:'DELETE',headers:cloudHeaders(),body:JSON.stringify({message:'WMS 数据重置 '+new Date().toLocaleString(), sha})});
+    if(!r.ok){ throw new Error('清除云端失败 HTTP '+r.status); }
+  }
   // 合并两库：所有业务数据取并集去重（双方录入互不覆盖丢失），updatedAt 取较新值
   // 冲突消解：优先取 updatedAt 较新者（标准 LWW）；双方都无时间戳时，取字段更完整的一条
   function pickNewer(a,b){
@@ -2187,8 +2191,12 @@
     if(saveBtn) saveBtn.addEventListener('click',saveCloudSettings);
     if(syncBtn) syncBtn.addEventListener('click',pullCloud);
     if(cloudConfigured()){
+      // 重置数据后的兜底：云端清理失败时跳过本次自动拉回，避免旧数据“复活”
+      let skipPull=false;
+      try{ if(localStorage.getItem('wms_reset_at')){ localStorage.removeItem('wms_reset_at'); skipPull=true; } }catch(e){}
       updateCloudInfo('已配置令牌，等待首次同步…');
-      setTimeout(pullCloud, 800);
+      if(skipPull){ updateCloudInfo('已重置数据，本次启动不自动拉取云端旧数据'); }
+      else { setTimeout(pullCloud, 800); }
     }
   });
 
@@ -4753,12 +4761,26 @@
     toast('已恢复备份','ok','已恢复到 '+fmtCNDate((b.ts||'').slice(0,10))+' 的备份');
     renderMaintenance();
   }
-  function resetData(){
+  // 重置数据：清空本地业务数据，并（若已开启云同步）同步清空云端。
+  // 否则 reload 后云端自动拉回会把「已重置」的旧数据又恢复出来（重置失效的根因）
+  async function resetData(){
     if(!confirm('⚠️ 确定重置所有业务数据吗？\n此操作不可撤销，库存/出入库/盘点等全部业务数据将清空，系统回到不含演示数据的空白架构。')) return;
     if(!confirm('再次确认：清空全部业务数据并恢复为空白原始架构？')) return;
-    try{ localStorage.removeItem(WMS_DB_KEY); localStorage.removeItem(WMS_AUTO_KEY); }catch(e){}
-    toast('正在重置…','info','即将重新载入空白架构');
-    setTimeout(()=>location.reload(),400);
+    clearTimeout(cloudTimer); // 取消排队中的云推送，避免清空后又被写回
+    try{ localStorage.removeItem(WMS_DB_KEY); localStorage.removeItem(WMS_AUTO_KEY); localStorage.removeItem(WMS_FULL_KEY); }catch(e){}
+    let cloudCleared=false;
+    if(cloudConfigured()){
+      try{
+        const remote=await ghGet(WMS_CLOUD_PATH);
+        if(remote) await ghDelete(WMS_CLOUD_PATH, remote.sha);
+        cloudCleared=true;
+      }catch(e){
+        // 云端清理失败（断网/权限）：写入重置标志，reload 后跳过自动拉取云端旧数据
+        try{ localStorage.setItem('wms_reset_at', String(Date.now())); }catch(_){}
+      }
+    }
+    toast('正在重置…','info', cloudCleared?'本地与云端数据已全部清空':'本地数据已清空（云端清理失败，将跳过自动拉回）');
+    setTimeout(()=>location.reload(), 400);
   }
   function recordsToRows(arr){
     if(!arr||!arr.length) return [['（无数据）']];
