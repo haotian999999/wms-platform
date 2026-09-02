@@ -2154,7 +2154,19 @@
     deletedKeys.length=0; (m.deletedKeys||[]).forEach(x=>deletedKeys.push(x));
     lastCarryoverYear=(typeof m.lastCarryoverYear==='number'?m.lastCarryoverYear:0);
     recomputeStocks(); // 合并结果的 q 为占位 0，统一由「期初+入库-出库」重新派生，保证账实一致
+    checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q})); // 盘点明细随云端合并结果同步，避免使用旧快照盘点
     wmsSave();
+    // 云端合并是「整库换血」：各数组被整体替换后若不主动刷新视图，
+    // 用户眼前显示的仍是合并前的旧数据，要等到切换页签才更新——即「提示同步成功但界面没变」。
+    // 这里对库存/数据/仪表盘/报表/盘点/结转/归档做一次全量联动刷新，保证任一页签口径都一致。
+    try{
+      const _ac=document.querySelector('#invChips .chip.active');
+      renderInv(_ac?_ac.dataset.cat:'all');
+      if(activeDataTab==='archive') renderArchive(); else renderDataTables();
+      renderWarranty(); updateDataNote();
+      renderDashboard(); renderReports();
+      renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCheckTimeline(); renderCarryoverCard();
+    }catch(e){ console.warn('云端同步后刷新界面失败', e); }
   }
   async function pushCloud(){
     if(!cloudConfigured()||cloudBusy) return;
@@ -2264,11 +2276,13 @@
     const fInput=document.getElementById('invSearch');
     const f=(filter===undefined?(fInput?fInput.value:''):filter).trim().toLowerCase();
     const list=cat==='all'?items:items.filter(i=>i.c===cat); // 全量视图直接复用 items 引用，不再 slice() 拷贝（数据翻倍时省一次 O(N) 复制）
-    if(f){ list=list.filter(i=>{ const m=catMeta[i.c]; const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; const statusText=statusOf(i.q,i.safe)[1]; const text=[code, i.n, m.t, i.b||'', i.s, i.u, String(i.q), String(i.safe), statusText].join(' ').toLowerCase(); return text.includes(f); }); }
+    // 搜索过滤分支同样要兜底：未知分类（normCat 归类失败返回空串）会让 catMeta[i.c] 为 undefined 而整表白屏
+    // 注意：不能用 list=list.filter(...) 重新赋值——list 为 const 且全量时直连 items 引用，会抛「Assignment to constant」
+    const view=f? list.filter(i=>{ const m=safeMeta(i.c); const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; const statusText=statusOf(i.q,i.safe)[1]; const text=[code, i.n, m.t, i.b||'', i.s, i.u, String(i.q), String(i.safe), statusText].join(' ').toLowerCase(); return text.includes(f); }) : list;
     // 预建「物资对象 → 在 items 中的下标」映射：原实现每行 items.indexOf(i) 是全表扫描，
     // 2000 条物资即 400 万次比较（O(N²)），是切表/导入后卡顿的隐形元凶
     const posOf=new Map(); for(let k=0;k<items.length;k++) posOf.set(items[k],k);
-    body.innerHTML=list.map((i,idx)=>{
+    body.innerHTML=view.map((i,idx)=>{
       const oi=posOf.has(i)?posOf.get(i):idx;
       const m=safeMeta(i.c);const[st,txt]=statusOf(i.q,i.safe);
       const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
@@ -2286,7 +2300,7 @@
         <td><span class="status ${st}">${txt}</span></td>
       </tr>`;
     }).join('');
-    if(!list.length){ body.innerHTML='<tr><td colspan="15" class="empty">暂无库存物资，请通过「入库管理 · 入库登记」或「数据导入」添加</td></tr>'; }
+    if(!view.length){ body.innerHTML='<tr><td colspan="15" class="empty">暂无库存物资，请通过「入库管理 · 入库登记」或「数据导入」添加</td></tr>'; }
     checkTableOverflow();
   }
   document.querySelectorAll('#invChips .chip').forEach(ch=>ch.addEventListener('click',()=>{
@@ -2307,7 +2321,7 @@
   // ---- 盘点管理 ----
   let checkItems=items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
   function renderCheck(){
-    const body=document.getElementById('checkBody');
+    const body=document.getElementById('checkBody'); if(!body) return; // 防御：盘点页尚未挂载时不应整段抛错
     body.innerHTML=checkItems.map((i,idx)=>{
       const m=safeMeta(i.c);
       const real=(i.real!==undefined?i.real:i.sys);
@@ -2716,7 +2730,7 @@
     aoa.push(['盘点类型',type],['盘点范围',scope],['牵头人（仓库）',lead],['监盘人（财务）',watch],['计划盘点日期',date],['备注',note||'—']);
     aoa.push([]);
     aoa.push(['序号','物资名称','分类','单位','系统库存','实盘数量（请手动填写）','差异','状态']);
-    checkItems.forEach((it,idx)=>{ const m=catMeta[it.c]; aoa.push([idx+1, it.n, m.t, it.u, it.sys, '', '待核', '待核']); });
+    checkItems.forEach((it,idx)=>{ const m=safeMeta(it.c); aoa.push([idx+1, it.n, m.t, it.u, it.sys, '', '待核', '待核']); }); // 未知分类兜底：否则盘点单导出整份失败
     exportXLSX(aoa,'盘点单_线下核账_'+date+'.xlsx',{headerAt:8,titleMerge:true});
     toast('已导出线下盘点单','ok','实盘列已留空，可打印后手动核账');
   }
@@ -2778,6 +2792,9 @@
       const msg=document.getElementById('checkDownMsg'); if(msg) msg.textContent= archived?'已保存至最近盘点记录':'本单此前已保存';
       recomputeStocks(); // 盘点修正已冻结期初，重算后 q 与实盘完全一致
       renderCheckKpi(); renderInv('all'); renderWarranty(); wmsSave();
+      // 盘点回写直接改了全库现存量：仪表盘（库存总量/预警）与统计报表（分类金额）若不刷新，
+      // 会出现「库存表已修正、仪表盘仍是盘前数字」的跨页签口径不一致
+      renderDashboard(); renderReports();
     }catch(err){ console.error('saveCheckConfirm 保存异常:', err); }
     // 无论保存是否成功，均关闭窗口并隐藏录入区（满足「确认保存后自动收起」）
     document.getElementById('saveCheckModal').classList.remove('show');
@@ -3159,11 +3176,22 @@
     invalidateFlowIndex(); // 流水已变更，索引必须重建后再重算
     recomputeStocks(); // 统一重算，确保 q 与 initQty/流水一致（q=期初+入-出=期末）
     document.querySelectorAll('#invChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.cat==='all'));
+    // 导入是全库级变更，必须让所有下游模块同步换血，否则会出现「提示导入成功，但界面看不到数据」的假失败：
+    // ① 清空库存页 / 数据页搜索词——旧筛选条件会把刚导入的行挡在视图外
+    // ② 重建盘点明细——checkItems 是启动时的库存快照，不重建则新物资进不了盘点
+    // ③ 库存表 + 数据页 + 仪表盘 + 质保预警 + 统计报表全量联动，保证各处口径一致
+    const _isEl=document.getElementById('invSearch'), _dsEl=document.getElementById('dataSearch');
+    if(_isEl) _isEl.value='';
+    if(_dsEl) _dsEl.value='';
+    checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
     await nextTick();
     renderInv('all');
+    renderDataTables();
+    renderWarranty();
     const flowMsg=useDetail?`，并生成入库 ${inN} 笔、出库 ${outN} 笔历史流水`:'';
     toast('批量导入完成','ok',`已并入库存 ${added+updated} 条物资${useDetail?`、流水 ${inN+outN} 笔`:''}`);
-    wmsSave();
+    wmsSave(); // 先持久化：落库绝不能因下游图表刷新异常而中断（此前把联动放在 wmsSave 之前，图表桩抛错会吞掉保存）
+    try{ renderDashboard(); renderReports(); }catch(e){ console.warn('导入后图表刷新失败', e); }
     const _ir=document.getElementById('importResult'); if(_ir) _ir.style.display='none';
     const _fi=document.getElementById('fileInput'); if(_fi) _fi.value='';
   }
@@ -3285,13 +3313,13 @@
     const dMatch=(r,p)=>String(r.date||'')===p;
     return { range:'month', title:'本月出入库趋势对比', labels:days.map(d=>d.label), inbound:sumByPeriod(inboundRecords,days,'qty',dMatch), outbound:sumByPeriod(outboundRecords,days,'qty',dMatch) };
   }
-  function buildCatData(){ const total=items.reduce((s,i)=>s+(+i.q||0),0)||1; const list=Object.keys(catMeta).map(k=>{ const q=items.filter(i=>i.c===k).reduce((s,i)=>s+(+i.q||0),0); return {key:k,label:catMeta[k].t,q,pct:Math.round(q/total*100),color:catColor(k)}; }).filter(x=>x.q>0); return {total,list}; }
+  function buildCatData(){ const total=items.reduce((s,i)=>s+(+i.q||0),0)||1; const list=allCatKeys().map(k=>{ const q=items.filter(i=>i.c===k).reduce((s,i)=>s+(+i.q||0),0); return {key:k,label:safeMeta(k).t,q,pct:Math.round(q/total*100),color:catColor(k)}; }).filter(x=>x.q>0); return {total,list}; }
 
   function renderCatLegend(){
     const el=document.getElementById('catLegend'); if(!el) return;
     const data=buildCatData();
     if(!data.list.length){ el.innerHTML='<div class="li" style="justify-content:center"><span class="ln" style="color:var(--ink-3)">暂无库存分类数据</span></div>'; return; }
-    el.innerHTML=data.list.map(x=>`<div class="li"><span class="sw" style="background:${catMeta[x.key].col}"></span><span class="ln">${x.label}</span><span class="lq">${fmtNum(x.q)} 件</span><span class="pct">${x.pct}%</span></div>`).join('');
+    el.innerHTML=data.list.map(x=>`<div class="li"><span class="sw" style="background:${safeMeta(x.key).col}"></span><span class="ln">${escHtml(x.label)}</span><span class="lq">${fmtNum(x.q)} 件</span><span class="pct">${x.pct}%</span></div>`).join('');
   }
   function renderRecentIn(){
     const list=inboundRecords.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
@@ -3349,8 +3377,8 @@
     const inByMonth=monthKeys.map(m=>inY.filter(r=>String(r.date).startsWith(m)).reduce((s,r)=>s+(+r.qty||0),0));
     const outByMonth=monthKeys.map(m=>outY.filter(r=>String(r.date).startsWith(m)).reduce((s,r)=>s+(+r.qty||0),0));
     const monthRows=monthKeys.map((m,i)=>`<tr><td>${monthLabel(m)}</td><td class="num">${fmtNum(inByMonth[i])}</td><td class="num">${fmtNum(outByMonth[i])}</td><td class="num ${inByMonth[i]-outByMonth[i]>=0?'':'down'}">${(inByMonth[i]-outByMonth[i])>=0?'+':''}${fmtNum(inByMonth[i]-outByMonth[i])}</td></tr>`).join('');
-    const catRows=Object.keys(catMeta).map(k=>{
-      const m=catMeta[k];
+    const catRows=allCatKeys().map(k=>{ // 含未知分类，避免报表分类汇总漏算
+      const m=safeMeta(k);
       const q=items.filter(i=>i.c===k).reduce((s,i)=>s+(+i.q||0),0);
       const iQ=inY.filter(r=>r.category===k).reduce((s,r)=>s+(+r.qty||0),0);
       const oQ=outY.filter(r=>r.category===k).reduce((s,r)=>s+(+r.qty||0),0);
@@ -3452,8 +3480,9 @@
   function updateDashboardCharts(){
     if(typeof window.Chart==='undefined' || !charts.dashboard) return;
     const td=buildTrendData(trendRange); const cd=buildCatData();
-    if(charts.dashboard.trend){ charts.dashboard.trend.data.labels=td.labels; charts.dashboard.trend.data.datasets[0].data=td.inbound; charts.dashboard.trend.data.datasets[1].data=td.outbound; charts.dashboard.trend.update(); }
-    if(charts.dashboard.cat){ charts.dashboard.cat.data.labels=cd.list.map(x=>x.label); charts.dashboard.cat.data.datasets[0].data=cd.list.map(x=>x.q); charts.dashboard.cat.data.datasets[0].backgroundColor=cd.list.map(x=>x.color); charts.dashboard.cat.update(); }
+    // 防御：图表实例可能尚未完整初始化（或测试桩仅有 destroy/resize），无 data 时跳过更新而非抛错
+    if(charts.dashboard.trend && charts.dashboard.trend.data){ charts.dashboard.trend.data.labels=td.labels; charts.dashboard.trend.data.datasets[0].data=td.inbound; charts.dashboard.trend.data.datasets[1].data=td.outbound; charts.dashboard.trend.update(); }
+    if(charts.dashboard.cat && charts.dashboard.cat.data){ charts.dashboard.cat.data.labels=cd.list.map(x=>x.label); charts.dashboard.cat.data.datasets[0].data=cd.list.map(x=>x.q); charts.dashboard.cat.data.datasets[0].backgroundColor=cd.list.map(x=>x.color); charts.dashboard.cat.update(); }
     const sub=document.getElementById('trendSub'); if(sub) sub.textContent=trendSubText(trendRange);
   }
   function setTrendRange(range){
@@ -3487,12 +3516,13 @@
     const monthOut=outboundRecords.filter(filter);
     const deptMap={}; monthOut.forEach(r=>{ deptMap[r.dept||'未分类']=(deptMap[r.dept||'未分类']||0)+(+r.qty||0); });
     const deptLabels=Object.keys(deptMap), deptData=Object.values(deptMap);
-    if(charts.reports.dept){ charts.reports.dept.data.labels=deptLabels.length?deptLabels:['暂无数据']; charts.reports.dept.data.datasets[0].data=deptLabels.length?deptData:[0]; charts.reports.dept.update(); }
+    if(charts.reports.dept && charts.reports.dept.data){ charts.reports.dept.data.labels=deptLabels.length?deptLabels:['暂无数据']; charts.reports.dept.data.datasets[0].data=deptLabels.length?deptData:[0]; charts.reports.dept.update(); }
     const priceMap={}; inboundRecords.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(r=>{ const k=r.name+'|'+r.category; if(r.price!=null) priceMap[k]=+r.price; });
-    const catVal=Object.keys(catMeta).map(k=> Math.round(items.filter(i=>i.c===k).reduce((s,i)=>s+i.q*(priceMap[i.n+'|'+i.c]||0),0))/10000 );
-    if(charts.reports.value){ charts.reports.value.data.labels=Object.keys(catMeta).map(k=>catMeta[k].t); charts.reports.value.data.datasets[0].data=catVal; charts.reports.value.update(); }
-    const catRank=Object.keys(catMeta).map(k=>({k,qty:monthOut.filter(r=>r.category===k).reduce((s,r)=>s+(+r.qty||0),0)})).sort((a,b)=>b.qty-a.qty);
-    if(charts.reports.rank){ charts.reports.rank.data.labels=catRank.map(x=>catMeta[x.k].t); charts.reports.rank.data.datasets[0].data=catRank.map(x=>x.qty); charts.reports.rank.update(); }
+    const _catKeys=allCatKeys(); // 含数据中实际存在的未知分类，避免分类金额/领用排名漏算
+    const catVal=_catKeys.map(k=> Math.round(items.filter(i=>i.c===k).reduce((s,i)=>s+i.q*(priceMap[i.n+'|'+i.c]||0),0))/10000 );
+    if(charts.reports.value && charts.reports.value.data){ charts.reports.value.data.labels=_catKeys.map(k=>safeMeta(k).t); charts.reports.value.data.datasets[0].data=catVal; charts.reports.value.update(); }
+    const catRank=_catKeys.map(k=>({k,qty:monthOut.filter(r=>r.category===k).reduce((s,r)=>s+(+r.qty||0),0)})).sort((a,b)=>b.qty-a.qty);
+    if(charts.reports.rank && charts.reports.rank.data){ charts.reports.rank.data.labels=catRank.map(x=>safeMeta(x.k).t); charts.reports.rank.data.datasets[0].data=catRank.map(x=>x.qty); charts.reports.rank.update(); }
     renderReportsDetailTables();
   }
   function renderDashboard(){
@@ -3665,6 +3695,17 @@
   renderInv('all');
   function catTag(c){const m=catMeta[c]||{cls:'office',t:'未分类',col:'var(--c-office)'};return `<span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${escHtml(m.t)}</span>`;}
   function safeMeta(c){ return catMeta[c]||{cls:'office',t:'未分类',col:'var(--c-office)',icon:'📦'}; } // 未知分类兜底：防御异常数据导致表格整体崩溃
+  // 口径一致：内置分类 + 数据中实际存在的未知分类。
+  // 只遍历 Object.keys(catMeta) 会让未知分类的物资/流水在分类图、报表分类汇总里被静默漏算，
+  // 出现「分类合计 ≠ 库存总量」的对不上账问题，故所有分类聚合统一走这里取键。
+  function allCatKeys(){
+    const extra=new Set();
+    const add=v=>{ if(v && !catMeta[v]) extra.add(v); };
+    (items||[]).forEach(i=>add(i&&i.c));
+    (inboundRecords||[]).forEach(r=>add(r&&r.category));
+    (outboundRecords||[]).forEach(r=>add(r&&r.category));
+    return Object.keys(catMeta).concat(Array.from(extra));
+  }
   function statusCls(s){ s=s||''; if(s.indexOf('待')>=0)return 'low'; if(s.indexOf('驳')>=0||s.indexOf('取')>=0)return 'out'; return 'ok'; } // 防御缺字段历史/导入数据
   let activeDataTab='in';
   function renderData(type,filter){
@@ -3921,7 +3962,7 @@
   function recToRows(type,rec){
     const cols=type==='in'?inCols:outCols;
     const header=cols.map(c=>c.t);
-    const body=cols.map(c=> c.k==='category'? catMeta[rec.category].t : (c.k==='qty'? rec.qty : rec[c.k]));
+    const body=cols.map(c=> c.k==='category'? safeMeta(rec.category).t : (c.k==='qty'? rec.qty : rec[c.k])); // 未知分类兜底：否则单条记录导出失败
     return [header,body];
   }
   function downloadRec(type,idx){
@@ -3935,9 +3976,12 @@
     const all=type==='in'?inboundRecords:outboundRecords;
     const cols=type==='in'?inCols:outCols;
     const header=cols.map(c=>c.t);
-    const body=all.map(r=>cols.map(c=> c.k==='category'? catMeta[r.category].t : (c.k==='qty'? r.qty+' '+(r.unit||'') : r[c.k])));
-    exportXLSX([header].concat(body), (type==='in'?'入库记录':'出库记录')+'_全部.xlsx');
-    toast('正在下载记录','ok','已导出当前筛选的全部记录');
+    // 与列表所见即所得：应用「数据管理」页当前搜索词（按钮文案承诺的是「当前筛选」）
+    const f=(document.getElementById('dataSearch').value||'').trim().toLowerCase();
+    const src=f? all.filter(r=>Object.values(r).join(' ').toLowerCase().includes(f)) : all;
+    const body=src.map(r=>cols.map(c=> c.k==='category'? safeMeta(r.category).t : (c.k==='qty'? r.qty+' '+(r.unit||'') : r[c.k])));
+    exportXLSX([header].concat(body), (type==='in'?'入库记录':'出库记录')+(f?'_筛选结果':'_全部')+'.xlsx');
+    toast('正在下载记录','ok', f? `已导出筛选结果 ${src.length} 条（全部 ${all.length} 条）` : `已导出全部 ${all.length} 条记录`);
   }
   let currentRec=null;
   let currentInvIdx=-1;
@@ -4008,7 +4052,7 @@
   function openInv(idx){
     const i=items[idx]; if(!i) return;
     currentInvIdx=idx;
-    const m=catMeta[i.c]; const[st,txt]=statusOf(i.q,i.safe);
+    const m=safeMeta(i.c); const[st,txt]=statusOf(i.q,i.safe); // 未知分类兜底：否则点击该行详情弹窗直接抛错打不开
     const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
     // ===== 第一部分：物品档案信息 =====
     const estAmount = i.price && +i.price>0 && +i.q>0 ? (+i.price * +i.q).toFixed(2) : null;
@@ -4249,11 +4293,15 @@
     outboundRecords.length=0; outboundRecords.push(...keepOut);
     lastCarryoverYear=years[years.length-1]||(cur-1);
     recomputeStocks(); // 现存数值应与原 q 完全一致，不发生跳变
+    checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q})); // 盘点明细随结转后的期初口径同步
     checkPlansQuarter.length=0; checkPlansYear.length=0; seedCheckPlans(); // 新一年清空计划，重新生成
     wmsSave();
     if(activeDataTab==='archive') renderArchive(); else renderDataTables();
     renderInv('all'); renderWarranty(); renderRecentOut(); updateDataNote();
     renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCarryoverCard();
+    // 结转会清空历史流水，仪表盘 KPI / 最近动态 / 统计报表都基于流水聚合，必须一并刷新，
+    // 否则切到仪表盘或报表页会看到结转前的旧数字（各页签口径不一致）
+    renderDashboard(); renderReports();
     toast('年度结转完成','ok',`已按年度归档 ${inArch.length+outArch.length} 笔历史流水（${years.length>1?years[0]+'–'+years[years.length-1]:years[0]} 年），年末库存已冻结为本年期初`);
   }
   function renderArchive(){
@@ -4510,11 +4558,15 @@
     updateDataNote();
     if(exist){ if(brand) exist.b=brand; if(spec!=='—') exist.s=spec; if(safe) exist.safe=safe; if(warranty&&!exist.warranty){exist.warranty=warranty; exist.inDate=date; exist.expire=addMonths(date,warranty);} exist.updatedAt=Date.now(); }
     else { const ni={c:cat,n:name,b:brand,s:spec,u:unit,safe:safe||catDefault[cat]||10,initQty:0,warranty:warranty||undefined,inDate:date,updatedAt:Date.now()}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
-    const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all');
+    // 顺序修正：必须先重算库存再渲染表格。原实现 renderInv() 在 recomputeStocks() 之前，
+    // 导致入库成功后库存表显示的仍是入库前的旧数量（要等到切页或搜索才刷新），是典型的协同断链
     recomputeStocks();
+    const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all');
     renderDataTables(); renderWarranty(); wmsSave();
+    // 入库会改变库存总量/预警/最近动态/报表口径，仪表盘与统计报表必须一并刷新
+    renderDashboard(); renderReports();
     const rl=document.querySelector('#view-inbound .rec-list');
-    if(rl){ rl.insertAdjacentHTML('afterbegin', `<div class="rec"><div class="ri">${ICON[cat]}</div><div><div class="rt">${escHtml(name)} ×${qty} ${escHtml(unit)}</div><div class="rs">${catMeta[cat].t} · ${escHtml(supplier||'—')} · ${escHtml(handler)}</div></div><div class="rq in">+${qty}</div></div>`); }
+    if(rl){ rl.insertAdjacentHTML('afterbegin', `<div class="rec"><div class="ri">${ICON[cat]||'📦'}</div><div><div class="rt">${escHtml(name)} ×${qty} ${escHtml(unit)}</div><div class="rs">${safeMeta(cat).t} · ${escHtml(supplier||'—')} · ${escHtml(handler)}</div></div><div class="rq in">+${qty}</div></div>`); }
     resetInbound();
     toast('入库成功','ok',`${name} ×${qty}${unit} 已登记并入库存`);
   });
@@ -4570,7 +4622,7 @@
   }
   function applyInNameSuggest(it){
     if(!it) return;
-    document.getElementById('inCat').value=catMeta[it.c].t;
+    document.getElementById('inCat').value=safeMeta(it.c).t; // 未知分类兜底：否则点选联想项直接抛错、表单填不进去
     document.getElementById('inName').value=it.n;
     const b=document.getElementById('inBrand'); if(b) b.value=it.b||'';
     const s=document.getElementById('inSpec'); if(s) s.value=it.s||'';
@@ -4639,7 +4691,7 @@
   }
   function applyOutNameSuggest(it){
     if(!it) return;
-    document.getElementById('outCat').value=catMeta[it.c].t;
+    document.getElementById('outCat').value=safeMeta(it.c).t; // 未知分类兜底：同入库联想
     document.getElementById('outName').value=it.n;
     const _sp=document.getElementById('outSpec'); if(_sp) _sp.value=it.s||'';
     const _un=document.getElementById('outUnit'); if(_un) _un.value=it.u||'件';
@@ -4692,9 +4744,10 @@
     outboundRecords.unshift(rec);
     const exist=_it;
     if(!exist){ items.push({c:cat,n:name,s:spec||'—',u:unit,safe:catDefault[cat]||10,initQty:0,updatedAt:Date.now()}); }
-    renderRecentOut();
     recomputeStocks();
     renderDataTables(); renderInv('all'); wmsSave();
+    // 出库会改变库存总量/预警/最近动态/报表口径，与入库保持同一套联动口径
+    renderDashboard(); renderReports();
     resetOutbound();
     toast('出库成功','ok',`${applicant} 的 ${name} ×${qty} 已出库并更新库存`);
   });
@@ -4705,9 +4758,9 @@
     const ac=document.querySelector('#invChips .chip.active'); const cat=ac?ac.dataset.cat:'all';
     const list=cat==='all'?items:items.filter(i=>i.c===cat);
     const header=['讯号','物资名称','分类','品牌','规格','单位','库存数量','安全库存','入库单号（申购单号）','入库累计','出库单号（审批编号）','出库累计','质保期(月)','到期日','状态'];
-    const body=list.map((i,idx)=>{ const m=catMeta[i.c]; const st=statusOf(i.q,i.safe)[1]; const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP';
+    const body=list.map((i,idx)=>{ const m=safeMeta(i.c); const st=statusOf(i.q,i.safe)[1]; const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; // 未知分类兜底：否则整份库存导出抛错失败
       return [code+'-'+String(items.indexOf(i)+1).padStart(3,'0'), i.n, m.t, i.b||'—', i.s, i.u, i.q+' '+i.u, i.safe+' '+i.u, latestInNo(i), inTotalOf(i.n,i.c)+' '+i.u, latestOutNo(i), outTotalOf(i.n,i.c)+' '+i.u, i.warranty?i.warranty+' 个月':'—', i.expire||'—', st]; });
-    exportXLSX([header].concat(body), '库存管理_'+(cat==='all'?'全部':catMeta[cat].t)+'.xlsx');
+    exportXLSX([header].concat(body), '库存管理_'+(cat==='all'?'全部':safeMeta(cat).t)+'.xlsx');
     toast('已导出库存','ok','库存清单已生成 .xlsx');
   }
   let invEditIdx=-1;
@@ -4846,6 +4899,8 @@
     closeRecEdit();
     renderDataTables(); renderInv('all'); renderRecentOut(); wmsSave();
     updateDataNote();
+    // 改数量会改变库存与聚合口径，仪表盘（KPI/预警/最近动态）与统计报表同步刷新，避免跨页签数字不一致
+    renderDashboard(); renderReports();
     toast('记录已更新','ok','修改后的记录已保存');
   }
   function closeRecEdit(){ document.getElementById('recEditModal').classList.remove('show'); }
@@ -4858,6 +4913,7 @@
     adjustInventory(rec.name,rec.category,rec.qty, type==='in'?-1:1); // 先删记录再统一重算，确保库存与流水同步
     renderDataTables(); renderInv('all'); renderRecentOut(); wmsSave();
     updateDataNote();
+    renderDashboard(); renderReports(); // 删除记录后仪表盘 KPI / 预警 / 报表同步刷新，防止残留已删数据
     closeRecEdit();
     toast('记录已删除','ok','已移除该条记录');
   }
@@ -4950,6 +5006,15 @@
     seedCheckPlans(); normalizeCheckPlans(); wmsSave();
     renderInv('all'); renderDataTables(); renderWarranty(); renderRecentOut();
     updateDataNote();
+    // 备份还原是整库换血（库存/流水/盘点/归档一次性替换），仅刷库存与数据页会让
+    // 仪表盘 KPI、统计报表、盘点计划/KPI、结转卡片、归档年表停留在还原前的旧数据。
+    // 统一在这里做一次全量联动刷新，保证「还原后任意页签看到的都是新数据」。
+    try{
+      if(activeDataTab==='archive') renderArchive();
+      renderDashboard(); renderReports();
+      renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCheckTimeline(); renderCarryoverCard();
+      renderCheck();
+    }catch(e){ console.warn('备份还原后刷新界面失败', e); }
     return true;
   }
   function restoreAutoBackup(){
@@ -5178,8 +5243,12 @@
   // ============ 安全库存阈值（分类默认 + 单品单独预警） ============
   const SAFE_KEY='wms_safe';
   let catDefault={office:25,tobacco:15,gift:20};
-  let safeOverrides={};
+  let safeOverrides={}; // 键为稳定业务主键 safeKey(it)，不再使用数组下标
   let safeCat='office';
+  // 稳定主键：以「归一化物资名|分类」为键。
+  // 原实现以数组下标为键，物资列表一旦增删或重排（批量导入、删除、云同步合并、备份还原），
+  // 个性化阈值会整体错位并套到别的物资上——属于静默的数据错配，且不会报错，极难察觉。
+  function safeKey(it){ return normName(it&&it.n)+'|'+((it&&it.c)||''); }
   function loadSafe(){
     try{
       const raw=localStorage.getItem(SAFE_KEY);
@@ -5189,14 +5258,33 @@
         if(o && o.overrides) safeOverrides=o.overrides||{};
       }
     }catch(e){}
-    items.forEach((it,idx)=>{ it.safe=effSafe(it,idx); });
+    migrateSafeOverrides();
+    items.forEach(it=>{ it.safe=effSafe(it); });
   }
-  function effSafe(it,idx){
-    const ov=safeOverrides[idx];
+  // 一次性迁移：把历史上以数组下标为键的阈值，按当时下标对应物资换算为稳定主键后回写
+  function migrateSafeOverrides(){
+    const keys=Object.keys(safeOverrides||{});
+    if(!keys.length) return;
+    if(!keys.some(k=>/^\d+$/.test(k))) return; // 已是业务主键，无需迁移
+    const migrated={};
+    keys.forEach(k=>{
+      const v=safeOverrides[k];
+      if(v===undefined||v==='') return;
+      const it=items[+k]; if(!it) return; // 下标已失效（对应物资已被删除）→ 安全丢弃
+      migrated[safeKey(it)]=v;
+    });
+    safeOverrides=migrated;
+    try{
+      const raw=localStorage.getItem(SAFE_KEY); const o=raw?JSON.parse(raw):{};
+      localStorage.setItem(SAFE_KEY, JSON.stringify(Object.assign({},o,{overrides:safeOverrides})));
+    }catch(e){}
+  }
+  function effSafe(it){
+    const ov=safeOverrides[safeKey(it)];
     return (ov!==undefined && ov!=='' && !isNaN(+ov)) ? (+ov) : (catDefault[it.c]||0);
   }
-  function isOverridden(idx){
-    const ov=safeOverrides[idx];
+  function isOverridden(it){
+    const ov=safeOverrides[safeKey(it)];
     return (ov!==undefined && ov!=='' && !isNaN(+ov));
   }
   // 单独预警管理：默认收起，摘要 + 展开/收起按钮
@@ -5223,28 +5311,28 @@
     if(!body) return;
     const list=items.filter(i=>i.c===safeCat);
     body.innerHTML=list.map(i=>{
-      const idx=items.indexOf(i);
+      const k=safeKey(i);
       const def=catDefault[i.c];
       const eff=i.safe;
       const[st,txt]=statusOf(i.q,eff);
-      const overridden=isOverridden(idx);
-      return `<tr data-idx="${idx}">
+      const overridden=isOverridden(i);
+      return `<tr data-key="${escHtml(k)}">
         <td title="${escHtml(i.n)}">${escHtml(i.n)}</td>
         <td class="num">${i.q}${escHtml(i.u)}</td>
         <td class="num">${def}${escHtml(i.u)}</td>
-        <td><input class="real-input safe-input" type="number" min="0" value="${escHtml(overridden?safeOverrides[idx]:'')}" placeholder="${escHtml(def)}" data-idx="${idx}" /></td>
+        <td><input class="real-input safe-input" type="number" min="0" value="${escHtml(overridden?safeOverrides[k]:'')}" placeholder="${escHtml(def)}" data-key="${escHtml(k)}" /></td>
         <td><span class="status ${st}">${txt}</span>${overridden?'<span class="ov-tag">单独</span>':''}</td>
       </tr>`;
     }).join('');
     body.querySelectorAll('.safe-input').forEach(inp=>{
       inp.addEventListener('input',()=>{
-        const idx=+inp.dataset.idx;
-        const it=items[idx];
-        const def=catDefault[it.c];
+        const k=inp.dataset.key;
+        const it=items.find(x=>safeKey(x)===k);
+        if(!it) return; // 该物资已被删除/改名，忽略悬空输入，避免写入孤儿阈值
         const v=inp.value.trim();
-        safeOverrides[idx]=(v==='')?'':v;
+        safeOverrides[k]=(v==='')?'':v;
         renderSafeSummary();
-        const eff=effSafe(it,idx);
+        const eff=effSafe(it);
         const[st,txt]=statusOf(it.q,eff);
         const td=inp.closest('tr').lastElementChild;
         td.innerHTML=`<span class="status ${st}">${txt}</span>`+(v!==''?'<span class="ov-tag">单独</span>':'');
@@ -5261,10 +5349,13 @@
       catDefault.office=Math.max(0,+document.getElementById('def-office').value||0);
       catDefault.tobacco=Math.max(0,+document.getElementById('def-tobacco').value||0);
       catDefault.gift=Math.max(0,+document.getElementById('def-gift').value||0);
-      items.forEach((it,idx)=>{ it.safe=effSafe(it,idx); });
+      items.forEach(it=>{ it.safe=effSafe(it); });
       try{ localStorage.setItem(SAFE_KEY,JSON.stringify({defs:catDefault,overrides:safeOverrides})); }catch(e){}
+      wmsSave(); // 阈值已写入 items[].safe，必须落库，否则刷新后会回退到旧阈值
       const activeChip=document.querySelector('#invChips .chip.active');
       renderInv(activeChip ? activeChip.dataset.cat : 'all');
+      // 阈值变动直接改变预警数量，仪表盘 KPI 与统计报表同步刷新，避免跨页签口径不一致
+      renderDashboard(); renderReports();
       // 保存后自动收起编辑器 + 更新摘要
       safeTableHidden=true; applySafeTableVisibility(); renderSafeSummary();
       const m=document.getElementById('safeMsg'); if(m){ m.textContent='已保存 · 共 '+items.length+' 项物资阈值已更新'; }
@@ -5457,7 +5548,7 @@
     body.innerHTML=remaining.map(it=>{
       const sug=Math.max(0, it.safe-it.q); totalQty+=sug;
       const st=it.st==='out'?'<span class="status out">缺货</span>':'<span class="status low">偏低</span>';
-      const m=catMeta[it.c];
+      const m=safeMeta(it.c); // 未知分类兜底：否则预警批量处理弹窗整窗白屏
       return '<tr>'
         +'<td>'+escHtml(it.n)+'</td>'
         +'<td><span class="tag '+m.cls+'"><span class="d" style="background:'+m.col+'"></span>'+m.t+'</span></td>'
