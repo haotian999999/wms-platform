@@ -4450,7 +4450,10 @@
     const noPrice=items.filter(i=>!(+i.price>0) && !(priceOf[i.n+'|'+i.c]>0)).length;
     const cur=new Date().getFullYear();
     const checkCount=checkRecords.filter(r=>yearOf(r)<cur).length;
-    return {noPrice, checkCount};
+    // 日期完整性：缺少可识别年份的出入库流水（yearOf=NaN）在结转时会被保留为本期数据而非删除；
+    // 此处统计以便 UI 预警，避免「沉默丢数」
+    const noDate=inboundRecords.concat(outboundRecords).filter(r=>isNaN(yearOf(r))).length;
+    return {noPrice, checkCount, noDate};
   }
   function renderCarryoverCard(){
     const el=document.getElementById('carryoverPreview'); if(!el) return;
@@ -4469,7 +4472,8 @@
         '</div>'+
         (pf.noPrice? '<div class="kp-status warn"><span>完整性预检</span><b>⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
           : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
-        (pf.checkCount>0? '<div class="kp-status ok"><span>盘点联动</span><b>'+pf.checkCount+' 条已完成年度盘点记录将随结转一并封存（盘盈/盘亏/相符 + 净差异）</b></div>' : '');
+        (pf.checkCount>0? '<div class="kp-status ok"><span>盘点联动</span><b>'+pf.checkCount+' 条已完成年度盘点记录将随结转一并封存（盘盈/盘亏/相符 + 净差异）</b></div>' : '')+
+        (pf.noDate? '<div class="kp-status warn"><span>日期完整性</span><b>⚠ '+pf.noDate+' 条出入库流水缺少可识别年份，结转时保留为本期数据（不归档也不删除）；建议先补全日期</b></div>' : '');
       if(btn) btn.disabled=true; if(msg) msg.textContent=done?'已无需结转':'已是最新年度';
       updateCarryoverBadge();
       return;
@@ -4483,7 +4487,8 @@
     '<div class="kp-status ok"><span>财务口径</span><b>期初 + 入库 − 出库 = 期末 · 逐年勾稽平衡；本年（'+s.cur+' 年）数据保留为本期流水，不受影响</b></div>'+
     (pf.noPrice? '<div class="kp-status warn"><span>完整性预检</span><b>⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
       : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
-    (pf.checkCount>0? '<div class="kp-status ok"><span>盘点联动</span><b>'+pf.checkCount+' 条已完成年度盘点记录将随结转一并封存（盘盈/盘亏/相符 + 净差异）</b></div>' : '');
+    (pf.checkCount>0? '<div class="kp-status ok"><span>盘点联动</span><b>'+pf.checkCount+' 条已完成年度盘点记录将随结转一并封存（盘盈/盘亏/相符 + 净差异）</b></div>' : '')+
+    (pf.noDate? '<div class="kp-status warn"><span>日期完整性</span><b>⚠ '+pf.noDate+' 条出入库流水缺少可识别年份，结转时保留为本期数据（不归档也不删除）；建议先补全日期</b></div>' : '');
     if(btn) btn.disabled=false; if(msg) msg.textContent='';
     updateCarryoverBadge();
   }
@@ -4557,8 +4562,10 @@
       });
     });
     // 先筛选「本年及以后」留存，再清空回填，避免清空后筛选得到空数组
-    const keepIn=inboundRecords.filter(r=>yearOf(r)>=cur);
-    const keepOut=outboundRecords.filter(r=>yearOf(r)>=cur);
+    // 关键防丢数：yearOf=NaN 的记录既不能判定为「历史年度」(yearOf<cur 为 false) 也不能判定为「本年」(yearOf>=cur 为 false)，
+    // 若仅用 yearOf(r)>=cur 会被两侧同时排除→在清空回填时静默销毁。故 NaN 年份一律保留为本期数据（不归档、不删除）
+    const keepIn=inboundRecords.filter(r=>{ const y=yearOf(r); return isNaN(y)||y>=cur; });
+    const keepOut=outboundRecords.filter(r=>{ const y=yearOf(r); return isNaN(y)||y>=cur; });
     inboundRecords.length=0; inboundRecords.push(...keepIn);
     outboundRecords.length=0; outboundRecords.push(...keepOut);
     lastCarryoverYear=years[years.length-1]||(cur-1);
