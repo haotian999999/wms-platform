@@ -3063,52 +3063,77 @@
     };
     reader.readAsArrayBuffer(file);
   }
-  // 解析「出入库明细表」：主行建物资上下文、分号子行=真实流水、结余行=汇总(跳过)
-  // 主行入库数量=上年结余=期初，与库存总表期初重复，不生成记录；仅子行生成入库/出库流水
+  // 解析「出入库明细表 / 出库明细表」——兼容两类结构：
+  //  A. 2025 风格：主行(讯号/序号+名称)建物资上下文，分号子行或续行=真实流水，结余行=汇总(跳过)
+  //  B. 2024 烟酒茶「出库明细表」：主行带真实入库日期+入库数量=本年入库；
+  //     续行(空名称、带出库数量+出库日期)=本年出库；期初结转("2023年结转")行不生成流水
+  //  —— 深度修复「历史归档·识别年份归档有误」：
+  //  ① 名称列兼容「名称」(单字列头)，否则 2024 烟酒茶明细表 name 列永远匹配不到→cur 为空→0 条流水
+  //  ② 出库流水日期取「出库日期」而非「入库日期」(2024 烟酒茶出库日期在独立列，入库日期多为空)，
+  //     否则出库流水日期为空→yearOf=NaN→被结转过滤→2024 年度归档缺失
+  //  ③ 期初结转文本("2023年结转"/"2024年结转"/"上年结余")识别为余额而非本年流水，
+  //     避免生成孤立的 2023 年归档或重复计数
   function parseDetail(rows,fileName){
     let hdrIdx=-1;
     for(let i=0;i<Math.min(rows.length,20);i++){
       const r=rows[i]||[]; const txt=r.map(c=>c==null?'':String(c)).join(' ');
-      if(/申购单号/.test(txt)&&/入库数量/.test(txt)&&/出库数量/.test(txt)){ hdrIdx=i; break; }
+      // 宽松识别明细/流水表：含名称列 + (日期列 | 数量列 | 单号列) 即认作表头，
+      // 不再强制「申购单号+入库数量+出库数量」三者同现（2024 烟酒茶出库明细表缺申购单号仍应解析）
+      const hasName=/用品名称|物品名称|名称|物资名称|品名/.test(txt);
+      const hasDate=/入库日期|出库日期|日期/.test(txt);
+      const hasQty=/入库数量|出库数量|数量|结余/.test(txt);
+      const hasNo=/申购单号|入库单号|单号/.test(txt);
+      if(hasName&&(hasDate||hasQty||hasNo)){ hdrIdx=i; break; }
     }
     if(hdrIdx<0) return {count:0,records:[],samples:[]};
     const headers=(rows[hdrIdx]||[]).map(h=>h==null?'':String(h).trim());
-    const col=role=>{ const map={groupId:['讯号','序号'],subMark:['分号'],purchaseNo:['申购单号'],name:['用品名称','物品名称'],catSub:['类别'],brand:['品牌'],spec:['规格'],unit:['单位'],date:['日期'],opening:['上年结余数量'],inQty:['入库数量'],outQty:['出库数量'],operator:['经办人'],approvalNo:['审批编号'],balance:['库存数量','期末数量']};
+    const col=role=>{ const map={groupId:['讯号','序号','行号'],subMark:['分号','子号'],purchaseNo:['申购单号','采购单号','订单号'],inNo:['入库单号'],name:['用品名称','物品名称','名称','物资名称','品名'],catSub:['类别','类型','品类'],brand:['品牌','牌子'],spec:['规格','型号','规格/型号'],unit:['单位','计量单位'],inDate:['入库日期','入库时间','日期','入册日期'],outDate:['出库日期','出库时间','领用日期','发出日期'],opening:['期初数量','上年结余数量','期初','上年结余'],inQty:['入库数量','采购数量','进货数量','购入数量','入库'],outQty:['出库数量','发出数量','出库','领用数量'],operator:['经办人','采购经办人','领用人','操作人'],approvalNo:['审批编号','审批单号']};
       const kws=map[role]||[];
       for(let i=0;i<headers.length;i++){ if(kws.some(k=>headers[i]===k||headers[i].includes(k))) return i; }
       return -1; };
-    const C={groupId:col('groupId'),subMark:col('subMark'),purchaseNo:col('purchaseNo'),name:col('name'),catSub:col('catSub'),brand:col('brand'),spec:col('spec'),unit:col('unit'),date:col('date'),opening:col('opening'),inQty:col('inQty'),outQty:col('outQty'),operator:col('operator'),approvalNo:col('approvalNo'),balance:col('balance')};
+    const C={groupId:col('groupId'),subMark:col('subMark'),purchaseNo:col('purchaseNo'),inNo:col('inNo'),name:col('name'),catSub:col('catSub'),brand:col('brand'),spec:col('spec'),unit:col('unit'),inDate:col('inDate'),outDate:col('outDate'),opening:col('opening'),inQty:col('inQty'),outQty:col('outQty'),operator:col('operator'),approvalNo:col('approvalNo')};
     const cat=detectCatFromName(fileName)||'';
-    const toDate=v=>{ if(v==null) return ''; const s=String(v).trim(); const m=s.match(/(\d{4})-(\d{2})-(\d{2})/); if(m) return `${m[1]}-${m[2]}-${m[3]}`; const y=s.match(/(\d{4})/); if(y) return `${y[1]}-01-01`; return ''; };
+    // 期初结转类文本("2023年结转"/"2024年结转"/"上年结余")不是真实日期，应视作余额而非本年流水
+    const isCarryIn=v=>{ const s=String(v==null?'':v).trim(); return /结转|期初|上年|结余/.test(s) && !/^\d{4}-\d{2}-\d{2}/.test(s); };
+    const toDate=v=>{ if(v==null) return ''; if(v instanceof Date) return v.toISOString().slice(0,10); const s=String(v).trim(); const m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`; const y=s.match(/(\d{4})/); if(y) return `${y[1]}-01-01`; return ''; };
     const records=[]; let cur=null;
     for(const r of rows.slice(hdrIdx+1)){
       if(!r||!r.some(c=>c!=null&&String(c).trim()!=='')) continue;
       const gid=C.groupId>=0?r[C.groupId]:null;
-      const sub=C.subMark>=0?r[C.subMark]:null;
-      if(gid!=null&&/结余/.test(String(gid))) continue; // 结余汇总行跳过
-      const hasGid=gid!=null&&String(gid).trim()!==''&&!/回到顶部|最后一条/.test(String(gid));
-      const isSub=sub!=null&&/^\d+-\d+$/.test(String(sub).trim());
-      if(hasGid&&!isSub){ // 主行：建立物资上下文（不生成记录）
-        const nm=C.name>=0?r[C.name]:null;
-        if(nm!=null&&String(nm).trim()!==''){
-          const cs=C.catSub>=0&&r[C.catSub]!=null?String(r[C.catSub]).trim():'';
-          const sp=C.spec>=0&&r[C.spec]!=null?String(r[C.spec]).trim():'';
-          cur={name:sanitizeText(nm).trim(),brand:sanitizeText(C.brand>=0&&r[C.brand]!=null?String(r[C.brand]).trim():'—'),spec:[sanitizeText(cs),sanitizeText(sp)].filter(Boolean).join(' · '),unit:sanitizeText(C.unit>=0&&r[C.unit]!=null?String(r[C.unit]).trim():'件'),category:cat};
+      if(gid!=null&&/结余|合计|总计|小计|回到顶部|最后一条/.test(String(gid))) continue; // 汇总/导航行跳过
+      const nm=C.name>=0?r[C.name]:null;
+      const hasName=nm!=null&&String(nm).trim()!=='';
+      const inRaw=C.inDate>=0?r[C.inDate]:null;
+      const outRaw=C.outDate>=0?r[C.outDate]:(C.inDate>=0?inRaw:null);
+      const inV=C.inQty>=0?toNum(r[C.inQty]):NaN;
+      const outV=C.outQty>=0?toNum(r[C.outQty]):NaN;
+      if(hasName){
+        // 主行：建立物资上下文（沿用既有逻辑，覆盖 2025 讯号主行与 2024 烟酒茶名称主行）
+        const cs=C.catSub>=0&&r[C.catSub]!=null?String(r[C.catSub]).trim():'';
+        const sp=C.spec>=0&&r[C.spec]!=null?String(r[C.spec]).trim():'';
+        cur={name:sanitizeText(nm).trim(),brand:sanitizeText(C.brand>=0&&r[C.brand]!=null?String(r[C.brand]).trim():'—'),spec:[sanitizeText(cs),sanitizeText(sp)].filter(Boolean).join(' · '),unit:sanitizeText(C.unit>=0&&r[C.unit]!=null?String(r[C.unit]).trim():'件'),category:cat};
+        // 主行入库数量：仅当入库日期为真实日期(非期初结转)才记为本年入库——2025 主行入库数量=上年结余(结转)不记
+        if(!isNaN(inV)&&inV>0&&inRaw!=null&&!isCarryIn(inRaw)){
+          const date=toDate(inRaw);
+          if(date) records.push({type:'in',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:inV,date,operator:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',orderNo:C.purchaseNo>=0&&r[C.purchaseNo]!=null?sanitizeText(r[C.purchaseNo]).trim():'',category:cur.category,fprint:'in|'+cur.name+'|'+cur.category+'|'+date+'|'+inV+(C.purchaseNo>=0&&r[C.purchaseNo]!=null?sanitizeText(r[C.purchaseNo]).trim():'')});
+        }
+        // 主行出库数量（部分结构主行即带出库，如库存总表式）：同样要求真实出库日期
+        if(!isNaN(outV)&&outV>0&&outRaw!=null&&!isCarryIn(outRaw)){
+          const date=toDate(outRaw);
+          if(date) records.push({type:'out',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:outV,date,operator:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',orderNo:C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'',applicant:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',category:cur.category,fprint:'out|'+cur.name+'|'+cur.category+'|'+date+'|'+outV+(C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'')});
         }
         continue;
       }
-      const inV=C.inQty>=0?toNum(r[C.inQty]):NaN;
-      const outV=C.outQty>=0?toNum(r[C.outQty]):NaN;
-      if(isNaN(inV)&&isNaN(outV)) continue; // 空分号行(如 " | 5-1")跳过
+      // 子行/续行：无名称，沿用 cur 上下文（2025 分号子行 + 2024 烟酒茶空名称出库续行）
       if(!cur) continue;
-      const date=C.date>=0?toDate(r[C.date]):'';
-      const operator=C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'';
-      const purchaseNo=C.purchaseNo>=0&&r[C.purchaseNo]!=null?sanitizeText(r[C.purchaseNo]).trim():'';
-      const approvalNo=C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'';
-      if(!isNaN(inV)&&inV>0) records.push({type:'in',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:inV,date,operator,orderNo:purchaseNo,category:cur.category,
-        fprint:'in|'+cur.name+'|'+cur.category+'|'+date+'|'+inV+(purchaseNo?'|'+purchaseNo:'')});
-      if(!isNaN(outV)&&outV>0) records.push({type:'out',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:outV,date,operator,orderNo:approvalNo,applicant:operator,category:cur.category,
-        fprint:'out|'+cur.name+'|'+cur.category+'|'+date+'|'+outV+(approvalNo?'|'+approvalNo:'')});
+      if(!isNaN(inV)&&inV>0&&inRaw!=null&&!isCarryIn(inRaw)){
+        const date=toDate(inRaw);
+        if(date) records.push({type:'in',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:inV,date,operator:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',orderNo:C.purchaseNo>=0&&r[C.purchaseNo]!=null?sanitizeText(r[C.purchaseNo]).trim():'',category:cur.category,fprint:'in|'+cur.name+'|'+cur.category+'|'+date+'|'+inV+(C.purchaseNo>=0&&r[C.purchaseNo]!=null?sanitizeText(r[C.purchaseNo]).trim():'')});
+      }
+      if(!isNaN(outV)&&outV>0&&outRaw!=null&&!isCarryIn(outRaw)){
+        const date=toDate(outRaw);
+        if(date) records.push({type:'out',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:outV,date,operator:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',orderNo:C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'',applicant:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',category:cur.category,fprint:'out|'+cur.name+'|'+cur.category+'|'+date+'|'+outV+(C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'')});
+      }
     }
     return {count:records.length,records,samples:records.slice(0,12)};
   }
@@ -3264,6 +3289,16 @@
     for(const it of items){ const k=it.c+'|'+normName(it.n); if(!itemIdx.has(k)) itemIdx.set(k,it); }
     const FI=flowIndex(); // 流水汇总索引（反推期初用，O(1) 查询）
     const fileCat=detectCatFromName(importState.fileName)||''; // 文件名分类是常量，循环外算一次
+    // 预聚合本次明细流水按「名称|分类」的入/出总量，供反推期初使用（避免期末叠加明细流水双重计数）
+    const newFlowByKey=new Map();
+    if(useDetail&&importState.detail&&importState.detail.records.length){
+      for(const rec of importState.detail.records){
+        const k=normName(rec.name)+'|'+rec.category;
+        const e=newFlowByKey.get(k)||{in:0,out:0};
+        if(rec.type==='in') e.in+= (+rec.qty||0); else e.out+=(+rec.qty||0);
+        newFlowByKey.set(k,e);
+      }
+    }
     await chunkedRun(importState.dataRows.length,CHUNK,j=>{
       const r=importState.dataRows[j];
       const name=normName(get(r,'name')),brand=get(r,'brand'),spec=get(r,'spec'),catRaw=get(r,'category'),unit=get(r,'unit'),safe=get(r,'safe');
@@ -3283,7 +3318,14 @@
         if(subSpec) exist.s=subSpec;
         if(unit) exist.u=String(unit);
         if(useDetail){
-          exist.initQty=initFinal; // 明细模式：导入值为真正期初，叠加流水后 q=期末
+          // 明细模式：总表含「期初」列→导入值即真正期初，叠加明细流水后=期末；
+          // 总表仅含期末/库存列(无期初，如 2024 烟酒茶/2025 礼品)→反推期初=期末−(既有+本次)入库+(既有+本次)出库，
+          // 杜绝「期末叠加明细流水」造成的库存双重计数（本轮归档修复的连带正确性修复）
+          const fk=exist.n+'|'+exist.c;
+          const nf=newFlowByKey.get(normName(exist.n)+'|'+exist.c)||{in:0,out:0};
+          if(!isNaN(a)) exist.initQty=initFinal;
+          else exist.initQty = initFinal - (FI.inQ.get(fk)||0) - nf.in + (FI.outQ.get(fk)||0) + nf.out;
+          exist.q = initFinal;
         }else{
           // 非明细模式：导入值=目标库存（期末），反推期初冻结，重算后 q 恒等于导入值
           const fk=exist.n+'|'+exist.c;
