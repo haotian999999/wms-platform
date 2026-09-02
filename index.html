@@ -2012,6 +2012,25 @@
   const WMS_CLOUD_PATH='data/wms_db.json';
   const WMS_TOKEN_KEY='wms_gh_token';
   const WMS_SYNC_KEY='wms_sync_on';
+  // ============ 数据纪元（重置数据防护的核心机制） ============
+  // 每次「重置数据」都会写入一个全局纪元时间戳（只增不减）。所有数据源的旧数据
+  // （自动备份 / 手动备份 / 云端库 / 残留标签页内存）若早于当前纪元，一律判定为
+  // 「重置前的旧数据」作废，杜绝任何路径把已重置的历史数据带回来。
+  const WMS_EPOCH_KEY='wms_epoch';
+  function getEpoch(){ try{ return +(localStorage.getItem(WMS_EPOCH_KEY)||0); }catch(e){ return 0; } }
+  function setEpoch(ts){ try{ localStorage.setItem(WMS_EPOCH_KEY, String(ts)); }catch(e){} }
+  let pageEpoch=getEpoch(); // 本页加载时看到的数据纪元；若全局纪元比它新 → 本页是「重置前残留页」
+  // 跨标签页防护：其他标签页执行重置（写新纪元）时，本页立即清空内存并刷新为空白，
+  // 避免残留页把旧数据写回主库 / 备份 / 云端（storage 事件仅跨标签页触发，同页不受影响）
+  window.addEventListener('storage', ev=>{
+    if(ev.key!==WMS_EPOCH_KEY) return;
+    const v=+(ev.newValue||0);
+    if(v>0 && v>pageEpoch){
+      pageEpoch=v;
+      clearLocalState();
+      try{ toast('检测到数据已重置','warn','本页面已自动清空为空白架构，请刷新后继续操作'); }catch(e){}
+    }
+  });
   let autoBackupEnabled=false;
   try{ autoBackupEnabled=localStorage.getItem('wms_autobackup_on')==='1'; }catch(e){}
   let cloudToken=''; try{ cloudToken=localStorage.getItem(WMS_TOKEN_KEY)||''; }catch(e){}
@@ -2019,10 +2038,13 @@
   function _wmsLoad(){ try{ const r=localStorage.getItem(WMS_DB_KEY); const o=r&&JSON.parse(r); return (o&&Array.isArray(o.items))?o:null; }catch(e){ return null; } }
   let _wmsData=_wmsLoad();
   // 数据完整性兜底：主数据文件异常（损坏/为空）但存在有效自动备份时，自动还原，避免信息丢失
+  // 注意：若存在重置纪元，只有「纪元 >= 当前纪元」的新备份才允许自动还原；
+  // 重置前产生的旧备份（epoch 缺失或更小）一律不还原，否则重置后 reload 会把旧备份又灌回来。
   if(!_wmsData){
     try{
       const ab=readAutoBackup();
-      if(ab && ab.data && Array.isArray(ab.data.items) && ab.data.items.length){
+      const _ep=getEpoch();
+      if(ab && ab.data && Array.isArray(ab.data.items) && ab.data.items.length && (!_ep || (ab.epoch||0)>=_ep)){
         localStorage.setItem(WMS_DB_KEY, JSON.stringify(ab.data));
         _wmsData=ab.data; autoBackupEnabled=true;
         setTimeout(()=>toast('已从自动备份恢复数据','warn','主数据文件读取异常，已用最近一次自动备份还原'),900);
@@ -2030,7 +2052,7 @@
     }catch(e){}
   }
   function dbSnapshot(){
-    return {items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords,archivedRecords,deletedKeys,lastCarryoverYear,updatedAt:Date.now()};
+    return {items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords,archivedRecords,deletedKeys,lastCarryoverYear,updatedAt:Date.now(),epoch:getEpoch()};
   }
   // ============ 流水汇总索引缓存（供 flowIndex/inTotalOf/latestInNo 等复用）============
   // 声明位置刻意前置：wmsSave()/recomputeStocks() 等在初始化阶段就可能被调用，
@@ -2041,13 +2063,17 @@
   // 会在数据量大时翻倍放大同步写盘耗时（二次导入后数据翻倍 → 保存成本翻倍），
   // 改为 12s 合并写一次 + 页面卸载（pagehide）兜底写，保底备份新鲜度且不阻塞交互。
   let _autoBkTimer=null;
+  let _resetting=false; // 重置数据进行中：阻止 pagehide 兜底把内存旧数据写成备份（旧数据复活链路之一）
   function scheduleAutoBackup(){
     if(!autoBackupEnabled) return;
     clearTimeout(_autoBkTimer);
     _autoBkTimer=setTimeout(()=>{ _autoBkTimer=null; writeAutoBackup(); },12000);
   }
-  window.addEventListener('pagehide',()=>{ if(_autoBkTimer){ clearTimeout(_autoBkTimer); _autoBkTimer=null; if(autoBackupEnabled) writeAutoBackup(); } });
+  window.addEventListener('pagehide',()=>{ if(_autoBkTimer){ clearTimeout(_autoBkTimer); _autoBkTimer=null; if(autoBackupEnabled && !_resetting) writeAutoBackup(); } });
   function wmsSave(){
+    // 数据纪元防护：全局纪元比本页加载时新 → 本页是「重置前残留页」，内存中是旧数据，
+    // 拒绝写回主库（否则重置后旧标签页的任何操作都会把历史数据重新灌回 localStorage）
+    if(getEpoch()>pageEpoch){ console.warn('检测到数据已重置，本页数据过期，已拒绝保存'); return false; }
     invalidateFlowIndex(); // 兜底：所有写操作最终都会保存，统一在此失效流水索引，防止渲染读到过期汇总
     let ok=false;
     try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify(dbSnapshot())); ok=true; }catch(e){ console.warn('wms 保存失败',e); }
@@ -2122,6 +2148,11 @@
   function mergeCloud(cloud){
     const local=dbSnapshot();
     const c=cloud||{};
+    // 数据纪元判定：云端库若明确早于本地重置纪元（带 epoch 字段的库），或缺失纪元但
+    // 最后更新时间早于纪元（历史旧版上传的库），判定为「重置前的旧云端库」→ 整体忽略，
+    // 防止重置后云端旧数据经合并「复活」。重置后新上传的库 epoch=当前纪元，不受影响。
+    const _ep=getEpoch();
+    if(_ep && ((c.epoch||0)<_ep || (!(c.epoch||0) && (c.updatedAt||0) && (c.updatedAt||0)<_ep))) return local;
     // ---- 墓碑：双方删除标记取并集，保证任一设备删除后都不会被对方「复活」 ----
     const del=new Set();
     (local.deletedKeys||[]).forEach(k=>del.add(k));
@@ -2178,6 +2209,8 @@
   }
   async function pushCloud(){
     if(!cloudConfigured()||cloudBusy) return;
+    // 数据纪元防护：本页是重置前残留页时拒绝推送，防止把旧数据重新写回云端
+    if(getEpoch()>pageEpoch){ console.warn('本页数据已重置，已拒绝推送云端'); return; }
     cloudBusy=true;
     try{
       const remote=await ghGet(WMS_CLOUD_PATH);
@@ -2198,6 +2231,15 @@
     try{
       const remote=await ghGet(WMS_CLOUD_PATH);
       if(!remote){ updateCloudInfo('云端暂无数据，首次登录将自动上传当前数据'); await pushCloud(); return; }
+      // 数据纪元防护：云端是「重置前」的旧库（带旧 epoch 或最后更新早于纪元）→ 忽略并清除，
+      // 然后上传本地（空库）作为新纪元云端库，避免旧数据在下次同步时再次被拉回
+      const _ep=getEpoch();
+      if(_ep && ((remote.content.epoch||0)<_ep || (!(remote.content.epoch||0) && (remote.content.updatedAt||0) && (remote.content.updatedAt||0)<_ep))){
+        updateCloudInfo('云端为重置前的旧数据，已忽略并清除');
+        try{ await ghDelete(WMS_CLOUD_PATH, remote.sha); }catch(e){ console.warn('清除旧云端库失败',e); }
+        await pushCloud();
+        return;
+      }
       const local=dbSnapshot();
       const merged=mergeCloud(remote.content);
       applyCloudData(merged);
@@ -5067,8 +5109,11 @@
   function lsBytes(){ let t=0; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); const v=localStorage.getItem(k)||''; t+=v.length*2; } return t; } // UTF-16 码元×2≈字节
   function writeAutoBackup(){
     try{
+      // 数据纪元防护：残留页（重置前的旧标签页）不写备份；备份携带写入时的纪元，
+      // 供启动兜底还原判定「是否是重置后的新备份」
+      if(getEpoch()>pageEpoch) return;
       const data={items,inboundRecords,outboundRecords,checkPlansQuarter,checkPlansYear,checkRecords,archivedRecords,deletedKeys,lastCarryoverYear};
-      localStorage.setItem(WMS_AUTO_KEY, JSON.stringify({ts:new Date().toISOString(),data}));
+      localStorage.setItem(WMS_AUTO_KEY, JSON.stringify({ts:new Date().toISOString(),epoch:getEpoch(),data}));
     }catch(e){ console.warn('自动备份失败',e); }
   }
   function readAutoBackup(){ try{ const r=localStorage.getItem(WMS_AUTO_KEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
@@ -5098,18 +5143,45 @@
   function restoreAutoBackup(){
     const b=readAutoBackup();
     if(!b||!b.data||!Array.isArray(b.data.items)){ toast('恢复失败','err','未找到有效备份'); return; }
+    const _ep=getEpoch();
+    if(_ep && (b.epoch||0) && (b.epoch||0)<_ep){
+      if(!confirm('⚠️ 该备份产生于最近一次「重置数据」之前，恢复将带回已重置的旧数据。确定恢复吗？')) return;
+    }
     if(!confirm('确定用上次自动备份恢复数据吗？当前未备份的更改将被覆盖。')) return;
     try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify(b.data)); }catch(e){ toast('恢复失败','err','存储空间不足'); return; }
     hydrateAll();
     toast('已恢复备份','ok','已恢复到 '+fmtCNDate((b.ts||'').slice(0,10))+' 的备份');
     renderMaintenance();
   }
+  // 清空内存中的全部业务数组并全量刷新界面为空白架构（不写主库，由 resetData 专用）
+  // 供重置 / 跨标签页纪元变化时调用：即使任何兜底路径漏网，内存里也再无旧数据可写
+  function clearLocalState(){
+    items.length=0; inboundRecords.length=0; outboundRecords.length=0;
+    checkPlansQuarter.length=0; checkPlansYear.length=0; checkRecords.length=0;
+    archivedRecords.length=0; deletedKeys.length=0; lastCarryoverYear=0;
+    recomputeStocks();
+    checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
+    invalidateFlowIndex();
+    try{
+      const _ac=document.querySelector('#invChips .chip.active');
+      renderInv(_ac?_ac.dataset.cat:'all'); renderDataTables(); renderWarranty(); renderRecentOut();
+      updateDataNote();
+      if(activeDataTab==='archive') renderArchive();
+      renderDashboard(); renderReports();
+      renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCheckTimeline(); renderCarryoverCard(); renderCheck();
+    }catch(e){ console.warn('清空后刷新界面失败', e); }
+  }
   // 重置数据：清空本地业务数据，并（若已开启云同步）同步清空云端。
   // 否则 reload 后云端自动拉回会把「已重置」的旧数据又恢复出来（重置失效的根因）
   async function resetData(){
     if(!confirm('⚠️ 确定重置所有业务数据吗？\n此操作不可撤销，库存/出入库/盘点等全部业务数据将清空，系统回到不含演示数据的空白架构。')) return;
     if(!confirm('再次确认：清空全部业务数据并恢复为空白原始架构？')) return;
-    clearTimeout(cloudTimer); // 取消排队中的云推送，避免清空后又被写回
+    _resetting=true;                 // ① 阻止 pagehide 兜底把内存旧数据写成自动备份
+    clearTimeout(cloudTimer);        // ② 取消排队中的云推送，避免清空后又被写回
+    clearTimeout(_autoBkTimer); _autoBkTimer=null;
+    const _epoch=Date.now();
+    setEpoch(_epoch);                // ③ 写入全局数据纪元（只增不减）：早于它的所有旧数据源全部作废
+    pageEpoch=_epoch;                // ④ 本页纪元同步，本页即重置执行者，后续操作正常放行
     try{ localStorage.removeItem(WMS_DB_KEY); localStorage.removeItem(WMS_AUTO_KEY); localStorage.removeItem(WMS_FULL_KEY); }catch(e){}
     let cloudCleared=false;
     if(cloudConfigured()){
@@ -5118,11 +5190,13 @@
         if(remote) await ghDelete(WMS_CLOUD_PATH, remote.sha);
         cloudCleared=true;
       }catch(e){
-        // 云端清理失败（断网/权限）：写入重置标志，reload 后跳过自动拉取云端旧数据
+        // 云端清理失败（断网/权限）：写入重置标志，reload 后跳过自动拉取云端旧数据；
+        // 纪元机制兜底：下次同步时检测到旧云端库会自动清除（见 pullCloud/pushCloud）
         try{ localStorage.setItem('wms_reset_at', String(Date.now())); }catch(_){}
       }
     }
-    toast('正在重置…','info', cloudCleared?'本地与云端数据已全部清空':'本地数据已清空（云端清理失败，将跳过自动拉回）');
+    clearLocalState();               // ⑤ reload 前先清空内存并刷新为空白：任何路径都再无旧数据可写
+    toast('正在重置…','info', cloudCleared?'本地与云端数据已全部清空':'本地数据已清空（云端清理失败，已启用纪元防护）');
     setTimeout(()=>location.reload(), 400);
   }
   function recordsToRows(arr){
