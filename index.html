@@ -3115,17 +3115,19 @@
   function buildImport(rows,sheetName,fileName,renderNow){
     // 表头识别加固：命中字段数 ≥ max(2, 非空列数×40%)，且表头上方不得是同样像数据行的完整行，
     // 防止把标题行/数据行误抓为表头
-    let hdrIdx=0;
-    const looksHeader=(r)=>{
-      const nonEmpty=r.filter(c=>c!=null&&String(c).trim()!=='');
-      const hit=nonEmpty.filter(c=>matchField(c)).length;
-      return hit>=Math.max(2,Math.ceil(nonEmpty.length*0.4));
-    };
+    // 表头识别重构（根治 2024 烟酒茶文件「抓不到数据」）：
+    // 原逻辑用「≥40% 单元格命中字段关键词」判定表头——当表头用词偏业务化
+    // （如本张表仅「类别/名称/规格/单位」命中、命中率 4/12=33%<40%）会被整行判为非表头，
+    // 进而把上方跨列合并的「标题行」（如「2024年 烟酒茶礼品库存总表」）误当表头，
+    // 导致全表字段映射全空、抓不到任何数据。
+    // 改为「首 15 行取字段命中数最多的一行」作表头：跳过仅 1 个单元格的标题行，命中≥2 才作数，更稳健。
+    let hdrIdx=0, _bestScore=1;
     for(let i=0;i<Math.min(rows.length,15);i++){
       const r=rows[i]||[];
-      if(!looksHeader(r)) continue;
-      if(i===0){ hdrIdx=i; break; }
-      if(!looksHeader(rows[i-1]||[])){ hdrIdx=i; break; }
+      const ne=r.filter(c=>c!=null&&String(c).trim()!=='');
+      if(ne.length<2) continue; // 跳过跨列合并的「标题行」（通常只有 1 个单元格）
+      const sc=ne.filter(c=>matchField(c)).length;
+      if(sc>_bestScore){ _bestScore=sc; hdrIdx=i; }
     }
     const headers=(rows[hdrIdx]||[]).map(h=>h==null?'':String(h));
     const mapping=headers.map(h=>({orig:h,field:matchField(h)}));
