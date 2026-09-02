@@ -3092,7 +3092,12 @@
       for(let i=0;i<headers.length;i++){ if(kws.some(k=>headers[i]===k||headers[i].includes(k))) return i; }
       return -1; };
     const C={groupId:col('groupId'),subMark:col('subMark'),purchaseNo:col('purchaseNo'),inNo:col('inNo'),name:col('name'),catSub:col('catSub'),brand:col('brand'),spec:col('spec'),unit:col('unit'),inDate:col('inDate'),outDate:col('outDate'),opening:col('opening'),inQty:col('inQty'),outQty:col('outQty'),operator:col('operator'),approvalNo:col('approvalNo')};
-    const cat=detectCatFromName(fileName)||'';
+    // 明细流水分类口径与总表保持一致：文件名优先，回退明细表「类别」列(normCat 归一化)。
+    // 否则文件名未命中分类时明细流水 category='' 与总表物资(category=normCat(列)) 不匹配 → recomputeStocks 静默排除
+    const fileCat=detectCatFromName(fileName)||'';
+    const _d0=rows[hdrIdx+1];
+    const catCol=(C.catSub>=0&&_d0&&_d0[C.catSub]!=null)?normCat(String(_d0[C.catSub])):'';
+    const cat=fileCat||catCol||'';
     // 期初结转类文本("2023年结转"/"2024年结转"/"上年结余")不是真实日期，应视作余额而非本年流水
     const isCarryIn=v=>{ const s=String(v==null?'':v).trim(); return /结转|期初|上年|结余/.test(s) && !/^\d{4}-\d{2}-\d{2}/.test(s); };
     const toDate=v=>{ if(v==null) return ''; if(v instanceof Date) return v.toISOString().slice(0,10); const s=String(v).trim(); const m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`; const y=s.match(/(\d{4})/); if(y) return `${y[1]}-01-01`; return ''; };
