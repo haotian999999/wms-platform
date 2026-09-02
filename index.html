@@ -2915,8 +2915,10 @@
     unit:['单位','计量单位','unit'],
     brand:['品牌','牌子','brand'],
     // 注意：stock 关键词刻意不含裸「数量」，否则会与「期初数量/出库数量」撞车；
-    // 目标表统一用「期末数量 / 结存 / 库存」表达当前库存，故以「期末」优先命中。
-    stock:['期末','期末数量','结存','存货','现存量','库存','库存数量','现存','qty','stock'],
+    // 目标表统一用「期末数量 / 结存 / 结余 / 库存」表达当前库存，故以「期末」优先命中。
+    // 「结余 / 结余数量」为 2024 年历史表口径（如《2.办公用品库存明细--2024.xlsx》的「结余数量」列），
+    // 缺失会导致整表库存数量识别为 0，故一并纳入。
+    stock:['期末','期末数量','结存','结余','结余数量','期末结存','存货','现存量','库存','库存数量','现存','qty','stock'],
     initQty:['期初','期初数量','期初结存','初期','起始'],
     safe:['安全库存','安全量','预警','下限','safe']
   };
@@ -2958,11 +2960,59 @@
   const FIELDS_LC=Object.keys(FIELDS).map(f=>({f:f,keys:FIELDS[f].map(k=>k.toLowerCase())}));
   function matchField(header){
     const h=String(header).trim().toLowerCase();
+    // 前置判定（必须在关键词循环之前）：stock 的关键词含「库存」，而 FIELDS 遍历顺序里 stock 在 safe 之前，
+    // 若不前置处理，「安全库存」会被 stock 的「库存」抢先命中——导入的物资数量会变成安全库存值。
+    // 同理 stock 为兼容历史口径纳入了「结余/结存」，「期初结存」也会被误判为当前库存。
+    if(/期初|初期|起始|上年/.test(h)) return 'initQty';
+    if(/安全|预警|下限/.test(h)) return 'safe';
     for(let i=0;i<FIELDS_LC.length;i++){
       const e=FIELDS_LC[i];
       for(let j=0;j<e.keys.length;j++){ if(h.indexOf(e.keys[j])>=0) return e.f; }
     }
     return '';
+  }
+  // ——「幽灵列」根治（2024 办公用品导入卡顿的真正元凶）——
+  // Excel 里对整列/整行设置过格式、或做过整列复制粘贴后，工作表的 !ref 会被撑到极端范围。
+  // 实测用户《2.办公用品库存明细--2024.xlsx》的「全年入库汇总」表 !ref = A1:XEU271
+  // （XEU = 第 16375 列），而实际有值单元格仅 2319 个、最大列只到第 9 列（I）——占比 0.05%。
+  // 后果是两级放大：
+  //   ① sheet_to_json 按 !ref 全量填充 → 271 行 × 16375 列 ≈ 440 万个单元格（实测 1.9s，数百 MB 内存）；
+  //   ② renderMapping 为每个「表头列」生成一个 <tr>+<select>（每个含约 10 个 option）
+  //      → 16375 个 select ≈ 18 万个 DOM 节点 + 16375 个事件监听 → 页面直接假死。
+  // 与数据量无关：即使只有 271 行数据，只要 !ref 被撑宽就会卡死。
+  // 解法：解析后先把 !ref 收敛到「真实有值单元格 + 合并区」的最小外接矩形，再做后续处理。
+  function shrinkSheet(ws){
+    if(!ws || !ws['!ref']) return null;
+    const R=XLSX.utils.decode_range(ws['!ref']);
+    let minR=Infinity,minC=Infinity,maxR=-1,maxC=-1,any=false;
+    // 只遍历实际存在的单元格键（worksheet 是稀疏对象），成本 O(真实单元格数)，与声明范围无关
+    for(const k in ws){
+      if(k.charCodeAt(0)===33) continue; // '!' 前缀为元数据（!ref / !merges / !margins / !cols）
+      const c=ws[k];
+      if(!c || c.v===undefined || c.v===null) continue;
+      if(typeof c.v==='string' && c.v.trim()==='') continue; // 空串（被清过内容但保留了格式）不计入
+      const a=XLSX.utils.decode_cell(k);
+      if(a.r<minR) minR=a.r; if(a.r>maxR) maxR=a.r;
+      if(a.c<minC) minC=a.c; if(a.c>maxC) maxC=a.c;
+      any=true;
+    }
+    const mg=ws['!merges'];
+    if(mg && mg.length){ // 合并区边界一并纳入，避免合并单元格被裁掉
+      for(let i=0;i<mg.length;i++){
+        const x=mg[i];
+        if(x.s.r<minR) minR=x.s.r; if(x.e.r>maxR) maxR=x.e.r;
+        if(x.s.c<minC) minC=x.s.c; if(x.e.c>maxC) maxC=x.e.c;
+        any=true;
+      }
+    }
+    if(!any) return null;
+    // 只允许向内收缩，绝不放大原声明范围
+    if(minR<R.s.r) minR=R.s.r; if(minC<R.s.c) minC=R.s.c;
+    if(maxR>R.e.r) maxR=R.e.r; if(maxC>R.e.c) maxC=R.e.c;
+    const oldRef=ws['!ref'], newRef=XLSX.utils.encode_range({s:{r:minR,c:minC},e:{r:maxR,c:maxC}});
+    if(newRef===oldRef) return null;
+    ws['!ref']=newRef;
+    return {oldRef,newRef};
   }
   function handleFile(file){
     if(typeof XLSX==='undefined'){ alert('表格组件未加载，请检查网络后重试'); return; }
@@ -2975,9 +3025,22 @@
       setTimeout(()=>{
       try{
         if(_si) _si.textContent=`正在解析「${file.name}」…`;
-        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
-        // 智能选表：优先选取「库存总表 / 总览」（名称含 总/览/库存 且不含 出入/明细）
-        const totalName=(wb.SheetNames.find(s=>/(总|览|库存)/.test(s)&&!/(出入|明细)/.test(s)))||wb.SheetNames[0];
+        // cellStyles/cellHTML 关闭：本应用只读值，跳过样式与富文本解析可明显降低大文件解析开销
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true,cellStyles:false,cellHTML:false});
+        // 裁剪幽灵行/列：必须在 sheet_to_json 之前执行，否则放大效应已经产生
+        const _shrunk=[];
+        for(let _i=0;_i<wb.SheetNames.length;_i++){
+          const _sn=wb.SheetNames[_i], _r=shrinkSheet(wb.Sheets[_sn]);
+          if(_r) _shrunk.push(Object.assign({name:_sn},_r));
+        }
+        if(_shrunk.length) console.warn('[导入] 检测到工作表声明范围异常，已自动裁剪到实际数据区：'+_shrunk.map(x=>`「${x.name}」${x.oldRef}→${x.newRef}`).join('；'));
+        // 智能选表：① 名称含「库存」且不含「出入/明细」——真·库存总表（如「库存期末数汇总」）
+        //          ② 退而求其次含「总/览」 ③ 首表
+        // 原实现把「总|览|库存」放在同一优先级，会误选「全年入库汇总 」这类流水表（含"总"字）当库存总表
+        const _notDetail=s=>!/(出入|明细)/.test(s);
+        const totalName=(wb.SheetNames.find(s=>/库存/.test(s)&&_notDetail(s)))
+                     ||(wb.SheetNames.find(s=>/(总|览)/.test(s)&&_notDetail(s)))
+                     ||wb.SheetNames[0];
         const detailName=wb.SheetNames.find(s=>/(出入|明细)/.test(s));
         const totalRows=XLSX.utils.sheet_to_json(wb.Sheets[totalName],{header:1,defval:null,blankrows:false});
         // renderNow=false：推迟预览，待明细表解析完成后统一渲染一次，消除重复渲染
@@ -2993,7 +3056,8 @@
         }
         renderPreview();
         const dInfo=importState.hasDetail?` · 同步解析「${detailName}」：将从 ${importState.detail.count} 笔流水生成入库/出库记录`:'';
-        document.getElementById('sheetInfo').textContent=`库存总表：${totalName}${detailName?` · 明细表：${detailName}`:''} · 共 ${importState.dataRows.length} 项物资${dInfo}`;
+        const _shInfo=_shrunk.length?`（已自动裁剪 ${_shrunk.length} 个工作表的空白行列）`:'';
+        document.getElementById('sheetInfo').textContent=`库存总表：${totalName}${detailName?` · 明细表：${detailName}`:''} · 共 ${importState.dataRows.length} 项物资${dInfo}${_shInfo}`;
       }catch(err){ if(_si) _si.textContent='解析失败'; alert('解析失败：'+err.message); }
       },0);
     };
@@ -3086,11 +3150,16 @@
   }
   function renderMapping(){
     const body=document.getElementById('mapBody');
-    body.innerHTML=importState.headers.map((h,i)=>{
+    // 第二道保险：即便 shrinkSheet 未生效（如某些 !ref 合法的宽表），也不能让每个表头列都生成
+    // 一个 <select>——极端宽表会以「列数 × 每个 select 的 option 数」量级放大 DOM 节点数直接卡死页面。
+    // 列数超阈值时只渲染前 N 列并给出提示，字段映射语义不变（mapping 下标与 headers 保持一一对应）。
+    const MAX_MAP_COLS=200;
+    const hs=importState.headers, shown=Math.min(hs.length,MAX_MAP_COLS);
+    const optHtml=f=>Object.keys(FIELD_LABEL).map(k=>`<option value="${k}" ${k===f?'selected':''}>${FIELD_LABEL[k]}</option>`).join('');
+    body.innerHTML=hs.slice(0,shown).map((h,i)=>{
       const f=importState.mapping[i].field;
-      const opts=Object.keys(FIELD_LABEL).map(k=>`<option value="${k}" ${k===f?'selected':''}>${FIELD_LABEL[k]}</option>`).join('');
-      return `<tr><td>${escHtml(h)||'(空)'}</td><td><select class="real-input" data-i="${i}">${opts}</select></td></tr>`;
-    }).join('');
+      return `<tr><td>${escHtml(h)||'(空)'}</td><td><select class="real-input" data-i="${i}">${optHtml(f)}</select></td></tr>`;
+    }).join('')+(hs.length>shown?`<tr><td class="empty" colspan="2">列数过多（${hs.length} 列），仅显示前 ${MAX_MAP_COLS} 列</td></tr>`:'');
     body.querySelectorAll('select').forEach(s=>s.addEventListener('change',()=>{
       importState.mapping[+s.dataset.i].field=s.value; renderPreview();
     }));
