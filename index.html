@@ -461,6 +461,9 @@
   }
   /* ---- 数据管理 ---- */
   .data-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 18px 14px}
+  .data-pager{display:flex;gap:8px;align-items:center}
+  .data-pager .btn{min-width:auto;padding:6px 12px;font-size:12px}
+  .data-pager .btn:disabled{opacity:.4;cursor:not-allowed}
   .data-toolbar .search{flex:1;min-width:220px;max-width:380px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:11px;padding:0 12px;height:36px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color .18s,box-shadow .18s,background-color .18s}
   .data-toolbar .search:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.15);background:rgba(255,255,255,.09)}
   .data-toolbar .search input{border:none;background:none;outline:none;font-family:var(--font);font-size:13px;width:100%;color:var(--ink)}
@@ -1345,6 +1348,11 @@
             </div>
             <div class="search">🔍<input id="dataSearch" placeholder="搜索入库/出库单号 / 物资名称 / 供应商 / 领用人 / 部门…" /></div>
             <span class="plan-meta" id="dataCount"></span>
+            <div class="data-pager" id="dataPager" style="display:none">
+              <button class="btn btn-ghost" id="dataPrev" type="button">‹ 上一页</button>
+              <span class="plan-meta" id="dataPageInfo"></span>
+              <button class="btn btn-ghost" id="dataNext" type="button">下一页 ›</button>
+            </div>
             <button class="btn btn-ghost" id="downloadAll" data-perm="data">⬇ 下载全部（当前筛选）</button>
           </div>
 
@@ -3190,21 +3198,26 @@
     // 导入是全库级变更，必须让所有下游模块同步换血，否则会出现「提示导入成功，但界面看不到数据」的假失败：
     // ① 清空库存页 / 数据页搜索词——旧筛选条件会把刚导入的行挡在视图外
     // ② 重建盘点明细——checkItems 是启动时的库存快照，不重建则新物资进不了盘点
-    // ③ 库存表 + 数据页 + 仪表盘 + 质保预警 + 统计报表全量联动，保证各处口径一致
+    // ③ 先落库再逐阶段刷新视图，每阶段间 await 让出主线程：
+    //    数据翻倍后（紧接的第二次导入）全量渲染/序列化若连续同步执行会假死数秒——分页 + 分阶段后各帧分摊成本
     const _isEl=document.getElementById('invSearch'), _dsEl=document.getElementById('dataSearch');
     if(_isEl) _isEl.value='';
     if(_dsEl) _dsEl.value='';
     checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
+    dataPage.in=0; dataPage.out=0; // 导入后数据页回到第一页，避免停留在越界页
+    wmsSave(); // 先持久化：落库绝不能因下游图表刷新异常而中断（此前把联动放在 wmsSave 之前，图表桩抛错会吞掉保存）
     await nextTick();
     renderInv('all');
+    await nextTick();
     renderDataTables();
+    await nextTick();
     renderWarranty();
     const flowMsg=useDetail?`，并生成入库 ${inN} 笔、出库 ${outN} 笔历史流水`:'';
-    toast('批量导入完成','ok',`已并入库存 ${added+updated} 条物资${useDetail?`、流水 ${inN+outN} 笔`:''}`);
-    wmsSave(); // 先持久化：落库绝不能因下游图表刷新异常而中断（此前把联动放在 wmsSave 之前，图表桩抛错会吞掉保存）
+    await nextTick();
     try{ renderDashboard(); renderReports(); }catch(e){ console.warn('导入后图表刷新失败', e); }
     const _ir=document.getElementById('importResult'); if(_ir) _ir.style.display='none';
     const _fi=document.getElementById('fileInput'); if(_fi) _fi.value='';
+    toast('批量导入完成','ok',`已并入库存 ${added+updated} 条物资${useDetail?`、流水 ${inN+outN} 笔`:''}`);
   }
   const dropzone=document.getElementById('dropzone'), fileInput=document.getElementById('fileInput');
   dropzone.addEventListener('click',()=>fileInput.click());
@@ -3284,6 +3297,30 @@
 
   // ---- 工作台/统计报表 数据驱动辅助函数（取消演示数据后，全部基于真实业务数据计算） ----
   function fmtNum(n){ const v=+n||0; return v.toLocaleString('en-US',{maximumFractionDigits:2}); }
+  // 最新单价表：单趟遍历，同物资只保留「日期最新」一笔的单价（原 slice().sort() 全量拷贝排序，
+  // 流水几十万条时是报表渲染的主热点之一；同日期时后出现者胜出，与原排序语义一致）
+  function latestPriceMap(){
+    const priceMap={}, priceDate={};
+    for(const r of inboundRecords){
+      const k=r.name+'|'+r.category;
+      if(r.price!=null && (priceDate[k]===undefined || String(r.date||'')>=priceDate[k])){ priceMap[k]=+r.price; priceDate[k]=String(r.date||''); }
+    }
+    return priceMap;
+  }
+  // 取「日期最新」的前 n 条：单趟遍历 + 小窗口冒泡，mapFn 仅对进入窗口的记录执行，
+  // 替代「全量 map 造对象 + slice().sort()」——数据翻倍后这是工作台最近动态的 GC/排序双热点
+  function topNBy(records,n,dateOf,mapFn){
+    const top=[];
+    for(const r of records){
+      const d=dateOf(r);
+      if(top.length<n){ top.push(mapFn(r)); if(top.length===n) top.sort((a,b)=>dateOf(b).localeCompare(dateOf(a))); continue; }
+      if(d>dateOf(top[n-1])){
+        top[n-1]=mapFn(r);
+        for(let k=n-1;k>0;k--){ if(dateOf(top[k]).localeCompare(dateOf(top[k-1]))>0){ const t=top[k]; top[k]=top[k-1]; top[k-1]=t; } else break; }
+      }
+    }
+    return top;
+  }
   function monthKey(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'); return `${y}-${m}`; }
   function prevMonthKey(ym){ const [y,m]=ym.split('-').map(Number); const d=new Date(y,m-2,1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
   function monthLabel(ym){ return +ym.split('-')[1]+'月'; }
@@ -3309,22 +3346,24 @@
       // 仅本年度 4 季度（Q1-Q4），不再展示跨年度的近 6 季度
       const cur=new Date().getFullYear();
       const qs=Array.from({length:4},(_,i)=>{ const q=i+1; return {key:cur+'-Q'+q, label:String(cur).slice(-2)+' Q'+q}; });
-      const inMatch=(r,p)=>{ const d=r.date?new Date(String(r.date).slice(0,10)):null; return d&&!isNaN(d)&&qKeyOf(d)===p; };
-      return { range:'quarter', title:'本年度出入库趋势对比', labels:qs.map(q=>q.label), inbound:sumByPeriod(inboundRecords,qs,'qty',inMatch), outbound:sumByPeriod(outboundRecords,qs,'qty',inMatch) };
+      // 单趟分桶：一次遍历按季度累加，替代 sumByPeriod 的「每桶 filter 全表」O(桶数×流水) 扫描
+      const agg=records=>{ const m=new Map(qs.map(q=>[q.key,0])); for(const r of records){ const d=r.date?new Date(String(r.date).slice(0,10)):null; if(d&&!isNaN(d)){ const k=qKeyOf(d); if(m.has(k)) m.set(k,m.get(k)+(+r.qty||0)); } } return qs.map(q=>m.get(q.key)); };
+      return { range:'quarter', title:'本年度出入库趋势对比', labels:qs.map(q=>q.label), inbound:agg(inboundRecords), outbound:agg(outboundRecords) };
     }
     if(range==='year'){
       // 只显示本年度数据：当前自然年 1 月 → 12 月
       const cur=new Date().getFullYear();
       const ys=Array.from({length:12},(_,i)=>cur+'-'+String(i+1).padStart(2,'0'));
-      const yMatch=(r,p)=>String(r.date||'').startsWith(p);
-      return { range:'year', title:'本年度出入库趋势对比', labels:ys.map(m=>monthLabel(m)), inbound:sumByPeriod(inboundRecords,ys.map(m=>({key:m})),'qty',yMatch), outbound:sumByPeriod(outboundRecords,ys.map(m=>({key:m})),'qty',yMatch) };
+      const agg=records=>{ const m=new Map(ys.map(y=>[y,0])); for(const r of records){ const d=String(r.date||''); if(d.slice(0,4)===String(cur)&&d.length>=7){ const k=d.slice(0,7); if(m.has(k)) m.set(k,m.get(k)+(+r.qty||0)); } } return ys.map(y=>m.get(y)); };
+      return { range:'year', title:'本年度出入库趋势对比', labels:ys.map(m=>monthLabel(m)), inbound:agg(inboundRecords), outbound:agg(outboundRecords) };
     }
     // 月度：只显示本月内信息（按天）
     const days=thisMonthDays();
-    const dMatch=(r,p)=>String(r.date||'')===p;
-    return { range:'month', title:'本月出入库趋势对比', labels:days.map(d=>d.label), inbound:sumByPeriod(inboundRecords,days,'qty',dMatch), outbound:sumByPeriod(outboundRecords,days,'qty',dMatch) };
+    const kSet=new Set(days.map(d=>d.key));
+    const agg=records=>{ const m=new Map(days.map(d=>[d.key,0])); for(const r of records){ const d=String(r.date||''); if(kSet.has(d)) m.set(d,m.get(d)+(+r.qty||0)); } return days.map(d=>m.get(d.key)); };
+    return { range:'month', title:'本月出入库趋势对比', labels:days.map(d=>d.label), inbound:agg(inboundRecords), outbound:agg(outboundRecords) };
   }
-  function buildCatData(){ const total=items.reduce((s,i)=>s+(+i.q||0),0)||1; const list=allCatKeys().map(k=>{ const q=items.filter(i=>i.c===k).reduce((s,i)=>s+(+i.q||0),0); return {key:k,label:safeMeta(k).t,q,pct:Math.round(q/total*100),color:catColor(k)}; }).filter(x=>x.q>0); return {total,list}; }
+  function buildCatData(){ const total=items.reduce((s,i)=>s+(+i.q||0),0)||1; const qBy=new Map(); for(const i of items){ if(+i.q>0) qBy.set(i.c,(qBy.get(i.c)||0)+(+i.q||0)); } const list=allCatKeys().map(k=>{ const q=qBy.get(k)||0; if(!q) return null; return {key:k,label:safeMeta(k).t,q,pct:Math.round(q/total*100),color:catColor(k)}; }).filter(Boolean); return {total,list}; }
 
   function renderCatLegend(){
     const el=document.getElementById('catLegend'); if(!el) return;
@@ -3333,7 +3372,7 @@
     el.innerHTML=data.list.map(x=>`<div class="li"><span class="sw" style="background:${safeMeta(x.key).col}"></span><span class="ln">${escHtml(x.label)}</span><span class="lq">${fmtNum(x.q)} 件</span><span class="pct">${x.pct}%</span></div>`).join('');
   }
   function renderRecentIn(){
-    const list=inboundRecords.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
+    const list=topNBy(inboundRecords,8,r=>String(r.date||''),r=>r);
     const el=document.getElementById('recentInList'); if(!el) return;
     const sub=document.getElementById('recentInSub'); if(sub) sub.textContent='共 '+inboundRecords.length+' 条';
     el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.name)} ×${escHtml(r.qty)} ${escHtml(r.unit||'')}</div><div class="rs">${safeMeta(r.category).t} · ${escHtml(r.supplier||'—')} · ${escHtml(r.handler||'—')}</div></div><div class="rq in">+${escHtml(r.qty)}</div></div>`).join('')
@@ -3341,9 +3380,10 @@
   }
   function renderRecentActivity(){
     const el=document.getElementById('dashTimeline'); if(!el) return;
-    const inRecs=inboundRecords.map(r=>({type:'in',date:r.date,title:`入库 ${r.name} ×${r.qty} ${r.unit||''}`,sub:`供应商：${r.supplier||'—'} · 经办 ${r.handler||'—'}`,dot:'in'}));
-    const outRecs=outboundRecords.map(r=>({type:'out',date:r.date,title:`${r.applicant||'—'} 领用 ${r.name} ×${r.qty} ${r.unit||''}`,sub:`${r.dept||'—'} · ${r.status||'已出库'}`,dot:'out'}));
-    const list=[...inRecs,...outRecs].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,6);
+    // 入/出各取最新 6 条合并后再取 6：mapFn 仅在进入窗口时执行，避免对全量流水 map+sort（大数据下最大 GC/排序源）
+    const inTop=topNBy(inboundRecords,6,r=>String(r.date||''),r=>({type:'in',date:r.date,title:`入库 ${r.name} ×${r.qty} ${r.unit||''}`,sub:`供应商：${r.supplier||'—'} · 经办 ${r.handler||'—'}`,dot:'in'}));
+    const outTop=topNBy(outboundRecords,6,r=>String(r.date||''),r=>({type:'out',date:r.date,title:`${r.applicant||'—'} 领用 ${r.name} ×${r.qty} ${r.unit||''}`,sub:`${r.dept||'—'} · ${r.status||'已出库'}`,dot:'out'}));
+    const list=inTop.concat(outTop).sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,6);
     const today=monthKey(new Date()); const yest=monthKey(new Date(Date.now()-86400000));
     const fmt=d=>{ if(!d) return '—'; if(d===today) return '今天'; if(d===yest) return '昨天'; const [yy,mm,dd]=String(d).split('-'); return `${mm}-${dd}`; };
     el.innerHTML=list.length?list.map(r=>`<div class="tl-item"><div class="tl-dot ${r.dot}">${r.dot==='in'?'⬇️':'⬆️'}</div><div class="tl-body"><div class="t1">${escHtml(r.title)}</div><div class="t2">${escHtml(r.sub)}</div></div><div class="tl-time">${escHtml(fmt(r.date))}</div></div>`).join('')
@@ -3455,7 +3495,7 @@
     return ()=>true;
   }
   function renderReportsKPIs(){
-    const priceMap={}; inboundRecords.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(r=>{ const k=r.name+'|'+r.category; if(r.price!=null) priceMap[k]=+r.price; });
+    const priceMap=latestPriceMap(); // 单趟取最新单价，免全量拷贝排序（流水几十万条时 slice+sort 是报表主热点）
     const totalValue=items.reduce((s,i)=>{ const p=priceMap[i.n+'|'+i.c]||0; return s+i.q*p; },0);
     const filter=repPeriodFilter(repRange), prevFilter=repPrevFilter(repRange);
     const outCur=outboundRecords.filter(filter), outPrev=outboundRecords.filter(prevFilter);
@@ -3528,11 +3568,15 @@
     const deptMap={}; monthOut.forEach(r=>{ deptMap[r.dept||'未分类']=(deptMap[r.dept||'未分类']||0)+(+r.qty||0); });
     const deptLabels=Object.keys(deptMap), deptData=Object.values(deptMap);
     if(charts.reports.dept && charts.reports.dept.data){ charts.reports.dept.data.labels=deptLabels.length?deptLabels:['暂无数据']; charts.reports.dept.data.datasets[0].data=deptLabels.length?deptData:[0]; charts.reports.dept.update(); }
-    const priceMap={}; inboundRecords.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(r=>{ const k=r.name+'|'+r.category; if(r.price!=null) priceMap[k]=+r.price; });
+    const priceMap=latestPriceMap(); // 单趟取最新单价，免全量拷贝排序（流水几十万条时 slice+sort 是报表主热点）
     const _catKeys=allCatKeys(); // 含数据中实际存在的未知分类，避免分类金额/领用排名漏算
-    const catVal=_catKeys.map(k=> Math.round(items.filter(i=>i.c===k).reduce((s,i)=>s+i.q*(priceMap[i.n+'|'+i.c]||0),0))/10000 );
+    // 分类金额单趟聚合：一次遍历 items 建 Map，替代「每分类 filter 全表」的 O(分类×物资) 二次方扫描
+    const valBy=new Map(); for(const i of items){ if(+i.q>0) valBy.set(i.c,(valBy.get(i.c)||0)+i.q*(priceMap[i.n+'|'+i.c]||0)); }
+    const catVal=_catKeys.map(k=> Math.round((valBy.get(k)||0))/10000 );
     if(charts.reports.value && charts.reports.value.data){ charts.reports.value.data.labels=_catKeys.map(k=>safeMeta(k).t); charts.reports.value.data.datasets[0].data=catVal; charts.reports.value.update(); }
-    const catRank=_catKeys.map(k=>({k,qty:monthOut.filter(r=>r.category===k).reduce((s,r)=>s+(+r.qty||0),0)})).sort((a,b)=>b.qty-a.qty);
+    // 分类领用排名单趟聚合：一次遍历 monthOut，替代「每分类 filter」的 O(分类×流水) 二次方扫描
+    const rankBy=new Map(); for(const r of monthOut){ rankBy.set(r.category,(rankBy.get(r.category)||0)+(+r.qty||0)); }
+    const catRank=_catKeys.map(k=>({k,qty:rankBy.get(k)||0})).sort((a,b)=>b.qty-a.qty);
     if(charts.reports.rank && charts.reports.rank.data){ charts.reports.rank.data.labels=catRank.map(x=>safeMeta(x.k).t); charts.reports.rank.data.datasets[0].data=catRank.map(x=>x.qty); charts.reports.rank.update(); }
     renderReportsDetailTables();
   }
@@ -3574,8 +3618,9 @@
       const monthOut=outboundRecords.filter(r=>String(r.date).startsWith(cur));
       const deptMap={}; monthOut.forEach(r=>{ deptMap[r.dept||'未分类']=(deptMap[r.dept||'未分类']||0)+(+r.qty||0); });
       const deptLabels=Object.keys(deptMap), deptData=Object.values(deptMap);
-      const priceMap={}; inboundRecords.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(r=>{ const k=r.name+'|'+r.category; if(r.price!=null) priceMap[k]=+r.price; });
-      const catVal=Object.keys(catMeta).map(k=> Math.round(items.filter(i=>i.c===k).reduce((s,i)=>s+i.q*(priceMap[i.n+'|'+i.c]||0),0))/10000 );
+      const priceMap=latestPriceMap(); // 单趟取最新单价，免全量拷贝排序（流水几十万条时 slice+sort 是报表主热点）
+      const valBy=new Map(); for(const i of items){ if(+i.q>0) valBy.set(i.c,(valBy.get(i.c)||0)+i.q*(priceMap[i.n+'|'+i.c]||0)); }
+      const catVal=Object.keys(catMeta).map(k=> Math.round((valBy.get(k)||0))/10000 );
       charts.reports={};
       charts.reports.dept=new Chart(document.getElementById('deptChart'),{
         type:'bar',
@@ -3719,6 +3764,18 @@
   }
   function statusCls(s){ s=s||''; if(s.indexOf('待')>=0)return 'low'; if(s.indexOf('驳')>=0||s.indexOf('取')>=0)return 'out'; return 'ok'; } // 防御缺字段历史/导入数据
   let activeDataTab='in';
+  // 数据表分页：单页行数上限。几十万条流水若一次全量拼 HTML 再 innerHTML 解析，
+  // 在「第一次导入后紧接第二次导入」的数据翻倍场景下会假死数秒——分页后单次构建恒为 PAGE 行
+  const DATA_PAGE=200;
+  let dataPage={in:0,out:0};
+  function renderPager(pages,total,type){
+    const el=document.getElementById('dataPager'); if(!el) return;
+    const info=document.getElementById('dataPageInfo'); if(info) info.textContent=pages>1?('第 '+(dataPage[type]+1)+' / '+pages+' 页'):'';
+    el.style.display=pages>1?'flex':'none';
+    const prev=document.getElementById('dataPrev'), next=document.getElementById('dataNext');
+    if(prev) prev.disabled=dataPage[type]<=0;
+    if(next) next.disabled=dataPage[type]>=pages-1;
+  }
   function renderData(type,filter){
     const cols=type==='in'?inCols:outCols;
     const body=type==='in'?document.getElementById('inBody'):document.getElementById('outBody');
@@ -3739,18 +3796,22 @@
       const codeVal=type==='in'?(r.inNo||r.id):(r.outNo||r.id);
       return `<tr data-row-rec="${type}:${i}"><td class="code">${escHtml(codeVal)}</td>${cells}</tr>`;
     };
-    if(!f){
-      // 无搜索：直接全量渲染。原实现先 all.map 造 {r,i} 临时对象再 filter，
-      // 数据翻倍时产生海量垃圾对象（GC 压力），且每次都遍历全表
-      if(!all.length){ body.innerHTML=emptyHtml; return 0; }
-      body.innerHTML=all.map(buildRow).join('');
-      return all.length;
-    }
-    // 有搜索：仅构建搜索文本并记录命中行（索引保留全量数组下标）
+    // 命中行在全量数组中的下标（无搜索时直接构建下标数组，避免 all.map 造 {r,i} 临时对象）
     const rows=[];
-    for(let i=0;i<all.length;i++){ const r=all[i]; if(Object.values(r).join(' ').toLowerCase().includes(f)) rows.push(i); }
-    if(!rows.length){ body.innerHTML=emptyHtml; return 0; }
-    body.innerHTML=rows.map(i=>buildRow(all[i],i)).join('');
+    if(!f){
+      if(!all.length){ body.innerHTML=emptyHtml; renderPager(0,0,type); return 0; }
+      for(let i=0;i<all.length;i++) rows.push(i);
+    }else{
+      for(let i=0;i<all.length;i++){ const r=all[i]; if(Object.values(r).join(' ').toLowerCase().includes(f)) rows.push(i); }
+    }
+    if(!rows.length){ body.innerHTML=emptyHtml; renderPager(0,0,type); return 0; }
+    // 分页窗口：页码越界（删除/导入后总数缩水）时钳回最后一页
+    const pages=Math.ceil(rows.length/DATA_PAGE);
+    if(dataPage[type]>=pages) dataPage[type]=pages-1;
+    const start=dataPage[type]*DATA_PAGE;
+    const win=rows.slice(start,Math.min(start+DATA_PAGE,rows.length));
+    body.innerHTML=win.map(i=>buildRow(all[i],i)).join('');
+    renderPager(pages,rows.length,type);
     return rows.length;
   }
   function renderDataTables(){
@@ -3758,7 +3819,8 @@
     const f=document.getElementById('dataSearch').value;
     // 只渲染当前激活页签：隐藏面板无渲染必要，数据翻倍后可省一半全量 HTML 拼接 + innerHTML 解析成本
     const n=renderData(activeDataTab,f);
-    document.getElementById('dataCount').textContent=(activeDataTab==='in'?'入库':'出库')+'共 '+n+' 条';
+    const dc=document.getElementById('dataCount');
+    if(dc){ const pages=Math.max(1,Math.ceil(n/DATA_PAGE)); dc.textContent=(activeDataTab==='in'?'入库':'出库')+'共 '+n+' 条'+(pages>1?'（第 '+(dataPage[activeDataTab]+1)+' / '+pages+' 页）':''); }
     checkTableOverflow();
   }
   // 导出防公式注入（CSV/Formula Injection）：单元格文本以 = + - @ 等开头时，
@@ -4143,14 +4205,18 @@
     document.querySelectorAll('#view-data .tabpane').forEach(p=>p.classList.remove('active'));
     document.getElementById('pane-data-'+t.dataset.tab).classList.add('active');
     activeDataTab=t.dataset.tab;
+    dataPage[activeDataTab]=0; // 切换页签回到第一页
     if(activeDataTab==='archive'){ renderArchive(); renderCarryoverCard(); apCount(); } else renderDataTables();
   }));
+  // 分页导航：上一页 / 下一页（页码越界由 renderData 钳回）
+  document.getElementById('dataPrev').addEventListener('click',()=>{ if(activeDataTab!=='archive'&&dataPage[activeDataTab]>0){ dataPage[activeDataTab]--; renderDataTables(); } });
+  document.getElementById('dataNext').addEventListener('click',()=>{ if(activeDataTab!=='archive'){ dataPage[activeDataTab]++; renderDataTables(); } });
   // 搜索防抖：大数据量下每按一个键全量重渲染整表会明显掉帧（与库存搜索同款 160ms 防抖），
-  // 防抖后仅渲染最后一次输入，输入流畅度显著提升
+  // 防抖后仅渲染最后一次输入，输入流畅度显著提升；命中集变化时回到第一页
   let dataSearchTimer=null;
   document.getElementById('dataSearch').addEventListener('input',()=>{
     clearTimeout(dataSearchTimer);
-    dataSearchTimer=setTimeout(renderDataTables,160);
+    dataSearchTimer=setTimeout(()=>{ dataPage[activeDataTab]=0; renderDataTables(); },160);
   });
   document.getElementById('downloadAll').addEventListener('click',downloadAll);
   document.getElementById('recModalClose').addEventListener('click',()=>document.getElementById('recModal').classList.remove('show'));
@@ -4932,7 +4998,7 @@
 
   // ============ 出库领用：最近出库记录 ============
   function renderRecentOut(){
-    const list=outboundRecords.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
+    const list=topNBy(outboundRecords,8,r=>String(r.date||''),r=>r);
     const el=document.getElementById('recentOutList'); if(!el) return;
     el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.applicant)} 领用 ${escHtml(r.name)} ×${escHtml(r.qty)} ${escHtml(r.unit||'件')}</div><div class="rs">${escHtml(r.dept)} · ${escHtml(r.purpose||'—')} · ${escHtml(r.date)}</div></div><div class="rq out">−${escHtml(r.qty)} ${escHtml(r.unit||'件')}</div></div>`).join('')
       : '<div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无出库记录</div>';
