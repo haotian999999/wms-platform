@@ -2571,16 +2571,27 @@
     checkPlansQuarter.length=0;
     QUARTER_SLOTS.forEach(s=>{
       const p=qCanon[s.t]; if(!p) return;
-      const old=p.key; p.period=`${y} Q${s.q}`; p.time=s.t; p.key=`${y}-Q${s.q}`; if(p.watch==null)p.watch='';
-      if(old!==p.key) keyMap[old]=p.key; checkPlansQuarter.push(p);
+      const old=p.key; const oldY=(/^(\d{4})-/.exec(String(old||''))||[])[1];
+      p.period=`${y} Q${s.q}`; p.time=s.t; p.key=`${y}-Q${s.q}`; if(p.watch==null)p.watch='';
+      // R39：计划跨年滚动（去年键→今年键）只滚动槽位模板，绝不把含年份的历史键迁进 keyMap——
+      // 否则 checkRecords.planKey 被改成今年键，今年同槽位盘点 findIndex 命中去年已完成记录并原地覆盖（去年盘点记录丢失）。
+      // keyMap 迁移仅服务「旧版无年份键（Q1/mid…）补全为当前年键」场景。
+      if(old!==p.key && !oldY) keyMap[old]=p.key;
+      // 跨年滚动（旧键年份≠今年）：槽位重置为今年待办（否则去年 'ok' 残留致今年误显「已完成」静默跳过盘点）
+      if(oldY && String(oldY)!==String(y)){ p.status='out'; p.diff='—'; }
+      checkPlansQuarter.push(p);
     });
     const yCanon={};
     checkPlansYear.forEach(p=>{ ensureKey(p); const t=String(p.time||''); if(YEAR_SLOTS.some(s=>s.t===t) && !yCanon[t]) yCanon[t]=p; });
     checkPlansYear.length=0;
     YEAR_SLOTS.forEach(s=>{
       const p=yCanon[s.t]; if(!p) return;
-      const old=p.key; p.name=`${y} ${s.label}全面盘点`; p.time=s.t; p.key=`${y}-${s.t==='06-30'?'mid':'year-end'}`; if(p.mode==null)p.mode='全面';
-      if(old!==p.key) keyMap[old]=p.key; checkPlansYear.push(p);
+      const old=p.key; const oldY=(/^(\d{4})-/.exec(String(old||''))||[])[1];
+      p.name=`${y} ${s.label}全面盘点`; p.time=s.t; p.key=`${y}-${s.t==='06-30'?'mid':'year-end'}`; if(p.mode==null)p.mode='全面';
+      // R39：同 Fix1——含年份旧键不迁移；跨年滚动重置为今年待办
+      if(old!==p.key && !oldY) keyMap[old]=p.key;
+      if(oldY && String(oldY)!==String(y)){ p.status='out'; p.diff='—'; }
+      checkPlansYear.push(p);
     });
     if(Object.keys(keyMap).length) checkRecords.forEach(r=>{ if(r.planKey && keyMap[r.planKey]) r.planKey=keyMap[r.planKey]; });
   }
