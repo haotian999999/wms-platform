@@ -4364,7 +4364,7 @@
     }).join('');
 
     // ===== 第二部分：入库明细（按时间倒序，最新在最上，含该物品全部入库记录） =====
-    const inRs=inboundRecords.filter(r=>r.name===i.n && r.category===i.c)
+    const inRs=inboundRecords.filter(r=>normName(r.name)===i.n && r.category===i.c)
       .slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     document.getElementById('invInCount').textContent='共 '+inRs.length+' 次';
     document.getElementById('invInList').innerHTML = inRs.length ? inRs.map(r=>`
@@ -4389,7 +4389,7 @@
       </div>`).join('') : '<div class="inv-empty">暂无入库记录</div>';
 
     // ===== 第三部分：出库明细（按时间倒序，最新在最上，含该物品全部出库记录） =====
-    const outRs=outboundRecords.filter(r=>r.name===i.n && r.category===i.c)
+    const outRs=outboundRecords.filter(r=>normName(r.name)===i.n && r.category===i.c)
       .slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     document.getElementById('invOutCount').textContent='共 '+outRs.length+' 次';
     document.getElementById('invOutList').innerHTML = outRs.length ? outRs.map(r=>`
@@ -4542,8 +4542,8 @@
     });
     // 冻结期初：期初 = 原期初 + 上年净入 − 上年净出；现存数值保持不变，结转前后不跳变
     items.forEach(i=>{
-      const inLast=inboundRecords.filter(r=>r.name===i.n&&r.category===i.c&&yearOf(r)<cur).reduce((s,r)=>s+(+r.qty||0),0);
-      const outLast=outboundRecords.filter(r=>r.name===i.n&&r.category===i.c&&yearOf(r)<cur).reduce((s,r)=>s+(+r.qty||0),0);
+      const inLast=inboundRecords.filter(r=>normName(r.name)===i.n&&r.category===i.c&&yearOf(r)<cur).reduce((s,r)=>s+(+r.qty||0),0);
+      const outLast=outboundRecords.filter(r=>normName(r.name)===i.n&&r.category===i.c&&yearOf(r)<cur).reduce((s,r)=>s+(+r.qty||0),0);
       const base=(typeof i.initQty==='number'&&!isNaN(i.initQty))? i.initQty : (+i.q||0);
       i.initQty=+(base+inLast-outLast).toFixed(2);
     });
@@ -4552,11 +4552,11 @@
     // 更早年度期末 = 下一年度期初；期初 = 期末 − 本期入库 + 本期出库（逐年勾稽，恒等平衡）
     const curIn=inboundRecords.filter(r=>yearOf(r)>=cur);
     const curOut=outboundRecords.filter(r=>yearOf(r)>=cur);
-    const priceOf2={}; inboundRecords.forEach(r=>{ if(r.name&&r.price) priceOf2[r.name+'|'+r.category]=r.price; });
+    const priceOf2={}; inboundRecords.forEach(r=>{ if(r.name&&r.price) priceOf2[normName(r.name)+'|'+r.category]=r.price; });
     const unitPriceOf=(it)=>(typeof it.price==='number'&&it.price)? it.price : (priceOf2[it.n+'|'+it.c]||0);
     const closingLatest=snapshot.map(s=>{
-      const ciQ=curIn.filter(r=>r.name===s.n&&r.category===s.c).reduce((x,r)=>x+(+r.qty||0),0);
-      const coQ=curOut.filter(r=>r.name===s.n&&r.category===s.c).reduce((x,r)=>x+(+r.qty||0),0);
+      const ciQ=curIn.filter(r=>normName(r.name)===s.n&&r.category===s.c).reduce((x,r)=>x+(+r.qty||0),0);
+      const coQ=curOut.filter(r=>normName(r.name)===s.n&&r.category===s.c).reduce((x,r)=>x+(+r.qty||0),0);
       const q=Math.max(0, +((+s.q||0)-ciQ+coQ).toFixed(2));
       const p=unitPriceOf(s);
       return {n:s.n,c:s.c,u:s.u,q,price:p,amount:+((q*p).toFixed(2))};
@@ -4569,15 +4569,15 @@
       const closing=nextClosing.map(o=>({n:o.n,c:o.c,u:o.u,q:o.q,price:o.price,amount:o.amount}));
       // 期初 = 期末 − 入库 + 出库（按物资逐项）
       const opening=closing.map(s=>{
-        const inQ=inY.filter(r=>r.name===s.n&&r.category===s.c).reduce((x,r)=>x+(+r.qty||0),0);
-        const outQ=outY.filter(r=>r.name===s.n&&r.category===s.c).reduce((x,r)=>x+(+r.qty||0),0);
+        const inQ=inY.filter(r=>normName(r.name)===s.n&&r.category===s.c).reduce((x,r)=>x+(+r.qty||0),0);
+        const outQ=outY.filter(r=>normName(r.name)===s.n&&r.category===s.c).reduce((x,r)=>x+(+r.qty||0),0);
         const q=Math.max(0, +(s.q-inQ+outQ).toFixed(2));
         return {n:s.n,c:s.c,u:s.u,q,price:s.price,amount:+((q*(s.price||0)).toFixed(2))};
       });
       nextClosing=opening; // 更早年度期末 = 本年度期初
       // 出库补单价/金额（存货发出成本：按物资统一单价估算）
       const outWithPrice=outY.map(r=>{
-        const p=priceOf2[r.name+'|'+r.category]||0;
+        const p=priceOf2[normName(r.name)+'|'+r.category]||0;
         return Object.assign({},r,{price:p,amount:+(((+r.qty||0)*p).toFixed(2))});
       });
       const inWithPrice=inY.map(r=>Object.assign({},r,{price:(+r.price||0),amount:(+r.amount||+(+r.qty||0)*(+r.price||0))}));
@@ -5107,7 +5107,7 @@
   }
   function saveInvEdit(){
     const c=document.getElementById('invEditCat').value;
-    const n=document.getElementById('invEditName').value.trim();
+    const n=normName(document.getElementById('invEditName').value);
     const b=document.getElementById('invEditBrand').value.trim();
     const s=document.getElementById('invEditSpec').value.trim()||'—';
     const u=document.getElementById('invEditUnit').value.trim()||'件';
@@ -5126,8 +5126,8 @@
       if(warranty){ i.expire=addMonths(inDate||'2026-01-01',warranty); } else { i.expire=undefined; }
       // 名称/分类变更：同步迁移关联入库/出库流水，保持 SSOT 历史衔接（否则旧记录成为「孤儿流水」）
       if(changed){
-        inboundRecords.forEach(r=>{ if(r.name===oldN && r.category===oldC){ r.name=n; r.category=c; r.updatedAt=Date.now(); } });
-        outboundRecords.forEach(r=>{ if(r.name===oldN && r.category===oldC){ r.name=n; r.category=c; r.updatedAt=Date.now(); } });
+        inboundRecords.forEach(r=>{ if(normName(r.name)===oldN && r.category===oldC){ r.name=n; r.category=c; r.updatedAt=Date.now(); } });
+        outboundRecords.forEach(r=>{ if(normName(r.name)===oldN && r.category===oldC){ r.name=n; r.category=c; r.updatedAt=Date.now(); } });
       }
       // 「库存数量」作为目标库存：反推期初，使其与出入库流水保持自洽（改名/改分类时以目标值作为新期初）
       i.initQty = q - inTotalOf(i.n,i.c) + outTotalOf(i.n,i.c);
@@ -5149,11 +5149,11 @@
   function closeInvEdit(){ document.getElementById('invEditModal').classList.remove('show'); }
   function deleteInv(idx){
     const i=items[idx]; if(!i) return;
-    const inRel=inboundRecords.filter(r=>r.name===i.n && r.category===i.c);
-    const outRel=outboundRecords.filter(r=>r.name===i.n && r.category===i.c);
+    const inRel=inboundRecords.filter(r=>normName(r.name)===i.n && r.category===i.c);
+    const outRel=outboundRecords.filter(r=>normName(r.name)===i.n && r.category===i.c);
     if(!confirm('确定删除该物资「'+i.n+'」吗？\n（将同步删除关联入库 '+inRel.length+' 条 / 出库 '+outRel.length+' 条记录）')) return;
-    for(let k=inboundRecords.length-1;k>=0;k--){ const r=inboundRecords[k]; if(r.name===i.n && r.category===i.c){ tombstone('in:'+(r.id||r.inNo)); inboundRecords.splice(k,1); } }
-    for(let k=outboundRecords.length-1;k>=0;k--){ const r=outboundRecords[k]; if(r.name===i.n && r.category===i.c){ tombstone('out:'+(r.id||r.outNo)); outboundRecords.splice(k,1); } }
+    for(let k=inboundRecords.length-1;k>=0;k--){ const r=inboundRecords[k]; if(normName(r.name)===i.n && r.category===i.c){ tombstone('in:'+(r.id||r.inNo)); inboundRecords.splice(k,1); } }
+    for(let k=outboundRecords.length-1;k>=0;k--){ const r=outboundRecords[k]; if(normName(r.name)===i.n && r.category===i.c){ tombstone('out:'+(r.id||r.outNo)); outboundRecords.splice(k,1); } }
     tombstone('item:'+i.n+'|'+i.c); // 墓碑：防止其他设备同步时把已删除物资拉回
     items.splice(idx,1);
     recomputeStocks();
