@@ -4690,7 +4690,7 @@
     // 物资全集：期末∪期初∪入库∪出库
     const keys=new Map();
     [[opening,'op'],[closing,'cl'],[inY,'in'],[outY,'out']].forEach(([arr,tag])=>{
-      arr.forEach(r=>{ const nm=r.n||r.name, ct=r.c||r.category; const k=nm+'|'+ct; if(!keys.has(k)) keys.set(k,{n:nm,c:ct,u:r.unit||r.u||'件',op:0,cl:0,iq:0,oq:0,price:0}); const e=keys.get(k); if(tag==='op')e.op+=(+r.q||0); if(tag==='cl'){e.cl+=(+r.q||0); e.price=+(r.price||0)||e.price;} if(tag==='in')e.iq+=(+r.qty||0); if(tag==='out')e.oq+=(+r.qty||0); });
+      arr.forEach(r=>{ const nm=r.n||r.name, ct=r.c||r.category; const k=normName(nm)+'|'+(ct||''); /* R34: 并集键两侧 normName 归一（落档 n 已 normName、归档流水 name 为 sanitizeText 原文可含 NBSP）→ 防同物资拆行误报勾稽差异 */ if(!keys.has(k)) keys.set(k,{n:nm,c:ct,u:r.unit||r.u||'件',op:0,cl:0,iq:0,oq:0,price:0}); const e=keys.get(k); if(tag==='op')e.op+=(+r.q||0); if(tag==='cl'){e.cl+=(+r.q||0); e.price=+(r.price||0)||e.price;} if(tag==='in')e.iq+=(+r.qty||0); if(tag==='out')e.oq+=(+r.qty||0); });
     });
     let tOp=0,tIn=0,tOut=0,tCl=0,tAmt=0,tBal=0;
     const rows=Array.from(keys.values()).map(e=>{
@@ -4812,7 +4812,7 @@
       ['年度库存汇总 · 试算平衡'],['物资名称','分类','期初结存','本期入库','本期出库','期末结存','单位','期末金额(元)','勾稽']];
     const keys=new Map();
     [[opening,'op'],[closing,'cl'],[inY,'in'],[outY,'out']].forEach(([arr,tag])=>{
-      arr.forEach(r=>{ const nm=r.n||r.name, ct=r.c||r.category; const k=nm+'|'+ct; if(!keys.has(k)) keys.set(k,{n:nm,c:ct,u:r.unit||r.u||'件',op:0,cl:0,iq:0,oq:0,price:0}); const e=keys.get(k); if(tag==='op')e.op+=(+r.q||0); if(tag==='cl'){e.cl+=(+r.q||0); e.price=+(r.price||0)||e.price;} if(tag==='in')e.iq+=(+r.qty||0); if(tag==='out')e.oq+=(+r.qty||0); });
+      arr.forEach(r=>{ const nm=r.n||r.name, ct=r.c||r.category; const k=normName(nm)+'|'+(ct||''); /* R34: 并集键两侧 normName 归一（落档 n 已 normName、归档流水 name 为 sanitizeText 原文可含 NBSP）→ 防同物资拆行误报勾稽差异 */ if(!keys.has(k)) keys.set(k,{n:nm,c:ct,u:r.unit||r.u||'件',op:0,cl:0,iq:0,oq:0,price:0}); const e=keys.get(k); if(tag==='op')e.op+=(+r.q||0); if(tag==='cl'){e.cl+=(+r.q||0); e.price=+(r.price||0)||e.price;} if(tag==='in')e.iq+=(+r.qty||0); if(tag==='out')e.oq+=(+r.qty||0); });
     });
     Array.from(keys.values()).forEach(e=>{
       const bal=+(e.op+e.iq-e.oq-e.cl).toFixed(2);
