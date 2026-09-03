@@ -2725,12 +2725,12 @@
   function saveCheckItemEdit(){
     if(checkItemEditIdx<0) return;
     const it=checkItems[checkItemEditIdx]; if(!it) return;
-    const elN=document.getElementById('ciF_n'); const nm=elN?normName(elN.value):''; // 名称 normName 归一（同 saveInvEdit R29/手工建档 R27），防含 NBSP 名与库存 item.n 失配致盘点回写静默失效
+    const elN=document.getElementById('ciF_n'); const nm=elN?normName(sanitizeText(elN.value)):''; // 名称 normName 归一（同 saveInvEdit R29/手工建档 R27），防含 NBSP 名与库存 item.n 失配致盘点回写静默失效
     if(!nm){ toast('物资名称不能为空','warn'); return; }
     it.n=nm;
     const elC=document.getElementById('ciF_c'); if(elC) it.c=elC.value;
     const elS=document.getElementById('ciF_sys'); if(elS) it.sys=parseFloat(elS.value)||0;
-    const elU=document.getElementById('ciF_u'); if(elU) it.u=elU.value;
+    const elU=document.getElementById('ciF_u'); if(elU) it.u=sanitizeText(elU.value);
     closeCheckItemEdit(); renderCheck(); renderCheckKpi();
     toast('盘点项已更新','ok','修改后的盘点项已保存');
   }
@@ -4860,19 +4860,19 @@
     const sg=document.getElementById('inNameSuggest'); if(sg) sg.hidden=true;
   }
   document.getElementById('confirmInbound').addEventListener('click',()=>{
-    const name=document.getElementById('inName').value.trim();
+    const name=sanitizeText(document.getElementById('inName').value.trim());
     const cat=normCat(document.getElementById('inCat').value);
     const qty=parseFloat(document.getElementById('inQty').value);
-    const unit=document.getElementById('inUnit').value.trim()||'件';
+    const unit=sanitizeText(document.getElementById('inUnit').value.trim())||'件';
     const price=parseFloat(document.getElementById('inPrice').value)||0;
     if(!name||!cat||isNaN(qty)||qty<=0){ toast('请完整填写名称/分类/数量','warn','物资分类、名称与有效数量为必填项'); return; }
-    const supplier=document.getElementById('inSupplier').value.trim();
-    const handler=document.getElementById('inHandler').value.trim()||'—';
+    const supplier=sanitizeText(document.getElementById('inSupplier').value.trim());
+    const handler=sanitizeText(document.getElementById('inHandler').value.trim())||'—';
     const warehouse=document.getElementById('inWarehouse').value;
     const date=document.getElementById('inDate').value||new Date().toISOString().slice(0,10);
     const warranty=parseInt(document.getElementById('inWarranty').value)||0;
-    const brand=document.getElementById('inBrand').value.trim();
-    const spec=document.getElementById('inSpec').value.trim()||'—';
+    const brand=sanitizeText(document.getElementById('inBrand').value.trim());
+    const spec=sanitizeText(document.getElementById('inSpec').value.trim())||'—';
     const safe=parseFloat(document.getElementById('inSafe').value)||0;
     const inNo=document.getElementById('inNo').value.trim();
     const recId=inNo||genId('RK');
@@ -5047,15 +5047,15 @@
 
   function resetOutbound(){ ['outNo','outApplicant','outName','outSpec','outUnit','outQty','outHandler','outPurpose','outCat','outDept'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';}); }
   document.getElementById('submitOutbound').addEventListener('click',()=>{
-    const applicant=document.getElementById('outApplicant').value.trim();
+    const applicant=sanitizeText(document.getElementById('outApplicant').value.trim());
     const dept=document.getElementById('outDept').value;
     const cat=normCat(document.getElementById('outCat').value);
-    const name=document.getElementById('outName').value.trim();
+    const name=sanitizeText(document.getElementById('outName').value.trim());
     const qty=parseFloat(document.getElementById('outQty').value);
-    const approver=document.getElementById('outHandler').value.trim()||'admin';
-    const purpose=document.getElementById('outPurpose').value.trim();
+    const approver=sanitizeText(document.getElementById('outHandler').value.trim())||'admin';
+    const purpose=sanitizeText(document.getElementById('outPurpose').value.trim());
     if(!applicant||!cat||!name||isNaN(qty)||qty<=0){ toast('请完整填写领用人/分类/名称/数量','warn','以上为必填项'); return; }
-    const unit0=document.getElementById('outUnit').value.trim()||'件';
+    const unit0=sanitizeText(document.getElementById('outUnit').value.trim())||'件';
     // 【库存充足性校验】超量出库会导致账面「欠量」被静默归零，必须显式提示并由用户确认
     const _nm=normName(name);
     const _it=items.find(i=>i.c===cat && normName(i.n)===_nm);
@@ -5068,8 +5068,8 @@
     const outNo=document.getElementById('outNo').value.trim();
     if(outNo && outboundRecords.some(r=>r.outNo===outNo)){ toast('单号已存在','warn','出库单号「'+outNo+'」已登记过，请核对或留空自动生成'); return; }
     const recId=outNo||genId('CK');
-    const unit=document.getElementById('outUnit').value.trim()||'件';
-    const spec=document.getElementById('outSpec').value.trim();
+    const unit=sanitizeText(document.getElementById('outUnit').value.trim())||'件';
+    const spec=sanitizeText(document.getElementById('outSpec').value.trim());
     const rec={id:recId,outNo:outNo||recId,date:new Date().toISOString().slice(0,10),applicant,dept,name:_nm,category:cat,qty,unit,spec,purpose,handler:approver,status:'已出库',updatedAt:Date.now()};
     if(_it){ // 主键对齐：流水采用档案标准名/分类，保证「名称|分类」键一致，重算时库存才能正确归集
       rec.name=_it.n; rec.category=_it.c;
@@ -5125,10 +5125,10 @@
   }
   function saveInvEdit(){
     const c=document.getElementById('invEditCat').value;
-    const n=normName(document.getElementById('invEditName').value);
-    const b=document.getElementById('invEditBrand').value.trim();
-    const s=document.getElementById('invEditSpec').value.trim()||'—';
-    const u=document.getElementById('invEditUnit').value.trim()||'件';
+    const n=normName(sanitizeText(document.getElementById('invEditName').value));
+    const b=sanitizeText(document.getElementById('invEditBrand').value.trim());
+    const s=sanitizeText(document.getElementById('invEditSpec').value.trim())||'—';
+    const u=sanitizeText(document.getElementById('invEditUnit').value.trim())||'件';
     const q=parseFloat(document.getElementById('invEditQty').value);
     const safe=parseFloat(document.getElementById('invEditSafe').value)||0;
     const inDate=document.getElementById('invEditInDate').value||'';
@@ -5225,7 +5225,7 @@
     const arr=(recEditType==='in'?inboundRecords:outboundRecords);
     const rec=arr[recEditIdx]; if(!rec) return;
     const oldQty=rec.qty;
-    recEditFields[recEditType].forEach(f=>{ const el=document.getElementById('recF_'+f.k); if(el) rec[f.k]=(f.ty==='number')?(parseFloat(el.value)||0):el.value; });
+    recEditFields[recEditType].forEach(f=>{ const el=document.getElementById('recF_'+f.k); if(el) rec[f.k]=(f.ty==='number')?(parseFloat(el.value)||0):sanitizeText(el.value); });
     if(recEditType==='in'){
       rec.updatedAt=Date.now(); // 供跨设备合并时做「最新写入胜出」判定
       rec.amount=+(rec.qty*(rec.price||0)).toFixed(2); if(rec.warranty) rec.expire=addMonths(rec.date,rec.warranty); else rec.expire=undefined;
