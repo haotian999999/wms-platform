@@ -3289,6 +3289,15 @@
       }
     }
   }
+  // 真实单号判定：Excel 里「——」「一一」「/」「-」等是占位符而非单号，
+  // 若把占位串当单号写入，多条记录会共享同一单号（后续查重/导出/对账全部失真）→ 改用系统流水号
+  function isRealNo(v){
+    const s=String(v==null?'':v).trim();
+    if(!s) return false;
+    if(/^[\s\-\u2014\u2013\/\\*\u00b7\uff0e._]*$/.test(s)) return false; // 纯占位符号
+    if(s==='一一'||s==='无'||s==='暂无'||s==='/') return false;
+    return true;
+  }
   // 字段取值器：预建「字段 → 列下标」映射，避免每行每字段都 findIndex 全表扫描
   function makeGetter(){
     const idx={};
@@ -3336,61 +3345,114 @@
     const itemIdx=new Map();
     for(const it of items){ const k=it.c+'|'+normName(it.n); if(!itemIdx.has(k)) itemIdx.set(k,it); }
     const FI=flowIndex(); // 流水汇总索引（反推期初用，O(1) 查询）
+    const touched=new Set(); // 本次导入已处理过的「分类|名称」：总表多批次同一物资需累加期末，否则只留最后一行 → 库存低估
     const fileCat=detectCatFromName(importState.fileName)||''; // 文件名分类是常量，循环外算一次
+    // 明细去重键 = 业务指纹 + 规格：指纹已含「物资|分类|日期|数量|单号」，可区分一单多品种；
+    // 补 spec 是因为同名单日同数量的不同规格批次（茶叶·台湾乌龙 / 茶叶·陈皮茶 各 51）属两笔真实业务，
+    // 仅按指纹会指纹碰撞被误杀（既有记录同样按 fprint+spec 建索引，重导防重不失效）
+    const fpKey=r=>String(r.fprint||'')+'|'+String(r.spec||'');
+    // 本次实际会入表的明细（去重后）：反推期初用的流水量必须与实际入表量完全一致，
+    // 否则「期初 = 期末 − 流水」与「q = 期初 + 流水」两侧口径不同 → q 偏小
+    const effRecs=[];
+    if(useDetail&&importState.detail&&importState.detail.records.length){
+      // 库中已有同键条数（按 in/out 分别计数）
+      const dbIn=new Map(), dbOut=new Map();
+      for(const r of inboundRecords){ if(r.fprint) dbIn.set(fpKey(r),(dbIn.get(fpKey(r))||0)+1); }
+      for(const r of outboundRecords){ if(r.fprint) dbOut.set(fpKey(r),(dbOut.get(fpKey(r))||0)+1); }
+      // 本次同键条数：同一张单号同日同名同量的**多行是多笔真实业务**（如 5号电池 2025-12-08 两笔各 1 粒、
+      // 无线装订本 2025-07-06 两笔各 1 本），绝不可按 Set 去重，否则该物资期末少 1
+      const grpIn=new Map(), grpOut=new Map();
+      for(const rec of importState.detail.records){
+        if(!rec.fprint) continue;
+        const k=fpKey(rec), m=(rec.type==='in')?grpIn:grpOut;
+        m.set(k,(m.get(k)||0)+1);
+      }
+      // 可插入配额 = 本次条数 − 库中已有同键条数：首次导入全量入表；重导同一文件配额恒 0（零翻倍）；
+      // 部分导入（库中已有 1 条、本次 2 条）只补差额，不重复也不漏
+      const quota=new Map();
+      grpIn.forEach((n,k)=>quota.set('in|'+k,Math.max(0,n-(dbIn.get(k)||0))));
+      grpOut.forEach((n,k)=>quota.set('out|'+k,Math.max(0,n-(dbOut.get(k)||0))));
+      for(const rec of importState.detail.records){
+        if(rec.fprint){
+          const qk=(rec.type==='in'?'in|':'out|')+fpKey(rec);
+          const left=quota.get(qk)||0;
+          if(left<=0) continue; // 库中已存在同笔业务（重导防翻倍）
+          quota.set(qk,left-1);
+        }
+        effRecs.push(rec);
+      }
+    }
     // 预聚合本次明细流水按「名称|分类」的入/出总量，供反推期初使用（避免期末叠加明细流水双重计数）
     const newFlowByKey=new Map();
-    if(useDetail&&importState.detail&&importState.detail.records.length){
-      for(const rec of importState.detail.records){
-        const k=normName(rec.name)+'|'+rec.category;
-        const e=newFlowByKey.get(k)||{in:0,out:0};
-        if(rec.type==='in') e.in+= (+rec.qty||0); else e.out+=(+rec.qty||0);
-        newFlowByKey.set(k,e);
-      }
+    for(const rec of effRecs){
+      const k=normName(rec.name)+'|'+rec.category;
+      const e=newFlowByKey.get(k)||{in:0,out:0};
+      if(rec.type==='in') e.in+= (+rec.qty||0); else e.out+=(+rec.qty||0);
+      newFlowByKey.set(k,e);
     }
     await chunkedRun(importState.dataRows.length,CHUNK,j=>{
       const r=importState.dataRows[j];
       const name=normName(get(r,'name')),brand=get(r,'brand'),spec=get(r,'spec'),catRaw=get(r,'category'),unit=get(r,'unit'),safe=get(r,'safe');
       const cat=fileCat||normCat(catRaw)||'';
-      // initQty 来源：含明细表→期初数量(真正期初，叠加流水后 q=期末)；否则→期末数量(=当前库存)
-      let initFinal;
-      if(useDetail){ const a=toNum(get(r,'initQty')); initFinal=isNaN(a)?toNum(get(r,'stock')):a; }
-      else { initFinal=toNum(get(r,'stock')); }
+      // 当前库存的权威值：总表只要提供「期末/当前库存」列就以它为锚（反推期初，保证导入后系统库存 === Excel 库存）；
+      // 只有「无期末列、仅期初列」的兜底场景才直接采用期初。
+      // initRaw 必须在「行作用域」声明：下方分支要用它做兜底；
+      // 此前写作 if 块内 const a → 跨块引用抛 ReferenceError「a is not defined」→ 整个导入失败
+      const initRaw=toNum(get(r,'initQty'));
+      const stockRaw=toNum(get(r,'stock'));
+      let initFinal, stockAsTarget;
+      if(useDetail){ stockAsTarget=!isNaN(stockRaw); initFinal=stockAsTarget?stockRaw:initRaw; }
+      else { stockAsTarget=true; initFinal=stockRaw; }
       if(!(name&&cat&&!isNaN(initFinal))) return; // 跳过名称/分类/库存缺失的脏行
       initFinal=Math.max(0,initFinal); // 库存不允许为负
       // 规格列合并「类别」子类型；顶层分类由文件名决定
       const subSpec=[catRaw,spec].filter(v=>v!=null&&String(v).trim()!=='').join(' · ');
       const key=cat+'|'+name;
+      const multi=touched.has(key); // 总表内同一物资出现多行（多批次/多规格）：期末须累加，只取最后一行会低估库存
       const exist=itemIdx.get(key);
       if(exist){ // 同名同分类：更新而非重复新增
         if(brand) exist.b=String(brand);
         if(subSpec) exist.s=subSpec;
         if(unit) exist.u=String(unit);
         if(useDetail){
-          // 明细模式：总表含「期初」列→导入值即真正期初，叠加明细流水后=期末；
-          // 总表仅含期末/库存列(无期初，如 2024 烟酒茶/2025 礼品)→反推期初=期末−(既有+本次)入库+(既有+本次)出库，
-          // 杜绝「期末叠加明细流水」造成的库存双重计数（本轮归档修复的连带正确性修复）
-          const fk=exist.n+'|'+exist.c;
-          const nf=newFlowByKey.get(normName(exist.n)+'|'+exist.c)||{in:0,out:0};
-          if(!isNaN(a)) exist.initQty=initFinal;
+          // 明细模式：以总表「期末/当前库存」为权威当前库存反推期初=期末−(既有+本次)入库+(既有+本次)出库，
+          // 杜绝「期末叠加明细流水」造成的库存双重计数；数据自洽时反推值 ≡ Excel 期初（零变化）。
+          // 仅当总表无期末列时兜底直接采用期初（stockAsTarget=false）。
+          const fk=normName(exist.n)+'|'+exist.c; // 与 flowIndex 建键口径一致（存量 item.n 可能含 NBSP/全角空格，裸 exist.n 会查空→期初反推漏减流水）
+          const nf=newFlowByKey.get(fk)||{in:0,out:0};
+          if(!stockAsTarget) exist.initQty = multi ? exist.initQty+initFinal : initFinal;
+          // 多行时流水减项（既有+本次）首行已一次性扣过，后续行只需累加期末增量
+          else if(multi) exist.initQty += initFinal;
           else exist.initQty = initFinal - (FI.inQ.get(fk)||0) - nf.in + (FI.outQ.get(fk)||0) + nf.out;
           exist.q = initFinal;
         }else{
           // 非明细模式：导入值=目标库存（期末），反推期初冻结，重算后 q 恒等于导入值
-          const fk=exist.n+'|'+exist.c;
-          exist.initQty = initFinal - (FI.inQ.get(fk)||0) + (FI.outQ.get(fk)||0);
+          const fk=normName(exist.n)+'|'+exist.c;
+          if(multi) exist.initQty += initFinal;
+          else exist.initQty = initFinal - (FI.inQ.get(fk)||0) + (FI.outQ.get(fk)||0);
           exist.q = initFinal;
         }
         exist.updatedAt=Date.now(); // 云同步 LWW 需要时间戳
         const sv=toNum(safe); if(!isNaN(sv)) exist.safe=Math.max(0,sv);
+        touched.add(key);
         updated++;
       }else{
         const sv=toNum(safe);
+        // 与 exist 分支同口径：明细模式且本行以「期末」为锚时，必须先反推期初再叠加本期流水，
+        // 否则新物资 q = 期末 − 本次出库（2024 烟酒茶首行：期末 1、本次出库 8 → 会被算成 −7）
+        let niInit=initFinal;
+        if(useDetail && stockAsTarget){
+          const fk=name+'|'+cat; // name 已 normName，与 flowIndex 建键一致
+          const nf=newFlowByKey.get(fk)||{in:0,out:0};
+          niInit = initFinal - (FI.inQ.get(fk)||0) - nf.in + (FI.outQ.get(fk)||0) + nf.out;
+        }
         const ni={c:cat,n:name,b:brand?String(brand):'—',s:subSpec||'—',u:unit?String(unit):'件',
-          q:initFinal, initQty:initFinal,
+          q:initFinal, initQty:niInit,
           safe:!isNaN(sv)?Math.max(0,sv):(catDefault[cat]||Math.ceil(initFinal*0.3)),
           updatedAt:Date.now()};
         items.push(ni);
         itemIdx.set(key,ni); // 同批次内出现重复行时也命中更新，绝不产生重复物资
+        touched.add(key);
         added++;
       }
     },(done,total)=>setImportProgress(done,total,'正在合并物资'));
@@ -3398,31 +3460,28 @@
     // 查重由 some() 全表扫描改为 Set 索引 O(1)；新增记录先 push 到临时数组，
     // 最后一次性批量插入表头，避免逐条 unshift 造成的 O(N²) 元素搬移
     let inN=0,outN=0;
-    if(useDetail&&importState.detail&&importState.detail.records.length){
+    if(effRecs.length){
       const nowTs=Date.now();
-      const inNoSet=new Set(), inFpSet=new Set(), outNoSet=new Set(), outFpSet=new Set();
-      for(const r of inboundRecords){ if(r.inNo) inNoSet.add(r.inNo); if(r.fprint) inFpSet.add(r.fprint); }
-      for(const r of outboundRecords){ if(r.outNo) outNoSet.add(r.outNo); if(r.fprint) outFpSet.add(r.fprint); }
       const newIn=[], newOut=[];
-      const recs=importState.detail.records;
+      const usedInId=new Set(), usedOutId=new Set(); // 一单多行的内部主键去重（outNo/inNo 仍保留业务单号）
+      const uniq=(base,used)=>{ if(!used.has(base)){ used.add(base); return base; } let n=2; while(used.has(base+'#'+n)) n++; const id=base+'#'+n; used.add(id); return id; };
+      const recs=effRecs;
       await chunkedRun(recs.length,CHUNK,j=>{
         const rec=recs[j];
         if(rec.type==='in'){
-          // 防重复导入：优先按申购单号查重；无单号行按业务指纹（物资+日期+数量）查重，重导同一文件不再翻倍
-          if(rec.orderNo && inNoSet.has(rec.orderNo)) return;
-          if(rec.fprint && inFpSet.has(rec.fprint)) return;
-          const recId=rec.orderNo||genId('RK');
-          if(rec.orderNo) inNoSet.add(rec.orderNo);
-          if(rec.fprint) inFpSet.add(rec.fprint);
-          newIn.push({id:recId,inNo:recId,date:rec.date,name:rec.name,category:rec.category,brand:rec.brand,spec:rec.spec,unit:rec.unit,qty:rec.qty,price:0,amount:0,supplier:'—',handler:rec.operator||'—',warehouse:'—',status:'已入库',warranty:0,fprint:rec.fprint,updatedAt:nowTs});
+          // 防重复导入的查重已在 effRecs 阶段按「业务指纹+规格」的条数配额完成：
+          // 绝不按申购单号查重——一单多品种（202409200022 含红酒/茅台/茶叶等 7 种）会被误杀成 1 条；
+          // 占位单号「——」「一一」不是单号，按单号查重会让 29 条明细只留 1 条；
+          // 同键多行（同单号同日同名同量）是多笔真实业务，配额口径下全部入表
+          const baseId=isRealNo(rec.orderNo)?rec.orderNo:genId('RK');
+          const recId=uniq(baseId,usedInId);
+          newIn.push({id:recId,inNo:baseId,date:rec.date,name:rec.name,category:rec.category,brand:rec.brand,spec:rec.spec,unit:rec.unit,qty:rec.qty,price:0,amount:0,supplier:'—',handler:rec.operator||'—',warehouse:'—',status:'已入库',warranty:0,fprint:rec.fprint,updatedAt:nowTs});
           inN++;
         }else{
-          if(rec.orderNo && outNoSet.has(rec.orderNo)) return;
-          if(rec.fprint && outFpSet.has(rec.fprint)) return;
-          const recId=rec.orderNo||genId('CK');
-          if(rec.orderNo) outNoSet.add(rec.orderNo);
-          if(rec.fprint) outFpSet.add(rec.fprint);
-          newOut.push({id:recId,outNo:recId,date:rec.date,applicant:rec.applicant||rec.operator||'—',dept:'—',name:rec.name,category:rec.category,qty:rec.qty,unit:rec.unit,purpose:'—',handler:rec.operator||'admin',status:'已出库',fprint:rec.fprint,updatedAt:nowTs});
+          const baseId=isRealNo(rec.orderNo)?rec.orderNo:genId('CK');
+          const recId=uniq(baseId,usedOutId);
+          // spec 必须落库：fpKey 含 spec，落库侧缺 spec 会让重导配额比较永远对不上 → 整份翻倍
+          newOut.push({id:recId,outNo:baseId,date:rec.date,applicant:rec.applicant||rec.operator||'—',dept:'—',name:rec.name,category:rec.category,spec:rec.spec||'',qty:rec.qty,unit:rec.unit,purpose:'—',handler:rec.operator||'admin',status:'已出库',fprint:rec.fprint,updatedAt:nowTs});
           outN++;
         }
       },(done,total)=>setImportProgress(done,total,'正在生成流水'));
