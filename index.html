@@ -4705,12 +4705,12 @@
     // ---- 期末结存明细（资产负债表 · 存货）----
     const sb=document.getElementById('snapBody');
     const snapAmt=closing.reduce((s,x)=>s+(+x.amount||+((+x.q||0)*(+x.price||0))||0),0);
-    sb.innerHTML=closing.length?closing.map(s=>`<tr><td>${escHtml(s.n)}</td><td>${catMeta[s.c]?catMeta[s.c].t:'未分类'}</td><td class="num">${escHtml(s.price!=null?s.price:'—')}</td><td class="num">${escHtml(s.q)}</td><td>${escHtml(s.u||'—')}</td><td class="num">${escHtml(s.amount!=null?s.amount:(+(s.q*(s.price||0))).toFixed(2))}</td></tr>`).join('')+'<tr class="arch-total"><td colspan="4">期末结存合计</td><td></td><td class="num">'+fmtNum(snapAmt)+'</td></tr>':'<tr><td colspan="6" class="empty">无期末结存记录</td></tr>';
+    sb.innerHTML=closing.length?closing.map(s=>`<tr><td>${escHtml(s.n)}</td><td>${safeMeta(s.c).t}</td><td class="num">${escHtml(s.price!=null?s.price:'—')}</td><td class="num">${escHtml(s.q)}</td><td>${escHtml(s.u||'—')}</td><td class="num">${escHtml(s.amount!=null?s.amount:(+(s.q*(s.price||0))).toFixed(2))}</td></tr>`).join('')+'<tr class="arch-total"><td colspan="4">期末结存合计</td><td></td><td class="num">'+fmtNum(snapAmt)+'</td></tr>':'<tr><td colspan="6" class="empty">无期末结存记录</td></tr>';
     const snapFoot=document.getElementById('snapFoot');
     if(snapFoot) snapFoot.innerHTML='';
     // ---- 入库明细账 ----
     const ib=document.getElementById('archInBody');
-    ib.innerHTML=inY.length?inY.map(r=>`<tr><td class="code">${escHtml(r.inNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.name)}</td><td>${catMeta[r.category]?catMeta[r.category].t:'未分类'}</td><td class="num">${escHtml(r.qty)}</td><td class="num">${escHtml(r.price!=null?r.price:'—')}</td><td class="num">${escHtml(r.amount||'—')}</td><td>${escHtml(r.supplier||'—')}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">无入库记录</td></tr>';
+    ib.innerHTML=inY.length?inY.map(r=>`<tr><td class="code">${escHtml(r.inNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.name)}</td><td>${safeMeta(r.category).t}</td><td class="num">${escHtml(r.qty)}</td><td class="num">${escHtml(r.price!=null?r.price:'—')}</td><td class="num">${escHtml(r.amount||'—')}</td><td>${escHtml(r.supplier||'—')}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">无入库记录</td></tr>';
     const inQty=inY.reduce((s,r)=>s+(+r.qty||0),0);
     const inAmt=inY.reduce((s,r)=>s+(+r.amount||0),0);
     const inFoot=document.getElementById('archInFoot');
@@ -4720,7 +4720,7 @@
     ob.innerHTML=outY.length?outY.map(r=>{
       const p=(r.price!=null)?r.price:0;
       const amt=(r.amount!=null)?r.amount:(+(+r.qty||0)*p).toFixed(2);
-      return `<tr><td class="code">${escHtml(r.outNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.applicant||'—')}</td><td>${escHtml(r.name)}</td><td>${catMeta[r.category]?catMeta[r.category].t:'未分类'}</td><td class="num">${escHtml(r.qty)}</td><td>${escHtml(r.unit||'件')}</td><td class="num">${escHtml(p||'—')}</td><td class="num">${escHtml(amt)}</td><td>${escHtml(r.purpose||'—')}</td></tr>`;
+      return `<tr><td class="code">${escHtml(r.outNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.applicant||'—')}</td><td>${escHtml(r.name)}</td><td>${safeMeta(r.category).t}</td><td class="num">${escHtml(r.qty)}</td><td>${escHtml(r.unit||'件')}</td><td class="num">${escHtml(p||'—')}</td><td class="num">${escHtml(amt)}</td><td>${escHtml(r.purpose||'—')}</td></tr>`;
     }).join(''):'<tr><td colspan="10" class="empty">无出库记录</td></tr>';
     // ---- 年度盘点档案（盘点联动 · 账实差异）----
     const cb=document.getElementById('archCheckBody');
