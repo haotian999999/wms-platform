@@ -4676,7 +4676,7 @@
       const bal=+(e.op+e.iq-e.oq-e.cl).toFixed(2);
       const amt=+((e.cl*(e.price||0)).toFixed(2));
       tOp+=e.op; tIn+=e.iq; tOut+=e.oq; tCl+=e.cl; tAmt+=amt; tBal+=bal;
-      return `<tr><td>${escHtml(e.n)}</td><td>${catMeta[e.c]?catMeta[e.c].t:escHtml(e.c)}</td><td class="num">${fmtNum(e.op)}</td><td class="num">${fmtNum(e.iq)}</td><td class="num">${fmtNum(e.oq)}</td><td class="num">${fmtNum(e.cl)}</td><td>${escHtml(e.u)}</td><td class="num">${fmtNum(amt)}</td><td><span class="status ${Math.abs(bal)<0.01?'ok':'down'}">${Math.abs(bal)<0.01?'平衡':'差异 '+bal}</span></td></tr>`;
+      return `<tr><td>${escHtml(e.n)}</td><td>${safeMeta(e.c).t}</td><td class="num">${fmtNum(e.op)}</td><td class="num">${fmtNum(e.iq)}</td><td class="num">${fmtNum(e.oq)}</td><td class="num">${fmtNum(e.cl)}</td><td>${escHtml(e.u)}</td><td class="num">${fmtNum(amt)}</td><td><span class="status ${Math.abs(bal)<0.01?'ok':'down'}">${Math.abs(bal)<0.01?'平衡':'差异 '+bal}</span></td></tr>`;
     }).join('')||'<tr><td colspan="9" class="empty">该年度无库存数据</td></tr>';
     trialBody.innerHTML=rows;
     const trialFoot=document.getElementById('trialFoot');
@@ -4796,7 +4796,7 @@
     Array.from(keys.values()).forEach(e=>{
       const bal=+(e.op+e.iq-e.oq-e.cl).toFixed(2);
       const amt=+((e.cl*(e.price||0)).toFixed(2));
-      rows.push([e.n,catMeta[e.c]?catMeta[e.c].t:e.c,e.op,e.iq,e.oq,e.cl,e.u,amt,Math.abs(bal)<0.01?'平衡':'差异 '+bal]);
+      rows.push([e.n,safeMeta(e.c).t,e.op,e.iq,e.oq,e.cl,e.u,amt,Math.abs(bal)<0.01?'平衡':'差异 '+bal]);
     });
     rows.push([]);
     rows.push(['期末结存明细'],['物资名称','分类','单价(元)','期末数量','单位','期末金额(元)']);
