@@ -3896,13 +3896,16 @@
     const inQ=new Map(), outQ=new Map(), inCnt=new Map(), outCnt=new Map(), inLatest=new Map(), outLatest=new Map();
     const addQ=(m,k,n)=>m.set(k,(m.get(k)||0)+n);
     for(const r of inboundRecords){
-      const k=(r.name||'')+'|'+(r.category||'');
+      // SSOT 名称键口径统一：flow 记录名用 normName 归一（与 runImport 存 item.n / 聚合明细 / recomputeStocks 键一致），
+      // 否则含 NBSP/全角空格的物资名在 flowIndex 用原始名建键、recomputeStocks 用归一名查键 → 键不匹配 → 明细流水静默不并入库存
+      const k=normName(r.name)+'|'+(r.category||'');
       addQ(inQ,k,(+r.qty||0)); addQ(inCnt,k,1);
       const prev=inLatest.get(k);
       if(prev===undefined || String(r.date||'') > String(prev.date||'')) inLatest.set(k,r);
     }
     for(const r of outboundRecords){
-      const k=(r.name||'')+'|'+(r.category||'');
+      // SSOT 名称键口径统一（同入库分支）：outbound 亦用 normName(r.name) 建键，与 recomputeStocks/明细聚合一致
+      const k=normName(r.name)+'|'+(r.category||'');
       addQ(outQ,k,(+r.qty||0)); addQ(outCnt,k,1);
       const prev=outLatest.get(k);
       if(prev===undefined || String(r.date||'') > String(prev.date||'')) outLatest.set(k,r);
