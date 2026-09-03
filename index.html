@@ -3081,13 +3081,27 @@
         //          ② 退而求其次含「总/览」 ③ 首表
         // 原实现把「总|览|库存」放在同一优先级，会误选「全年入库汇总 」这类流水表（含"总"字）当库存总表
         const _notDetail=s=>!/(出入|明细)/.test(s);
-        const totalName=(wb.SheetNames.find(s=>/库存/.test(s)&&_notDetail(s)))
+        let totalName=(wb.SheetNames.find(s=>/库存/.test(s)&&_notDetail(s)))
                      ||(wb.SheetNames.find(s=>/(总|览)/.test(s)&&_notDetail(s)))
                      ||wb.SheetNames[0];
         const detailName=wb.SheetNames.find(s=>/(出入|明细)/.test(s));
         const totalRows=XLSX.utils.sheet_to_json(wb.Sheets[totalName],{header:1,defval:null,blankrows:false});
         // renderNow=false：推迟预览，待明细表解析完成后统一渲染一次，消除重复渲染
         buildImport(totalRows,totalName,file.name,false);
+        // R41 选表内容兜底：名称启发式可能命中「无名称列」的辅助小表（如 2023「域潇礼品库存」→ 0 物资）。
+        // 主选表映射不到 name/stock 或抓不到数据行时，依序尝试其余工作表（先非明细名、后明细名），
+        // 取首个「name+stock 双映射 + 有数据行」的表；与明细表同表安全（parseDetail 对非流水结构产出 0 条，不双重计数）。
+        // 兜底要求 name+stock 双映射：采购/考察类文件（无库存列）保持原行为，不误吞为库存。
+        const _hasNameStock=()=>(importState.mapping||[]).some(m=>m.field==='name')
+          && (importState.mapping||[]).some(m=>m.field==='stock') && importState.dataRows.length>0;
+        if(!_hasNameStock()){
+          const _cands=wb.SheetNames.filter(s=>s!==totalName).sort((a,b)=>(_notDetail(a)?0:1)-(_notDetail(b)?0:1));
+          for(const s of _cands){
+            const rows2=XLSX.utils.sheet_to_json(wb.Sheets[s],{header:1,defval:null,blankrows:false});
+            buildImport(rows2,s,file.name,false);
+            if(_hasNameStock()){ totalName=s; break; }
+          }
+        }
         // 第二层：若含「出入库明细表」，解析主行/分号子行/结余行，生成入库/出库流水
         if(detailName){
           const dRows=XLSX.utils.sheet_to_json(wb.Sheets[detailName],{header:1,defval:null,blankrows:false});
@@ -3213,7 +3227,18 @@
       const t=String(first).trim().replace(/[：:：（）()\s]/g,'');
       return /^(合计|总计|小计|共计|累计|平均|总额|total|sum)$/i.test(t) || /回到顶部|最后一条/.test(String(first));
     };
-    const dataRows=rows.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&String(c).trim()!=='')&&!isTotalsRow(r)).map(r=>r.map(sanitizeText)); // 入口层消毒：剥离 < > 字节（XSS 纵深防御）
+    // R41：剔除表内重复表头行——打印/分页会让表头在数据区中部原样重复（如 2023 全年出入库明细），
+    // 不剔则「名称」被当物资名建档、表头文本 '2023年底 库存结余' 被 toNum 成 2023 虚增库存。
+    // 判定：与表头行逐列全等（空白归一）的非空列数 ≥3（只比对等值、不看字段命中，避免误删正常数据行）
+    const isRepeatedHeaderRow=r=>{
+      let hit=0, non=0;
+      for(let i=0;i<headers.length;i++){
+        const a=String(r[i]==null?'':r[i]).replace(/\s+/g,''), b=String(headers[i]==null?'':headers[i]).replace(/\s+/g,'');
+        if(a){ non++; if(a===b) hit++; }
+      }
+      return non>=3 && hit===non;
+    };
+    const dataRows=rows.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&String(c).trim()!=='')&&!isTotalsRow(r)&&!isRepeatedHeaderRow(r)).map(r=>r.map(sanitizeText)); // 入口层消毒：剥离 < > 字节（XSS 纵深防御）
     importState={headers,mapping,dataRows,sheetName,fileName:fileName||'',detail:{count:0,records:[],samples:[]},hasDetail:false};
     renderMapping();
     // renderNow!==false 时立即渲染预览（默认行为，保持原有调用契约）；
@@ -3393,7 +3418,11 @@
     await chunkedRun(importState.dataRows.length,CHUNK,j=>{
       const r=importState.dataRows[j];
       const name=normName(get(r,'name')),brand=get(r,'brand'),spec=get(r,'spec'),catRaw=get(r,'category'),unit=get(r,'unit'),safe=get(r,'safe');
-      const cat=fileCat||normCat(catRaw)||'';
+      // R41：分类兜底链 文件名→原始类别文本→other——normCat 只识别三类，「购物卡/汽车及用品/空类别」
+      // 原会落成 cat='' 被脏行守卫整行丢弃（2023 明细 5 项物资静默丢失）；原始类别文本作独立分类键保留数据，
+      // 全部为空时归入 other；未知分类键由 safeMeta/allCatKeys 全链路安全兜底（报表聚合、下拉重建均已覆盖）
+      const _rawCatS=(catRaw!=null&&String(catRaw).trim()!=='')?normName(catRaw):'';
+      const cat=fileCat||normCat(catRaw)||_rawCatS||'other';
       // 当前库存的权威值：总表只要提供「期末/当前库存」列就以它为锚（反推期初，保证导入后系统库存 === Excel 库存）；
       // 只有「无期末列、仅期初列」的兜底场景才直接采用期初。
       // initRaw 必须在「行作用域」声明：下方分支要用它做兜底；
