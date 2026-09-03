@@ -4803,13 +4803,13 @@
     });
     rows.push([]);
     rows.push(['期末结存明细'],['物资名称','分类','单价(元)','期末数量','单位','期末金额(元)']);
-    closing.forEach(s=>rows.push([s.n,catMeta[s.c]?catMeta[s.c].t:s.c,s.price!=null?s.price:'—',s.q,s.u||'—',s.amount!=null?s.amount:(+(s.q*(s.price||0))).toFixed(2)]));
+    closing.forEach(s=>rows.push([s.n,safeMeta(s.c).t,s.price!=null?s.price:'—',s.q,s.u||'—',s.amount!=null?s.amount:(+(s.q*(s.price||0))).toFixed(2)]));
     rows.push([]);
     rows.push(['入库明细账'],['入库单号','日期','物资名称','分类','数量','单价(元)','金额(元)','供应商']);
-    inY.forEach(r=>rows.push([r.inNo||r.id,r.date,r.name,catMeta[r.category]?catMeta[r.category].t:r.category,r.qty,r.price!=null?r.price:'—',r.amount||'—',r.supplier||'—']));
+    inY.forEach(r=>rows.push([r.inNo||r.id,r.date,r.name,safeMeta(r.category).t,r.qty,r.price!=null?r.price:'—',r.amount||'—',r.supplier||'—']));
     rows.push([]);
     rows.push(['出库明细账'],['出库单号','日期','领用人','物资名称','分类','数量','单价(元)','金额(元)','用途']);
-    outY.forEach(r=>rows.push([r.outNo||r.id,r.date,r.applicant||'—',r.name,catMeta[r.category]?catMeta[r.category].t:r.category,r.qty,(r.price!=null)?r.price:'—',(r.amount!=null)?r.amount:(+(+r.qty||0)*(+r.price||0)).toFixed(2),r.purpose||'—']));
+    outY.forEach(r=>rows.push([r.outNo||r.id,r.date,r.applicant||'—',r.name,safeMeta(r.category).t,r.qty,(r.price!=null)?r.price:'—',(r.amount!=null)?r.amount:(+(+r.qty||0)*(+r.price||0)).toFixed(2),r.purpose||'—']));
     rows.push([]);
     rows.push(['年度盘点档案'],['盘点日期','盘点类型','盘点范围','差异项数','净差异','差异绝对值','结论']);
     (a.checks||[]).forEach(c=>rows.push([c.date||'—',c.title||'盘点',c.scope||'—',c.diffCount!=null?c.diffCount:'—',c.diffNet!=null?c.diffNet:'—',c.diffAbs!=null?c.diffAbs:'—',(c.diffCount==null)?'—':(c.diffCount>0?'存在差异':'账实相符')]));
@@ -5468,9 +5468,9 @@
   function exportAllData(){
     const p=new Date(); const pad=n=>String(n).padStart(2,'0'); const fn='物资数据库_'+p.getFullYear()+'-'+pad(p.getMonth()+1)+'-'+pad(p.getDate())+'.xlsx';
     const invHeader=['分类','品牌','名称','规格','单位','数量','安全库存','质保(月)','入库日期'];
-    const invRows=[invHeader].concat(items.map(i=>[ (catMeta[i.c]||{}).t||i.c, i.b||'', i.n||'', i.s||'', i.u||'', i.q, i.safe||'', i.warranty||'', i.inDate||'' ]));
-    const inRows=[inCols.map(c=>c.t)].concat(inboundRecords.map(r=>inCols.map(c=> c.k==='category'? (catMeta[r.category]||{}).t : (r[c.k]==null?'':r[c.k]) )));
-    const outRows=[outCols.map(c=>c.t)].concat(outboundRecords.map(r=>outCols.map(c=> c.k==='category'? (catMeta[r.category]||{}).t : (r[c.k]==null?'':r[c.k]) )));
+    const invRows=[invHeader].concat(items.map(i=>[ safeMeta(i.c).t, i.b||'', i.n||'', i.s||'', i.u||'', i.q, i.safe||'', i.warranty||'', i.inDate||'' ]));
+    const inRows=[inCols.map(c=>c.t)].concat(inboundRecords.map(r=>inCols.map(c=> c.k==='category'? safeMeta(r.category).t : (r[c.k]==null?'':r[c.k]) )));
+    const outRows=[outCols.map(c=>c.t)].concat(outboundRecords.map(r=>outCols.map(c=> c.k==='category'? safeMeta(r.category).t : (r[c.k]==null?'':r[c.k]) )));
     const planRows=recordsToRows(checkPlansQuarter.concat(checkPlansYear));
     const recRows=recordsToRows(checkRecords);
     const sheets=[
@@ -5483,10 +5483,10 @@
     // 历史归档数据一并导出，保证整库信息完整
     if(archivedRecords.length){
       const archInRows=[['年度','入库单号','日期','名称','分类','数量','单位','供应商']].concat(
-        archivedRecords.flatMap(a=>(a.inbound||[]).map(r=>[a.year||a.label, r.inNo||r.id||'', r.date||'', r.name||'', (catMeta[r.category]||{}).t||r.category, r.qty, r.unit||'', r.supplier||'']))
+        archivedRecords.flatMap(a=>(a.inbound||[]).map(r=>[a.year||a.label, r.inNo||r.id||'', r.date||'', r.name||'', safeMeta(r.category).t, r.qty, r.unit||'', r.supplier||'']))
       );
       const archOutRows=[['年度','出库单号','日期','领用人','名称','分类','数量','单位','用途']].concat(
-        archivedRecords.flatMap(a=>(a.outbound||[]).map(r=>[a.year||a.label, r.outNo||r.id||'', r.date||'', r.applicant||'', r.name||'', (catMeta[r.category]||{}).t||r.category, r.qty, r.unit||'', r.purpose||'']))
+        archivedRecords.flatMap(a=>(a.outbound||[]).map(r=>[a.year||a.label, r.outNo||r.id||'', r.date||'', r.applicant||'', r.name||'', safeMeta(r.category).t, r.qty, r.unit||'', r.purpose||'']))
       );
       const archCheckRows=[['年度','盘点日期','标题','范围','差异项数','净差异','差异绝对值']].concat(
         archivedRecords.flatMap(a=>(a.checks||[]).map(c=>[a.year||a.label, c.date||'', c.title||'', c.scope||'', c.diffCount==null?'':c.diffCount, c.diffNet==null?'':c.diffNet, c.diffAbs==null?'':c.diffAbs]))
@@ -5923,7 +5923,7 @@
     const ts=now.getFullYear()+'-'+p(now.getMonth()+1)+'-'+p(now.getDate());
     const rows=[['库存预警 · 补货建议单'],['生成日期', ts],['状态','待采购'],['物资名称','分类','当前库存','安全库存','建议补货','单位']];
     let total=0;
-    list.forEach(it=>{ const sug=Math.max(0,it.safe-it.q); total+=sug; const m=catMeta[it.c]; rows.push([it.n, m?m.t:it.c, it.q, it.safe, sug, it.u||'']); });
+    list.forEach(it=>{ const sug=Math.max(0,it.safe-it.q); total+=sug; rows.push([it.n, safeMeta(it.c).t, it.q, it.safe, sug, it.u||'']); });
     rows.push(['合计','','','',''+total,'件']);
     exportXLSX(rows,'补货建议单_'+ts+'.xlsx',{titleMerge:true,headerAt:3});
     toast('已导出补货单','ok','补货建议单.xlsx 已生成');
