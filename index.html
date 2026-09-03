@@ -2333,6 +2333,10 @@
   }
   // 顶部「数据截至」日期：与最新入库记录的日期同步
   function fmtCNDate(s){ if(!s) return ''; const [y,m,d]=s.split('-'); return `${y}年${parseInt(m,10)}月${parseInt(d,10)}日`; }
+  // 本地日历日（今天/任意 Date）→ YYYY-MM-DD：统一用本地 getFullYear/getMonth/getDate。
+  // 禁用 dstr()——UTC 日期在中国时区凌晨会取到前一天，
+  // 晨间录入的入库/出库/盘点会落错日历日（跨月错月、元旦晨间错入上一年度归档分桶）。
+  function dstr(d){ const x=d||new Date(); const mm=String(x.getMonth()+1).padStart(2,'0'); const dd=String(x.getDate()).padStart(2,'0'); return x.getFullYear()+'-'+mm+'-'+dd; }
   function latestInboundDate(){ return inboundRecords.reduce((m,r)=> (r.date && r.date>m) ? r.date : m, ''); }
   function updateDataNote(){
     const el=document.getElementById('dateNote'); if(!el) return;
@@ -2814,7 +2818,7 @@
     const title=planLabel||((snap.type||'盘点')+' 完成');
     const diffNet=snap.items.reduce((s,x)=>s+(+x.d||0),0);
     const diffAbs=snap.items.reduce((s,x)=>s+Math.abs(+x.d||0),0);
-    const rec={title, sub:(snap.scope||'—')+' · '+snap.items.length+' 项 · '+(snap.diffCount?('差异 '+snap.diffCount+' 项'):'无差异'), date:snap.date||new Date().toISOString().slice(0,10), dot:snap.diffCount?'warn':'in', planKey, diffCount:snap.diffCount, diffNet, diffAbs};
+    const rec={title, sub:(snap.scope||'—')+' · '+snap.items.length+' 项 · '+(snap.diffCount?('差异 '+snap.diffCount+' 项'):'无差异'), date:snap.date||dstr(), dot:snap.diffCount?'warn':'in', planKey, diffCount:snap.diffCount, diffNet, diffAbs};
     // 同一计划已存在记录（如「进行中」）→ 原地更新为「已完成」，实现计划与记录双向呼应
     if(planKey){
       const ex=checkRecords.findIndex(r=>r.planKey===planKey);
@@ -2826,7 +2830,7 @@
     const g=id=>document.getElementById(id);
     if(g('chkType')) g('chkType').selectedIndex=0;
     if(g('chkScope')) g('chkScope').selectedIndex=0;
-    ['chkLead','chkWatch','chkDate','chkNote'].forEach(id=>{ const e=g(id); if(e) e.value= id==='chkLead'?'李娜':id==='chkWatch'?'赵敏':id==='chkDate'?new Date().toISOString().slice(0,10):''; });
+    ['chkLead','chkWatch','chkDate','chkNote'].forEach(id=>{ const e=g(id); if(e) e.value= id==='chkLead'?'李娜':id==='chkWatch'?'赵敏':id==='chkDate'?dstr():''; });
     // 从最新库存重建盘点明细，确保盘点单始终基于当前真实库存
     checkItems = items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
     renderCheck(); checkArchived=false; renderCheckKpi();
@@ -3118,7 +3122,7 @@
     const cat=fileCat||catCol||'';
     // 期初结转类文本("2023年结转"/"2024年结转"/"上年结余")不是真实日期，应视作余额而非本年流水
     const isCarryIn=v=>{ const s=String(v==null?'':v).trim(); return /结转|期初|上年|结余/.test(s) && !/^\d{4}-\d{2}-\d{2}/.test(s); };
-    const toDate=v=>{ if(v==null) return ''; if(v instanceof Date) return v.toISOString().slice(0,10); const s=String(v).trim(); const m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`; const y=s.match(/(\d{4})/); if(y) return `${y[1]}-01-01`; return ''; };
+    const toDate=v=>{ if(v==null) return ''; if(v instanceof Date) return dstr(v); const s=String(v).trim(); const m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`; const y=s.match(/(\d{4})/); if(y) return `${y[1]}-01-01`; return ''; };
     const records=[]; let cur=null;
     for(const r of rows.slice(hdrIdx+1)){
       if(!r||!r.some(c=>c!=null&&String(c).trim()!=='')) continue;
@@ -4614,7 +4618,7 @@
         inbound:inWithPrice,
         outbound:outWithPrice,
         checks:checkSnap,
-        carriedAt:new Date().toISOString().slice(0,10)
+        carriedAt:dstr()
       });
     });
     // 先筛选「本年及以后」留存，再清空回填，避免清空后筛选得到空数组
@@ -4871,7 +4875,7 @@
     const supplier=sanitizeText(document.getElementById('inSupplier').value.trim());
     const handler=sanitizeText(document.getElementById('inHandler').value.trim())||'—';
     const warehouse=document.getElementById('inWarehouse').value;
-    const date=document.getElementById('inDate').value||new Date().toISOString().slice(0,10);
+    const date=document.getElementById('inDate').value||dstr();
     const warranty=parseInt(document.getElementById('inWarranty').value)||0;
     const brand=sanitizeText(document.getElementById('inBrand').value.trim());
     const spec=sanitizeText(document.getElementById('inSpec').value.trim())||'—';
@@ -5072,7 +5076,7 @@
     const recId=outNo||genId('CK');
     const unit=sanitizeText(document.getElementById('outUnit').value.trim())||'件';
     const spec=sanitizeText(document.getElementById('outSpec').value.trim());
-    const rec={id:recId,outNo:outNo||recId,date:new Date().toISOString().slice(0,10),applicant,dept,name:_nm,category:cat,qty,unit,spec,purpose,handler:approver,status:'已出库',updatedAt:Date.now()};
+    const rec={id:recId,outNo:outNo||recId,date:dstr(),applicant,dept,name:_nm,category:cat,qty,unit,spec,purpose,handler:approver,status:'已出库',updatedAt:Date.now()};
     if(_it){ // 主键对齐：流水采用档案标准名/分类，保证「名称|分类」键一致，重算时库存才能正确归集
       rec.name=_it.n; rec.category=_it.c;
     }
