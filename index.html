@@ -2362,11 +2362,11 @@
   function renderInv(cat,filter){
     const body=document.getElementById('invBody'); if(!body) return; // 防御：库存页尚未挂载时不抛错
     const fInput=document.getElementById('invSearch');
-    const f=(filter===undefined?(fInput?fInput.value:''):filter).trim().toLowerCase();
+    const f=normName(filter===undefined?(fInput?fInput.value:''):filter).toLowerCase();
     const list=cat==='all'?items:items.filter(i=>i.c===cat); // 全量视图直接复用 items 引用，不再 slice() 拷贝（数据翻倍时省一次 O(N) 复制）
     // 搜索过滤分支同样要兜底：未知分类（normCat 归类失败返回空串）会让 catMeta[i.c] 为 undefined 而整表白屏
     // 注意：不能用 list=list.filter(...) 重新赋值——list 为 const 且全量时直连 items 引用，会抛「Assignment to constant」
-    const view=f? list.filter(i=>{ const m=safeMeta(i.c); const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; const statusText=statusOf(i.q,i.safe)[1]; const text=[code, i.n, m.t, i.b||'', i.s, i.u, String(i.q), String(i.safe), statusText].join(' ').toLowerCase(); return text.includes(f); }) : list;
+    const view=f? list.filter(i=>{ const m=safeMeta(i.c); const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; const statusText=statusOf(i.q,i.safe)[1]; const text=normName([code, i.n, m.t, i.b||'', i.s, i.u, String(i.q), String(i.safe), statusText].join(' ')).toLowerCase(); return text.includes(f); }) : list;
     // 预建「物资对象 → 在 items 中的下标」映射：原实现每行 items.indexOf(i) 是全表扫描，
     // 2000 条物资即 400 万次比较（O(N²)），是切表/导入后卡顿的隐形元凶。
     // 全量视图下标即 start+idx（零成本），仅分类/搜索过滤视图才需要建映射
@@ -4011,7 +4011,7 @@
     const cols=type==='in'?inCols:outCols;
     const body=type==='in'?document.getElementById('inBody'):document.getElementById('outBody');
     const all=type==='in'?inboundRecords:outboundRecords;
-    const f=(filter||'').trim().toLowerCase();
+    const f=normName(filter||'').toLowerCase();
     const emptyHtml='<tr><td colspan="'+(cols.length)+'" class="empty">'+(type==='in'?'暂无入库记录，请通过「入库登记」添加':'暂无出库记录')+'</td></tr>';
     // 行构建器：索引 i 必须为全量数组下标（行点击详情 openRec 依赖 data-row-rec 中的原数组索引）
     const buildRow=(r,i)=>{
@@ -4033,7 +4033,7 @@
       if(!all.length){ body.innerHTML=emptyHtml; renderPager(0,0,type); return 0; }
       for(let i=0;i<all.length;i++) rows.push(i);
     }else{
-      for(let i=0;i<all.length;i++){ const r=all[i]; if(Object.values(r).join(' ').toLowerCase().includes(f)) rows.push(i); }
+      for(let i=0;i<all.length;i++){ const r=all[i]; if(normName(Object.values(r).join(' ')).toLowerCase().includes(f)) rows.push(i); }
     }
     if(!rows.length){ body.innerHTML=emptyHtml; renderPager(0,0,type); return 0; }
     // 分页窗口：页码越界（删除/导入后总数缩水）时钳回最后一页
@@ -4281,8 +4281,8 @@
     const cols=type==='in'?inCols:outCols;
     const header=cols.map(c=>c.t);
     // 与列表所见即所得：应用「数据管理」页当前搜索词（按钮文案承诺的是「当前筛选」）
-    const f=(document.getElementById('dataSearch').value||'').trim().toLowerCase();
-    const src=f? all.filter(r=>Object.values(r).join(' ').toLowerCase().includes(f)) : all;
+    const f=normName(document.getElementById('dataSearch').value||'').toLowerCase();
+    const src=f? all.filter(r=>normName(Object.values(r).join(' ')).toLowerCase().includes(f)) : all;
     const body=src.map(r=>cols.map(c=> c.k==='category'? safeMeta(r.category).t : (c.k==='qty'? r.qty+' '+(r.unit||'') : r[c.k])));
     exportXLSX([header].concat(body), (type==='in'?'入库记录':'出库记录')+(f?'_筛选结果':'_全部')+'.xlsx');
     toast('正在下载记录','ok', f? `已导出筛选结果 ${src.length} 条（全部 ${all.length} 条）` : `已导出全部 ${all.length} 条记录`);
@@ -4913,7 +4913,7 @@
     const box=document.getElementById('inNameSuggest');
     const inp=document.getElementById('inName');
     if(!box||!inp) return;
-    const kw=inp.value.trim().toLowerCase();
+    const kw=normName(inp.value).toLowerCase();
     const curCat=catKeyOfLabel(document.getElementById('inCat').value);
     if(!kw){ box.hidden=true; inNameIdx=-1; return; }
     // 分组：完全匹配（同名库存已有）/ 相似名称（包含关键字）/ 同类别物品（当前分类下其他）
@@ -4983,7 +4983,7 @@
     const box=document.getElementById('outNameSuggest');
     const inp=document.getElementById('outName');
     if(!box||!inp) return;
-    const kw=inp.value.trim().toLowerCase();
+    const kw=normName(inp.value).toLowerCase();
     const curCat=catKeyOfLabel(document.getElementById('outCat').value);
     if(!kw){ box.hidden=true; outNameIdx=-1; return; }
     const exact=[], sim=[], sameCat=[];
