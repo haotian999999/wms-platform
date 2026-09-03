@@ -2180,7 +2180,7 @@
       return Array.from(m.values());
     };
     const merged={
-      items: byKey(local.items,c.items, x=>x.n+'|'+x.c, 'item', mergeItem),
+      items: byKey(local.items,c.items, x=>normName(x.n)+'|'+x.c, 'item', mergeItem),
       inboundRecords: byKey(local.inboundRecords,c.inboundRecords, x=>x.id||x.inNo, 'in'),
       outboundRecords: byKey(local.outboundRecords,c.outboundRecords, x=>x.id||x.outNo, 'out'),
       checkPlansQuarter: byKey(local.checkPlansQuarter,c.checkPlansQuarter, x=>x.key, ''),
@@ -3509,7 +3509,7 @@
   function latestPriceMap(){
     const priceMap={}, priceDate={};
     for(const r of inboundRecords){
-      const k=r.name+'|'+r.category;
+      const k=normName(r.name)+'|'+r.category;
       if(r.price!=null && (priceDate[k]===undefined || String(r.date||'')>=priceDate[k])){ priceMap[k]=+r.price; priceDate[k]=String(r.date||''); }
     }
     return priceMap;
@@ -3760,7 +3760,7 @@
     const dt=document.getElementById('repDeptTable');
     if(dt) dt.innerHTML=deptRows||'<tr><td colspan="4" class="empty">该期间暂无领用记录</td></tr>';
     const itemMap={};
-    outSel.forEach(r=>{ const k=r.name+'|'+(r.category||''); if(!itemMap[k]) itemMap[k]={n:r.name,c:r.category||'',qty:0}; itemMap[k].qty+=(+r.qty||0); });
+    outSel.forEach(r=>{ const k=normName(r.name)+'|'+(r.category||''); if(!itemMap[k]) itemMap[k]={n:normName(r.name),c:r.category||'',qty:0}; itemMap[k].qty+=(+r.qty||0); });
     const itemRows=Object.values(itemMap).sort((a,b)=>b.qty-a.qty).slice(0,10).map(x=>{
       const m=safeMeta(x.c); // 未知分类统一兜底，避免整段渲染崩溃或输出未转义原始分类
       return `<tr><td>${escHtml(x.n)}</td><td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td><td class="num">${fmtNum(x.qty)}</td></tr>`;
@@ -4477,7 +4477,7 @@
   }
   // 结转前完整性预检：缺单价物资数（影响金额准确性）、该年度盘点记录数（影响账实闭环）
   function carryoverPreflight(){
-    const priceOf={}; inboundRecords.forEach(r=>{ if(r.name&&r.price) priceOf[r.name+'|'+r.category]=r.price; });
+    const priceOf={}; inboundRecords.forEach(r=>{ if(r.name&&r.price) priceOf[normName(r.name)+'|'+r.category]=r.price; });
     const noPrice=items.filter(i=>!(+i.price>0) && !(priceOf[i.n+'|'+i.c]>0)).length;
     const cur=new Date().getFullYear();
     const checkCount=checkRecords.filter(r=>yearOf(r)<cur).length;
@@ -4535,7 +4535,7 @@
     const label=carryoverYearsLabel();
     if(!label || (!inArch.length && !outArch.length)){ toast('没有可结转的历史年度数据','warn'); return; }
     // 单价：优先取物资自身单价，缺省时回退到最近一笔入库流水单价
-    const priceOf={}; inboundRecords.forEach(r=>{ if(r.name&&r.price) priceOf[r.name+'|'+r.category]=r.price; });
+    const priceOf={}; inboundRecords.forEach(r=>{ if(r.name&&r.price) priceOf[normName(r.name)+'|'+r.category]=r.price; });
     const snapshot=items.map(i=>{
       const unitPrice=(typeof i.price==='number'&&i.price)? i.price : (priceOf[i.n+'|'+i.c]||0);
       return {n:i.n,c:i.c,u:i.u,q:i.q,amount:+(((i.q||0)*(unitPrice||0)).toFixed(2))};
