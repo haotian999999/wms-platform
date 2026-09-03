@@ -2487,7 +2487,7 @@
       {k:'date',t:'时间',v:r.date,ty:'text'},
       {k:'dot',t:'类型',v:r.dot,ty:'select',opts:[['in','正常'],['warn','警示'],['out','待办']]},
     ].map(f=>{
-      if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="rcF_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${f.v===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
+      if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="rcF_${f.k}">${f.opts.map(o=>`<option value="${escHtml(o[0])}" ${f.v===o[0]?'selected':''}>${escHtml(o[1])}</option>`).join('')}</select></div>`;
       return `<div class="field"><label>${f.t}</label><input id="rcF_${f.k}" type="text" value="${escHtml(f.v)}" /></div>`;
     }).join('');
     document.getElementById('recCheckEditModal').classList.add('show');
@@ -2650,7 +2650,7 @@
       {k:'status',t:'状态',v:p.status,ty:'select',opts:[['ok','已完成'],['low','进行中'],['out','待开始']]}
     ];
     document.getElementById('planEditBody').innerHTML=summary+fields.map(f=>{
-      if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="planF_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${f.v===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
+      if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="planF_${f.k}">${f.opts.map(o=>`<option value="${escHtml(o[0])}" ${f.v===o[0]?'selected':''}>${escHtml(o[1])}</option>`).join('')}</select></div>`;
       return `<div class="field"><label>${f.t}</label><input id="planF_${f.k}" type="text" value="${escHtml(f.v==null?'':f.v)}" /></div>`;
     }).join('');
     document.getElementById('planEditModal').classList.add('show');
@@ -2709,13 +2709,15 @@
     checkItemEditIdx=idx;
     const it=checkItems[idx]; if(!it) return;
     document.getElementById('checkItemEditTitle').textContent='编辑盘点项';
+    // 分类下拉统一走 allCatKeys()：内置+数据实际存在的未知分类，编辑未知分类盘点项不得静默落到默认分类
+    const catCatOpts=allCatKeys().map(k=>[k, safeMeta(k).t]);
     document.getElementById('checkItemEditBody').innerHTML=[
       {k:'n',t:'物资名称',v:it.n,ty:'text'},
-      {k:'c',t:'分类',v:it.c,ty:'select',opts:[['office','办公用品'],['tobacco','烟酒茶'],['gift','礼品']]},
+      {k:'c',t:'分类',v:it.c,ty:'select',opts:catCatOpts},
       {k:'sys',t:'系统库存',v:it.sys,ty:'number'},
       {k:'u',t:'单位',v:it.u,ty:'text'},
     ].map(f=>{
-      if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="ciF_${f.k}">${f.opts.map(o=>`<option value="${o[0]}" ${f.v===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
+      if(f.ty==='select') return `<div class="field"><label>${f.t}</label><select id="ciF_${f.k}">${f.opts.map(o=>`<option value="${escHtml(o[0])}" ${f.v===o[0]?'selected':''}>${escHtml(o[1])}</option>`).join('')}</select></div>`;
       return `<div class="field"><label>${f.t}</label><input id="ciF_${f.k}" type="${f.ty}" value="${escHtml(f.v)}" /></div>`;
     }).join('');
     document.getElementById('checkItemEditModal').classList.add('show');
@@ -2723,7 +2725,12 @@
   function saveCheckItemEdit(){
     if(checkItemEditIdx<0) return;
     const it=checkItems[checkItemEditIdx]; if(!it) return;
-    ['n','c','sys','u'].forEach(k=>{ const el=document.getElementById('ciF_'+k); if(el) it[k]=(k==='sys')?(parseFloat(el.value)||0):el.value; });
+    const elN=document.getElementById('ciF_n'); const nm=elN?normName(elN.value):''; // 名称 normName 归一（同 saveInvEdit R29/手工建档 R27），防含 NBSP 名与库存 item.n 失配致盘点回写静默失效
+    if(!nm){ toast('物资名称不能为空','warn'); return; }
+    it.n=nm;
+    const elC=document.getElementById('ciF_c'); if(elC) it.c=elC.value;
+    const elS=document.getElementById('ciF_sys'); if(elS) it.sys=parseFloat(elS.value)||0;
+    const elU=document.getElementById('ciF_u'); if(elU) it.u=elU.value;
     closeCheckItemEdit(); renderCheck(); renderCheckKpi();
     toast('盘点项已更新','ok','修改后的盘点项已保存');
   }
@@ -3975,6 +3982,17 @@
     (outboundRecords||[]).forEach(r=>add(r&&r.category));
     return Object.keys(catMeta).concat(Array.from(extra));
   }
+  // 分类下拉统一选项源：内置分类 + 数据实际存在的未知分类（与 chips/报表聚合同一口径）。
+  // 编辑未知分类物资/盘点项时下拉必须命中当前分类码——按 HTML 规范，select.value 置为不存在的码会取消全部选中，
+  // 保存时读回空/默认分类 → 「编辑即静默改码」（破坏分类口径）。
+  function populateCatSelect(sel, selected){
+    if(!sel) return;
+    sel.innerHTML='';
+    const keys=allCatKeys();
+    keys.forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=safeMeta(k).t; sel.appendChild(o); });
+    const want=(selected!==undefined&&selected!==null)?selected:'office';
+    sel.value=keys.indexOf(want)>=0?want:(sel.options[0]?sel.options[0].value:'');
+  }
   function statusCls(s){ s=s||''; if(s.indexOf('待')>=0)return 'low'; if(s.indexOf('驳')>=0||s.indexOf('取')>=0)return 'out'; return 'ok'; } // 防御缺字段历史/导入数据
   let activeDataTab='in';
   // 数据表分页：单页行数上限。几十万条流水若一次全量拼 HTML 再 innerHTML 解析，
@@ -5086,7 +5104,7 @@
     invEditIdx=(idx===undefined||idx===null)?-1:idx;
     const t=document.getElementById('invEditTitle');
     if(invEditIdx>=0){ const i=items[invEditIdx];
-      document.getElementById('invEditCat').value=i.c;
+      populateCatSelect(document.getElementById('invEditCat'), i.c);
       document.getElementById('invEditName').value=i.n;
       document.getElementById('invEditBrand').value=i.b||'';
       document.getElementById('invEditSpec').value=i.s||'';
@@ -5098,7 +5116,7 @@
       t.textContent='编辑物资';
     } else {
       document.getElementById('invEditForm').reset();
-      document.getElementById('invEditCat').value='office';
+      populateCatSelect(document.getElementById('invEditCat'), 'office');
       document.getElementById('invEditUnit').value='件';
       document.getElementById('invEditSafe').value=(catDefault&&catDefault.office)||10;
       t.textContent='新增物资';
