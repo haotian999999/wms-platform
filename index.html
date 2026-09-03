@@ -4866,11 +4866,13 @@
     const exist=items.find(i=>i.c===cat && normName(i.n)===_nm);
     if(exist){ // 主键对齐：流水采用档案标准名/分类，保证「名称|分类」键一致，重算时库存才能正确归集
       rec.name=exist.n; rec.category=exist.c;
+    } else { // 新物资也用 normName 标准名建档：避免含 NBSP/全角空格时 SSOT 键( normName(flow.name) ≠ 原始 item.n )不匹配 → 明细流水静默不并入库存（同类口径一致性）
+      rec.name=_nm; rec.category=cat;
     }
     inboundRecords.unshift(rec);
     updateDataNote();
     if(exist){ if(brand) exist.b=brand; if(spec!=='—') exist.s=spec; if(safe) exist.safe=safe; if(warranty&&!exist.warranty){exist.warranty=warranty; exist.inDate=date; exist.expire=addMonths(date,warranty);} exist.updatedAt=Date.now(); }
-    else { const ni={c:cat,n:name,b:brand,s:spec,u:unit,safe:safe||catDefault[cat]||10,initQty:0,warranty:warranty||undefined,inDate:date,updatedAt:Date.now()}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
+    else { const ni={c:cat,n:_nm,b:brand,s:spec,u:unit,safe:safe||catDefault[cat]||10,initQty:0,warranty:warranty||undefined,inDate:date,updatedAt:Date.now()}; if(warranty) ni.expire=addMonths(date,warranty); items.push(ni); }
     // 顺序修正：必须先重算库存再渲染表格。原实现 renderInv() 在 recomputeStocks() 之前，
     // 导致入库成功后库存表显示的仍是入库前的旧数量（要等到切页或搜索才刷新），是典型的协同断链
     recomputeStocks();
@@ -5050,13 +5052,13 @@
     const recId=outNo||genId('CK');
     const unit=document.getElementById('outUnit').value.trim()||'件';
     const spec=document.getElementById('outSpec').value.trim();
-    const rec={id:recId,outNo:outNo||recId,date:new Date().toISOString().slice(0,10),applicant,dept,name,category:cat,qty,unit,spec,purpose,handler:approver,status:'已出库',updatedAt:Date.now()};
+    const rec={id:recId,outNo:outNo||recId,date:new Date().toISOString().slice(0,10),applicant,dept,name:_nm,category:cat,qty,unit,spec,purpose,handler:approver,status:'已出库',updatedAt:Date.now()};
     if(_it){ // 主键对齐：流水采用档案标准名/分类，保证「名称|分类」键一致，重算时库存才能正确归集
       rec.name=_it.n; rec.category=_it.c;
     }
     outboundRecords.unshift(rec);
     const exist=_it;
-    if(!exist){ items.push({c:cat,n:name,s:spec||'—',u:unit,safe:catDefault[cat]||10,initQty:0,updatedAt:Date.now()}); }
+    if(!exist){ items.push({c:cat,n:_nm,s:spec||'—',u:unit,safe:catDefault[cat]||10,initQty:0,updatedAt:Date.now()}); }
     recomputeStocks();
     renderDataTables(); renderInv('all'); wmsSave();
     // 出库会改变库存总量/预警/最近动态/报表口径，与入库保持同一套联动口径
