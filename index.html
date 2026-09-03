@@ -2347,7 +2347,17 @@
       : '<span class="do-dot none"></span>📅 暂无入库记录';
     el.className='date-note';
   }
-  function daysLeft(expireStr){ if(!expireStr) return null; return Math.round((new Date(expireStr+'T00:00:00')-new Date())/86400000); }
+  // 剩余天数 = 到期日历日 − 今天（日历日）。今天必须与到期日同取本地零点再相减，
+  // 否则差值带时分抖动：Math.round((到期00:00 − now)/86400000) 会在正午翻转——
+  // 当天到期的物资下午被误报「已过期 -1」（应 0：当天仍算临期），
+  // 明天到期的下午显示 0 天（应 1 天）；昨天到期傍晚显示 −2（应 −1）。
+  // 非法日期 → null（显示 —，而非 NaN 被 wStatus 误判「正常」/warRow 渲染 "NaN"）。
+  function daysLeft(expireStr){
+    if(!expireStr) return null;
+    const ex=new Date(String(expireStr)+'T00:00:00'); if(isNaN(ex.getTime())) return null;
+    const n=new Date(); const today=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+    return Math.round((ex-today)/86400000);
+  }
   function wStatus(dl){ if(dl===null) return {cls:'',txt:'—'}; if(dl<0) return {cls:'out',txt:'已过期'}; if(dl<=90) return {cls:'low',txt:'临期 '+dl+'天'}; return {cls:'ok',txt:'正常'}; }
   function warrantyCell(it){ if(!it.warranty) return '<td>—</td>'; const exp=it.expire||addMonths(it.inDate||'2026-01-01',it.warranty); const dl=daysLeft(exp); const st=wStatus(dl); const col=st.cls==='out'?'var(--danger)':st.cls==='low'?'var(--accent)':'var(--ink-3)'; return `<td><span style="color:${col};font-weight:600">${escHtml(exp)}</span></td>`; }
   function warrantyMonthsCell(it){ return `<td>${it.warranty? it.warranty+' 个月':'—'}</td>`; }
