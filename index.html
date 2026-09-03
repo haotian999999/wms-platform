@@ -6082,7 +6082,7 @@
   // 已被旧缓存卡住的用户也能借此拿到最新 SW 并自我更新。部署新版本时同步把 ?v=N 递增。
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('./sw.js?v=4').then(function (reg) {
+      navigator.serviceWorker.register('./sw.js?v=5').then(function (reg) {
         // 若已有等待中的新版本，立即让其接管（配合 sw.js 的 skipWaiting 消息）
         if (reg && reg.waiting) { try { reg.waiting.postMessage('skipWaiting'); } catch (e) {} }
         // 新版本 SW 接管页面时自动刷新一次，加载最新 HTML/JS（避免停留在旧缓存）
