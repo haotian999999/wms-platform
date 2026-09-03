@@ -652,6 +652,15 @@
   .kp-status.warn b{color:#ffb088}
   .kp-status.ok{background:rgba(47,230,160,.08);border-color:rgba(47,230,160,.25);color:#6ff0bf}
   .kp-status.ok b{color:#8ff5cf}
+  /* 识别年份 · 归档笔数明细 */
+  .kp-yearlist{display:flex;flex-direction:column;gap:4px;margin-top:2px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
+  .kp-yearlist .kp-yl-title{font-size:11.5px;font-weight:600;color:var(--ink-2);margin-bottom:3px;letter-spacing:.3px}
+  .kp-yearrow{display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px dashed var(--line);font-variant-numeric:tabular-nums}
+  .kp-yearrow:last-child{border-bottom:none}
+  .kp-yr{font-weight:700;color:var(--primary)}
+  .kp-yr-in{color:#6ff0bf;text-align:right}
+  .kp-yr-out{color:#ff9d4d;text-align:right}
+  .kp-yr-tot{color:var(--ink-1);text-align:right;font-weight:600}
   .kp-field{display:flex;flex-direction:column;gap:5px;min-width:0}
   .kp-field label{font-size:11.5px;font-weight:600;color:var(--ink-2)}
   .kp-field select{height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.12);color:var(--ink);font-size:13px;font-family:var(--font);outline:none;cursor:pointer;transition:all .18s;width:100%}
@@ -3817,8 +3826,11 @@
       const deptMap={}; monthOut.forEach(r=>{ deptMap[r.dept||'未分类']=(deptMap[r.dept||'未分类']||0)+(+r.qty||0); });
       const deptLabels=Object.keys(deptMap), deptData=Object.values(deptMap);
       const priceMap=latestPriceMap(); // 单趟取最新单价，免全量拷贝排序（流水几十万条时 slice+sort 是报表主热点）
+      // 口径一致：分类键统一走 allCatKeys()（内置分类 + 数据中实际存在的未知分类），
+      // 否则总表/明细导入带来的「未知分类」物资会被静默漏算，出现「分类金额合计 ≠ 库存总量」的对不上账——与 3952 注释同一根因。
+      const _catKeys=allCatKeys();
       const valBy=new Map(); for(const i of items){ if(+i.q>0) valBy.set(i.c,(valBy.get(i.c)||0)+i.q*(priceMap[i.n+'|'+i.c]||0)); }
-      const catVal=Object.keys(catMeta).map(k=> Math.round((valBy.get(k)||0))/10000 );
+      const catVal=_catKeys.map(k=> Math.round((valBy.get(k)||0))/10000 );
       charts.reports={};
       charts.reports.dept=new Chart(document.getElementById('deptChart'),{
         type:'bar',
@@ -3827,12 +3839,12 @@
       });
       charts.reports.value=new Chart(document.getElementById('valueChart'),{
         type:'bar',
-        data:{labels:Object.keys(catMeta).map(k=>catMeta[k].t),datasets:[{label:'金额(万元)',data:catVal,backgroundColor:[C.office,C.tobacco,C.gift],borderRadius:8}]},
+        data:{labels:_catKeys.map(k=>safeMeta(k).t),datasets:[{label:'金额(万元)',data:catVal,backgroundColor:[C.office,C.tobacco,C.gift],borderRadius:8}]},
         options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:C.grid},border:{display:false},beginAtZero:true},x:{grid:{display:false},border:{display:false}}}}
       });
       charts.reports.rank=new Chart(document.getElementById('rankChart'),{
         type:'bar',
-        data:{labels:Object.keys(catMeta).map(k=>catMeta[k].t),datasets:[{label:'领用(件)',data:Object.keys(catMeta).map(()=>0),backgroundColor:[C.office,C.tobacco,C.gift],borderRadius:8}]},
+        data:{labels:_catKeys.map(k=>safeMeta(k).t),datasets:[{label:'领用(件)',data:_catKeys.map(()=>0),backgroundColor:[C.office,C.tobacco,C.gift],borderRadius:8}]},
         options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:C.grid},border:{display:false},beginAtZero:true},x:{grid:{display:false},border:{display:false}}}}
       });
     }
@@ -4449,6 +4461,17 @@
     if(!yrs.length) return null;
     return yrs[0]===yrs[yrs.length-1]? String(yrs[0]) : (yrs[0]+'–'+yrs[yrs.length-1]);
   }
+  // 识别年份 · 归档笔数明细：按年份拆分「待归档」入库/出库流水笔数，便于 UI 直接展示，避免只看年份区间不知具体笔数
+  function carryoverYearBreakdown(){
+    const cur=new Date().getFullYear();
+    const map=new Map();
+    const add=(y,type)=>{ if(isNaN(y)||y>=cur) return; if(!map.has(y)) map.set(y,{year:y,inCount:0,outCount:0,total:0}); const e=map.get(y); if(type==='in') e.inCount++; else e.outCount++; };
+    inboundRecords.forEach(r=>add(yearOf(r),'in'));
+    outboundRecords.forEach(r=>add(yearOf(r),'out'));
+    const arr=Array.from(map.values()).sort((a,b)=>a.year-b.year);
+    arr.forEach(e=>{ e.total=e.inCount+e.outCount; });
+    return arr;
+  }
   // 结转前完整性预检：缺单价物资数（影响金额准确性）、该年度盘点记录数（影响账实闭环）
   function carryoverPreflight(){
     const priceOf={}; inboundRecords.forEach(r=>{ if(r.name&&r.price) priceOf[r.name+'|'+r.category]=r.price; });
@@ -4464,6 +4487,10 @@
     const el=document.getElementById('carryoverPreview'); if(!el) return;
     const btn=document.getElementById('btnCarryover'); const msg=document.getElementById('carryoverMsg');
     const s=carryoverStats(); const label=carryoverYearsLabel();
+    const yb=carryoverYearBreakdown();
+    const ybHtml=yb.length? ('<div class="kp-yearlist"><div class="kp-yl-title">识别年份 · 归档笔数明细</div>'+
+      yb.map(y=>'<div class="kp-yearrow"><span class="kp-yr">'+y.year+' 年</span><span class="kp-yr-in">入库 '+y.inCount+' 笔</span><span class="kp-yr-out">出库 '+y.outCount+' 笔</span><span class="kp-yr-tot">合计 '+y.total+' 笔</span></div>').join('')+
+      '</div>') : '';
     const pf=carryoverPreflight();
     // 已结转且无可结转数据：给出明确「最新」状态，禁用按钮防止重复操作；预检与盘点信息始终可见
     if(!label || (!s.inH && !s.outH)){
@@ -4489,6 +4516,7 @@
       '<div class="kp-stat"><span class="kp-stat-v">'+s.outH+'</span><span class="kp-stat-l">将归档出库流水</span></div>'+
       '<div class="kp-stat"><span class="kp-stat-v">'+s.items+'</span><span class="kp-stat-l">期末库存物资</span></div>'+
     '</div>'+
+    ybHtml+
     '<div class="kp-status ok"><span>财务口径</span><b>期初 + 入库 − 出库 = 期末 · 逐年勾稽平衡；本年（'+s.cur+' 年）数据保留为本期流水，不受影响</b></div>'+
     (pf.noPrice? '<div class="kp-status warn"><span>完整性预检</span><b>⚠ '+pf.noPrice+' 项物资缺单价，期末金额按 0 计（建议先补单价）</b></div>'
       : '<div class="kp-status ok"><span>完整性预检</span><b>✓ 全部物资已录单价</b></div>')+
