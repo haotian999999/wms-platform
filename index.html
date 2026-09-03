@@ -3722,19 +3722,19 @@
       return r=>{ const d=String(r.date||''); const yy=+d.slice(0,4), mm=+d.slice(5,7); return yy===y && Math.floor((mm-1)/3)+1===qq; };
     }
     if(range==='year'){ const y=now.getFullYear()-1; return r=>String(r.date||'').startsWith(String(y)); }
-    return ()=>true;
+    return null; // 'all'（全部期间）无前一期可比：环比基准不存在，调用方应显示「— 全部累计」而非报 0%
   }
   function renderReportsKPIs(){
     const priceMap=latestPriceMap(); // 单趟取最新单价，免全量拷贝排序（流水几十万条时 slice+sort 是报表主热点）
     const totalValue=items.reduce((s,i)=>{ const p=priceMap[normName(i.n)+'|'+i.c]||0; return s+i.q*p; },0);
     const filter=repPeriodFilter(repRange), prevFilter=repPrevFilter(repRange);
-    const outCur=outboundRecords.filter(filter), outPrev=outboundRecords.filter(prevFilter);
+    const outCur=outboundRecords.filter(filter), outPrev=prevFilter?outboundRecords.filter(prevFilter):[];
     const outCountCur=outCur.length, outCountPrev=outPrev.length;
     const outQtyCur=outCur.reduce((s,r)=>s+(+r.qty||0),0);
     const elV=document.getElementById('repTotalValue'); if(elV) elV.textContent='¥ '+fmtNum(totalValue);
     const tV=document.getElementById('repValueTrend'); if(tV){ tV.textContent=totalValue?'— 基于入库单价估算':'— 暂无数据'; tV.className='trend'; }
     const elO=document.getElementById('repMonthOutCount'); if(elO) elO.textContent=fmtNum(outCountCur);
-    const tO=document.getElementById('repOutTrend'); if(tO){ if(outCountPrev===0){ tO.textContent='— 暂无环比'; tO.className='trend'; } else { const pct=((outCountCur-outCountPrev)/outCountPrev*100).toFixed(1); const up=+pct>=0; tO.textContent=(up?'▲ ':'▼ ')+Math.abs(pct)+'%'; tO.className='trend '+(up?'up':'down'); } }
+    const tO=document.getElementById('repOutTrend'); if(tO){ if(!prevFilter){ tO.textContent='— 全部累计'; tO.className='trend'; } else if(outCountPrev===0){ tO.textContent='— 暂无环比'; tO.className='trend'; } else { const pct=((outCountCur-outCountPrev)/outCountPrev*100).toFixed(1); const up=+pct>=0; tO.textContent=(up?'▲ ':'▼ ')+Math.abs(pct)+'%'; tO.className='trend '+(up?'up':'down'); } }
     const elA=document.getElementById('repAlert'); const tA=document.getElementById('repAlertTrend');
     if(elA&&tA){
       const armed=items.filter(i=>(+i.safe||0)>0);
