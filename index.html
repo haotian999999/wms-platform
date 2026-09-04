@@ -1264,6 +1264,7 @@
                 <button class="tab active" data-tab="quarter">季度盘点</button>
                 <button class="tab" data-tab="year">年度盘点</button>
               </div>
+              <div class="year-switch" id="checkYearSwitch"></div>
             </div>
 
             <!-- 季度盘点 -->
@@ -1360,7 +1361,15 @@
               <button class="tab" data-tab="out">出库记录</button>
               <button class="tab" data-tab="archive">历史归档</button>
             </div>
-            <div class="search">🔍<input id="dataSearch" placeholder="搜索入库/出库单号 / 物资名称 / 供应商 / 领用人 / 部门…" /></div>
+            <div class="search">🔍<input id="dataSearch" placeholder="搜索单号 / 物资名称 / 供应商 / 领用人 / 部门… 或输入「2026年1月1日 至 2026年12月31日」按日期筛选" /></div>
+            <div class="year-switch" id="dataYearSwitch"></div>
+            <div class="date-range" id="dataDateRange" style="display:none;gap:8px;align-items:center;margin:10px 0 0;flex-wrap:wrap">
+              <span class="plan-meta">日期范围：</span>
+              <input type="date" id="dataFrom" class="inp-date" />
+              <span class="plan-meta">至</span>
+              <input type="date" id="dataTo" class="inp-date" />
+              <button class="btn btn-ghost btn-mini" id="dataDateClear" type="button">清除日期</button>
+            </div>
             <span class="plan-meta" id="dataCount"></span>
             <div class="data-pager" id="dataPager" style="display:none">
               <button class="btn btn-ghost" id="dataPrev" type="button">‹ 上一页</button>
@@ -1428,20 +1437,17 @@
                   </div>
                   <div class="kp-body">
                     <div class="kp-content">
-                      <div class="kp-row" style="grid-template-columns:minmax(140px,0.75fr) 1fr">
-                        <div class="kp-field">
-                          <label for="archiveYear">选择年度</label>
-                          <select id="archiveYear" disabled><option value="">暂无归档年度</option></select>
-                        </div>
-                        <div class="kp-stats" id="archiveStats">
-                          <div class="kp-stat"><span class="kp-stat-v" id="akStatYears">0</span><span class="kp-stat-l">已归档年度</span></div>
-                          <div class="kp-stat"><span class="kp-stat-v" id="akStatRecs">0</span><span class="kp-stat-l">出入库流水</span></div>
-                        </div>
+                      <label class="arch-yl-title">选择年度（点击切换查看 · 可下载）</label>
+                      <div class="arch-yearlist" id="archYearList"></div>
+                      <div class="kp-stats" id="archiveStats">
+                        <div class="kp-stat"><span class="kp-stat-v" id="akStatYears">0</span><span class="kp-stat-l">可查看年度</span></div>
+                        <div class="kp-stat"><span class="kp-stat-v" id="akStatRecs">0</span><span class="kp-stat-l">出入库流水</span></div>
                       </div>
                       <div id="archiveKpis" class="kp-row"></div>
                     </div>
                     <div class="kp-foot">
-                      <button class="btn btn-ghost" id="exportArchiveBtn" disabled>⬇ 导出</button>
+                      <button class="btn btn-ghost" id="exportArchiveBtn" disabled>⬇ Excel</button>
+                      <button class="btn btn-ghost" id="exportArchiveJsonBtn" disabled>⬇ JSON</button>
                       <button class="btn btn-danger" id="delArchiveBtn" disabled>🗑 删除</button>
                     </div>
                   </div>
@@ -2014,7 +2020,7 @@
     if(v==='reports') renderReports();
     if(v==='settings') renderSafe();
     if(v==='maintenance') renderMaintenance();
-    if(v==='check'){ seedCheckPlans(); normalizeCheckPlans(); if(refreshPlanWindowStatus()) wmsSave(); renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCheckTimeline(); setTimeout(()=>checkTableOverflow(),60); }
+    if(v==='check'){ seedCheckPlans(); normalizeCheckPlans(); if(refreshPlanWindowStatus()) wmsSave(); renderCheckYearSwitch(); renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCheckTimeline(); setTimeout(()=>checkTableOverflow(),60); }
     if(charts[v]) setTimeout(()=>Object.values(charts[v]).forEach(c=>c.resize()),60);
   }));
 
@@ -2051,6 +2057,12 @@
   let cloudSyncOn=true; try{ cloudSyncOn=localStorage.getItem(WMS_SYNC_KEY)!=='0'; }catch(e){}
   function _wmsLoad(){ try{ const r=localStorage.getItem(WMS_DB_KEY); const o=r&&JSON.parse(r); return (o&&Array.isArray(o.items))?o:null; }catch(e){ return null; } }
   let _wmsData=_wmsLoad();
+  // ============ R43：年份上下文（必须早于 renderDataTables 初始化） ============
+  // 这三个「查看年度 / 日期范围」全局视图状态必须在「顶部」声明（renderDataTables 早期就会被调用），
+  // 否则用 let 声明在文件下方（行号 > renderDataTables 第一次调用的位置）会进入 TDZ 抛 ReferenceError。
+  let viewYear=new Date().getFullYear();          // 默认今年；'all' = 全部年份
+  let dateRange={from:null,to:null};              // 搜索栏日期范围筛选（覆盖年份）
+  let archViewYear=new Date().getFullYear();      // 历史归档当前查看年度
   // 数据完整性兜底：主数据文件异常（损坏/为空）但存在有效自动备份时，自动还原，避免信息丢失
   // 注意：若存在重置纪元，只有「纪元 >= 当前纪元」的新备份才允许自动还原；
   // 重置前产生的旧备份（epoch 缺失或更小）一律不还原，否则重置后 reload 会把旧备份又灌回来。
@@ -2219,7 +2231,7 @@
       if(activeDataTab==='archive') renderArchive(); else renderDataTables();
       renderWarranty(); updateDataNote();
       renderDashboard(); renderReports();
-      renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCheckTimeline(); renderCarryoverCard();
+      renderCheckYearSwitch(); renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCheckTimeline(); renderCarryoverCard();
     }catch(e){ console.warn('云端同步后刷新界面失败', e); }
   }
   async function pushCloud(){
@@ -2543,11 +2555,28 @@
   const checkPlansYear=[];
   const QUARTER_SLOTS=[{t:'03-31',q:1},{t:'06-30',q:2},{t:'09-30',q:3},{t:'12-31',q:4}];
   const YEAR_SLOTS=[{t:'06-30',label:'年中'},{t:'12-31',label:'年末'}];
+  let checkViewYear=new Date().getFullYear();   // R43-4：盘点计划当前查看年度（年份隔离，默认今年）
+  function checkYearList(){
+    const ys=new Set();
+    checkPlansQuarter.forEach(p=>{ if(p.year) ys.add(p.year); });
+    checkPlansYear.forEach(p=>{ if(p.year) ys.add(p.year); });
+    ys.add(new Date().getFullYear());
+    return Array.from(ys).sort((a,b)=>b-a);
+  }
+  function renderCheckYearSwitch(){
+    const el=document.getElementById('checkYearSwitch'); if(!el) return;
+    const ys=checkYearList();
+    if(!ys.length){ el.innerHTML=''; return; }
+    if(!ys.includes(checkViewYear)) checkViewYear=ys[0];
+    const mk=(val,label,active)=>`<div class="chip${active?' active':''}" data-year="${val}">${label}</div>`;
+    el.innerHTML=ys.map(y=>mk(String(y),String(y)+' 年',String(checkViewYear)===String(y))).join('');
+    el.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{ checkViewYear=+c.dataset.year; renderCheckYearSwitch(); renderPlanQuarter(); renderPlanYear(); }));
+  }
   function refreshPlanWindowStatus(){
-    const today=new Date(); today.setHours(0,0,0,0); const y=today.getFullYear(); let changed=false;
+    const today=new Date(); today.setHours(0,0,0,0); let changed=false;
     const test=p=>{
-      if(!p.time) return; const parts=String(p.time).split('-'); if(parts.length!==2) return;
-      const plan=new Date(y,+parts[0]-1,+parts[1]);
+      if(!p.time) return; const parts=String(p.time).split('-'); if(parts.length!==3) return;   // R43-4：time 已升为 YYYY-MM-DD，按计划实际年份判定窗口
+      const plan=new Date(+parts[0],+parts[1]-1,+parts[2]);
       const diff=Math.abs((today-plan)/86400000);
       if(diff<=5 && p.status==='out'){ p.status='low'; changed=true; }
     };
@@ -2557,49 +2586,56 @@
   function seedCheckPlans(){
     const y=new Date().getFullYear();
     if(!checkPlansQuarter.length){
-      QUARTER_SLOTS.forEach(s=>checkPlansQuarter.push({period:`${y} Q${s.q}`,time:s.t,person:'',watch:'',status:'out',diff:'—',key:`${y}-Q${s.q}`}));
+      QUARTER_SLOTS.forEach(s=>checkPlansQuarter.push({period:`${y} Q${s.q}`,time:`${y}-${s.t}`,person:'',watch:'',status:'out',diff:'—',year:y,key:`${y}-Q${s.q}`}));
     }
     if(!checkPlansYear.length){
-      YEAR_SLOTS.forEach(s=>checkPlansYear.push({name:`${y} ${s.label}全面盘点`,time:s.t,lead:'',watch:'',mode:'全面',status:'out',key:`${y}-${s.t==='06-30'?'mid':'year-end'}`}));
+      YEAR_SLOTS.forEach(s=>checkPlansYear.push({name:`${y} ${s.label}全面盘点`,time:`${y}-${s.t}`,lead:'',watch:'',mode:'全面',status:'out',year:y,key:`${y}-${s.t==='06-30'?'mid':'year-end'}`}));
     }
   }
+  // R43-4：年份隔离版归一——补全 year + 把 time 升为 YYYY-MM-DD；保留历史年度计划（不再 length=0 清空），
+  // 仅确保「当前年度」槽位存在/刷新；跨年槽位重置为待办（延续 R39 防去年记录被覆盖）。
   function normalizeCheckPlans(){
     const y=new Date().getFullYear(); const keyMap={};
-    const ensureKey=p=>{ if(!p.key) p.key=(p.period||p.name||('plan-'+Math.random().toString(36).slice(2))); };
-    const qCanon={};
-    checkPlansQuarter.forEach(p=>{ ensureKey(p); const t=String(p.time||''); if(QUARTER_SLOTS.some(s=>s.t===t) && !qCanon[t]) qCanon[t]=p; });
-    checkPlansQuarter.length=0;
+    const migrate=p=>{
+      if(p.year==null){ const m=String(p.key||p.period||p.name||'').match(/(\d{4})/); p.year=m?+m[1]:y; }   // 既有计划补全所属年份
+      if(p.time && /^(\d{2})-(\d{2})$/.test(String(p.time))) p.time=p.year+'-'+p.time;                       // MM-DD → YYYY-MM-DD
+    };
+    checkPlansQuarter.forEach(migrate); checkPlansYear.forEach(migrate);
+    const dedup=arr=>{ const seen={},out=[]; arr.forEach(p=>{ if(!(p.key in seen)){ seen[p.key]=1; out.push(p); } }); return out; };
+    let Q=dedup(checkPlansQuarter), Y=dedup(checkPlansYear);
     QUARTER_SLOTS.forEach(s=>{
-      const p=qCanon[s.t]; if(!p) return;
-      const old=p.key; const oldY=(/^(\d{4})-/.exec(String(old||''))||[])[1];
-      p.period=`${y} Q${s.q}`; p.time=s.t; p.key=`${y}-Q${s.q}`; if(p.watch==null)p.watch='';
-      // R39：计划跨年滚动（去年键→今年键）只滚动槽位模板，绝不把含年份的历史键迁进 keyMap——
-      // 否则 checkRecords.planKey 被改成今年键，今年同槽位盘点 findIndex 命中去年已完成记录并原地覆盖（去年盘点记录丢失）。
-      // keyMap 迁移仅服务「旧版无年份键（Q1/mid…）补全为当前年键」场景。
-      if(old!==p.key && !oldY) keyMap[old]=p.key;
-      // 跨年滚动（旧键年份≠今年）：槽位重置为今年待办（否则去年 'ok' 残留致今年误显「已完成」静默跳过盘点）
-      if(oldY && String(oldY)!==String(y)){ p.status='out'; p.diff='—'; }
-      checkPlansQuarter.push(p);
+      const key=`${y}-Q${s.q}`;
+      let p=Q.find(x=>x.key===key);
+      if(!p){ p={period:`${y} Q${s.q}`,time:`${y}-${s.t}`,person:'',watch:'',status:'out',diff:'—',year:y,key}; Q.push(p); }
+      else { const old=p.key; const oldY=(/^(\d{4})-/.exec(String(old||''))||[])[1];
+        p.period=`${y} Q${s.q}`; p.time=`${y}-${s.t}`; p.year=y; if(p.watch==null)p.watch=''; if(p.status==null)p.status='out'; if(p.diff==null)p.diff='—';
+        if(old!==p.key && !oldY) keyMap[old]=p.key;                                  // R39：仅旧版无年份键补全迁移
+        if(oldY && String(oldY)!==String(y)){ p.status='out'; p.diff='—'; }          // 跨年滚动：历史槽位重置为今年待办
+      }
     });
-    const yCanon={};
-    checkPlansYear.forEach(p=>{ ensureKey(p); const t=String(p.time||''); if(YEAR_SLOTS.some(s=>s.t===t) && !yCanon[t]) yCanon[t]=p; });
-    checkPlansYear.length=0;
     YEAR_SLOTS.forEach(s=>{
-      const p=yCanon[s.t]; if(!p) return;
-      const old=p.key; const oldY=(/^(\d{4})-/.exec(String(old||''))||[])[1];
-      p.name=`${y} ${s.label}全面盘点`; p.time=s.t; p.key=`${y}-${s.t==='06-30'?'mid':'year-end'}`; if(p.mode==null)p.mode='全面';
-      // R39：同 Fix1——含年份旧键不迁移；跨年滚动重置为今年待办
-      if(old!==p.key && !oldY) keyMap[old]=p.key;
-      if(oldY && String(oldY)!==String(y)){ p.status='out'; p.diff='—'; }
-      checkPlansYear.push(p);
+      const key=`${y}-${s.t==='06-30'?'mid':'year-end'}`;
+      let p=Y.find(x=>x.key===key);
+      if(!p){ p={name:`${y} ${s.label}全面盘点`,time:`${y}-${s.t}`,lead:'',watch:'',mode:'全面',status:'out',year:y,key}; Y.push(p); }
+      else { const old=p.key; const oldY=(/^(\d{4})-/.exec(String(old||''))||[])[1];
+        p.name=`${y} ${s.label}全面盘点`; p.time=`${y}-${s.t}`; p.year=y; if(p.mode==null)p.mode='全面'; if(p.status==null)p.status='out';
+        if(old!==p.key && !oldY) keyMap[old]=p.key;
+        if(oldY && String(oldY)!==String(y)){ p.status='out'; p.diff='—'; }
+      }
     });
+    checkPlansQuarter.length=0; Q.forEach(p=>checkPlansQuarter.push(p));
+    checkPlansYear.length=0; Y.forEach(p=>checkPlansYear.push(p));
     if(Object.keys(keyMap).length) checkRecords.forEach(r=>{ if(r.planKey && keyMap[r.planKey]) r.planKey=keyMap[r.planKey]; });
   }
   let activeCheckPlan=null; // 当前正在盘点的计划（用于存档记录与计划状态双向呼应）
   function renderPlanQuarter(){
     const tb=document.getElementById('planQuarterBody'); if(!tb) return;
-    if(!checkPlansQuarter.length){ tb.innerHTML='<tr><td colspan="7" class="empty">暂无季度盘点计划，系统将按每季度月底自动生成</td></tr>'; return; }
-    tb.innerHTML=checkPlansQuarter.map((p,i)=>`<tr data-row-plan-q="${i}">
+    const curY=new Date().getFullYear();
+    const list=checkPlansQuarter.filter(p=>(p.year||curY)===checkViewYear);
+    if(!list.length){ tb.innerHTML='<tr><td colspan="7" class="empty">'+checkViewYear+' 年暂无季度盘点计划（往年计划可在年份切换器中查看）</td></tr>'; return; }
+    tb.innerHTML=checkPlansQuarter.map((p,i)=>{
+      if((p.year||curY)!==checkViewYear) return '';   // 年份隔离：仅渲染当前查看年度的计划（保留真实数组下标供开始盘点定位）
+      return `<tr data-row-plan-q="${i}">
       <td>${escHtml(p.period||'—')}</td>
       <td class="code">${escHtml(p.time||'—')}</td>
       <td>${escHtml(p.person||'—')}</td>
@@ -2607,12 +2643,17 @@
       <td><span class="status ${p.status}">${planStatusText[p.status]}</span></td>
       <td class="num">${p.diff!=null?p.diff:'—'}</td>
       <td><span class="cell-act"><button type="button" class="btn-mini start" data-start-check-q="${i}">开始盘点</button></span></td>
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
   }
   function renderPlanYear(){
     const tb=document.getElementById('planYearBody'); if(!tb) return;
-    if(!checkPlansYear.length){ tb.innerHTML='<tr><td colspan="7" class="empty">暂无年度盘点计划，系统将按 6 月底、12 月底自动生成</td></tr>'; return; }
-    tb.innerHTML=checkPlansYear.map((p,i)=>`<tr data-row-plan-y="${i}">
+    const curY=new Date().getFullYear();
+    const list=checkPlansYear.filter(p=>(p.year||curY)===checkViewYear);
+    if(!list.length){ tb.innerHTML='<tr><td colspan="7" class="empty">'+checkViewYear+' 年暂无年度盘点计划（往年计划可在年份切换器中查看）</td></tr>'; return; }
+    tb.innerHTML=checkPlansYear.map((p,i)=>{
+      if((p.year||curY)!==checkViewYear) return '';
+      return `<tr data-row-plan-y="${i}">
       <td>${escHtml(p.name||'—')}</td>
       <td class="code">${escHtml(p.time||'—')}</td>
       <td>${escHtml(p.lead||'—')}</td>
@@ -2620,11 +2661,14 @@
       <td><span class="pill join">🤝 全面</span></td>
       <td><span class="status ${p.status}">${planStatusText[p.status]}</span></td>
       <td><span class="cell-act"><button type="button" class="btn-mini start" data-start-check-y="${i}">开始盘点</button></span></td>
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
   }
   function renderCheckKpi(){
-    const total=checkPlansQuarter.length+checkPlansYear.length;
-    const done=checkPlansQuarter.concat(checkPlansYear).filter(p=>p.status==='ok').length;
+    const curY=checkViewYear;   // R43-4：计划 KPI 跟随年份切换器，只统计当前查看年度
+    const yr=p=>(p.year||curY)===curY;
+    const total=checkPlansQuarter.filter(yr).length+checkPlansYear.filter(yr).length;
+    const done=checkPlansQuarter.concat(checkPlansYear).filter(p=>yr(p)&&p.status==='ok').length;
     const diffCount=checkItems.filter(i=>((i.real!==undefined?i.real:i.sys)-i.sys)!==0).length;
     const net=checkItems.reduce((s,i)=>s+((i.real!==undefined?i.real:i.sys)-i.sys),0);
     const t1=document.getElementById('kpiPlanTotal'); if(t1) t1.textContent=total+' 次';
@@ -2638,7 +2682,7 @@
     }
     const dt=document.getElementById('kpiDoneTrend'); if(dt){ dt.textContent= done? ('▲ 已归档 '+done+' 次') : '▲ 暂无已归档盘点'; }
   }
-  renderPlanQuarter(); renderPlanYear(); checkTableOverflow(); renderCheckKpi(); renderCheckTimeline();
+  renderCheckYearSwitch(); renderPlanQuarter(); renderPlanYear(); checkTableOverflow(); renderCheckKpi(); renderCheckTimeline();
   // 提交实盘（日期落在计划时间 ±5 天内）→ 对应盘点计划状态自动置「已完成」
   function syncPlanStatus(dateStr){
     if(!dateStr) return false;
@@ -2646,8 +2690,8 @@
     if(isNaN(sub.getTime())) return false;
     let changed=false;
     const test=p=>{
-      const parts=String(p.time).split('-'); if(parts.length!==2) return;
-      const plan=new Date(sub.getFullYear(), (+parts[0])-1, +parts[1]);
+      const parts=String(p.time).split('-'); if(parts.length!==3) return;   // R43-4：time 为 YYYY-MM-DD，按计划实际年份比对
+      const plan=new Date(+parts[0],(+parts[1])-1,+parts[2]);
       const diff=Math.abs((sub-plan)/86400000);
       if(diff<=5 && p.status!=='ok'){ p.status='ok'; changed=true; }
     };
@@ -2664,13 +2708,13 @@
     const summary=`<div class="plan-meta" style="padding:2px 0 10px">类型：<b style="color:var(--ink-1)">${typeLabel}</b></div>`;
     const fields=isQ?[
       {k:'period',t:'盘点周期',v:p.period,ty:'text'},
-      {k:'time',t:'计划时间(MM-DD)',v:p.time,ty:'text'},
+      {k:'time',t:'计划时间(YYYY-MM-DD)',v:p.time,ty:'text'},
       {k:'person',t:'牵头（仓库）',v:p.person,ty:'text'},
       {k:'watch',t:'监盘（财务）',v:p.watch,ty:'text'},
       {k:'status',t:'状态',v:p.status,ty:'select',opts:[['ok','已完成'],['low','进行中'],['out','待开始']]}
     ]:[
       {k:'name',t:'盘点名称',v:p.name,ty:'text'},
-      {k:'time',t:'计划时间(MM-DD)',v:p.time,ty:'text'},
+      {k:'time',t:'计划时间(YYYY-MM-DD)',v:p.time,ty:'text'},
       {k:'lead',t:'牵头（仓库）',v:p.lead,ty:'text'},
       {k:'watch',t:'监盘（财务）',v:p.watch,ty:'text'},
       {k:'mode',t:'盘点方式',v:p.mode,ty:'select',opts:[['全面','全面盘点'],['联合','联合盘点'],['自盘','自盘']]},
@@ -2685,21 +2729,21 @@
   function addPlan(type){
     const y=new Date().getFullYear();
     if(type==='q'){
-      const slots=[{t:'03-31',n:`${y} Q1`,k:`${y}-Q1`},{t:'06-30',n:`${y} Q2`,k:`${y}-Q2`},{t:'09-30',n:`${y} Q3`,k:`${y}-Q3`},{t:'12-31',n:`${y} Q4`,k:`${y}-Q4`}];
+      const slots=[{t:`${y}-03-31`,n:`${y} Q1`,k:`${y}-Q1`},{t:`${y}-06-30`,n:`${y} Q2`,k:`${y}-Q2`},{t:`${y}-09-30`,n:`${y} Q3`,k:`${y}-Q3`},{t:`${y}-12-31`,n:`${y} Q4`,k:`${y}-Q4`}];
       const used=new Set(checkPlansQuarter.map(p=>String(p.time||'')));
       const slot=slots.find(s=>!used.has(s.t));
       if(!slot){ toast('季度盘点计划已达上限','warn','每年最多 4 次季度盘点，分别位于每季度月底'); return; }
-      checkPlansQuarter.push({period:slot.n,time:slot.t,person:'',watch:'',status:'out',diff:'—',key:slot.k});
-      renderPlanQuarter(); renderCheckKpi(); wmsSave();
+      checkPlansQuarter.push({period:slot.n,time:slot.t,person:'',watch:'',status:'out',diff:'—',year:y,key:slot.k});
+      renderCheckYearSwitch(); renderPlanQuarter(); renderCheckKpi(); wmsSave();
       planEditCtx={type:'q',idx:checkPlansQuarter.length-1,isNew:true};
       openPlanEdit('q',checkPlansQuarter.length-1);
     } else {
-      const slots=[{t:'06-30',n:`${y} 年中全面盘点`,k:`${y}-mid`},{t:'12-31',n:`${y} 年末全面盘点`,k:`${y}-year-end`}];
+      const slots=[{t:`${y}-06-30`,n:`${y} 年中全面盘点`,k:`${y}-mid`},{t:`${y}-12-31`,n:`${y} 年末全面盘点`,k:`${y}-year-end`}];
       const used=new Set(checkPlansYear.map(p=>String(p.time||'')));
       const slot=slots.find(s=>!used.has(s.t));
       if(!slot){ toast('年度盘点计划已达上限','warn','每年最多 2 次年度盘点，分别为 6 月底和 12 月底'); return; }
-      checkPlansYear.push({name:slot.n,time:slot.t,lead:'',watch:'',mode:'全面',status:'out',key:slot.k});
-      renderPlanYear(); renderCheckKpi(); wmsSave();
+      checkPlansYear.push({name:slot.n,time:slot.t,lead:'',watch:'',mode:'全面',status:'out',year:y,key:slot.k});
+      renderCheckYearSwitch(); renderPlanYear(); renderCheckKpi(); wmsSave();
       planEditCtx={type:'y',idx:checkPlansYear.length-1,isNew:true};
       openPlanEdit('y',checkPlansYear.length-1);
     }
@@ -2722,8 +2766,8 @@
     g('chkType').value = type==='q' ? '季度盘点（自盘）' : '年度盘点（联合）';
     g('chkLead').value = type==='q' ? (p.person||'李娜') : (p.lead||'李娜');
     if(type==='y'){ g('chkWatch').value = (p.watch||'赵敏').replace(/\s*[（(]财务[）)]/,''); }
-    const mmdd=String(p.time||'').split('-');
-    if(mmdd.length===2){ const y=new Date().getFullYear(); g('chkDate').value = y+'-'+mmdd[0]+'-'+mmdd[1]; }
+    const full=/^\d{4}-\d{2}-\d{2}$/.test(String(p.time||''));
+    if(full){ g('chkDate').value=p.time; }   // R43-4：time 已为 YYYY-MM-DD，直接载入计划节点日期
     document.getElementById('startCheckModal').classList.add('show');
     toast('开始盘点','info','已载入物资明细（共 '+checkItems.length+' 项），请录入实盘数量');
   }
@@ -3701,9 +3745,10 @@
     el.innerHTML=data.list.map(x=>`<div class="li"><span class="sw" style="background:${safeMeta(x.key).col}"></span><span class="ln">${escHtml(x.label)}</span><span class="lq">${fmtNum(x.q)} 件</span><span class="pct">${x.pct}%</span></div>`).join('');
   }
   function renderRecentIn(){
-    const list=topNBy(inboundRecords,8,r=>String(r.date||''),r=>r);
+    const src=(viewYear==='all'?inboundRecords:recordsForYear(viewYear,'in').rows);   // R43：年份隔离
+    const list=topNBy(src,8,r=>String(r.date||''),r=>r);
     const el=document.getElementById('recentInList'); if(!el) return;
-    const sub=document.getElementById('recentInSub'); if(sub) sub.textContent='共 '+inboundRecords.length+' 条';
+    const sub=document.getElementById('recentInSub'); if(sub) sub.textContent='共 '+src.length+' 条'+(viewYear==='all'?'':'（'+viewYear+' 年）');
     el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.name)} ×${escHtml(r.qty)} ${escHtml(r.unit||'')}</div><div class="rs">${safeMeta(r.category).t} · ${escHtml(r.supplier||'—')} · ${escHtml(r.handler||'—')}</div></div><div class="rq in">+${escHtml(r.qty)}</div></div>`).join('')
       :'<div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无入库记录</div>';
   }
@@ -4125,8 +4170,12 @@
   function renderData(type,filter){
     const cols=type==='in'?inCols:outCols;
     const body=type==='in'?document.getElementById('inBody'):document.getElementById('outBody');
-    const all=type==='in'?inboundRecords:outboundRecords;
+    // R43：年份隔离（默认今年；'all' 显示全部；已结转年走 archivedRecords）
+    let all=(type==='in'?inboundRecords:outboundRecords);
+    if(viewYear!=='all'){ all=recordsForYear(viewYear,type).rows; }
     const f=normName(filter||'').toLowerCase();
+    // R43：日期范围筛选（覆盖年份，区间可跨年）
+    const dr=dateRange; const inRange=r=>{ if(!dr.from&&!dr.to) return true; const d=String(r.date||''); if(dr.from&&d<dr.from) return false; if(dr.to&&d>dr.to) return false; return true; };
     const emptyHtml='<tr><td colspan="'+(cols.length)+'" class="empty">'+(type==='in'?'暂无入库记录，请通过「入库登记」添加':'暂无出库记录')+'</td></tr>';
     // 行构建器：索引 i 必须为全量数组下标（行点击详情 openRec 依赖 data-row-rec 中的原数组索引）
     const buildRow=(r,i)=>{
@@ -4146,9 +4195,9 @@
     const rows=[];
     if(!f){
       if(!all.length){ body.innerHTML=emptyHtml; renderPager(0,0,type); return 0; }
-      for(let i=0;i<all.length;i++) rows.push(i);
+      for(let i=0;i<all.length;i++){ if(inRange(all[i])) rows.push(i); }
     }else{
-      for(let i=0;i<all.length;i++){ const r=all[i]; if(normName(Object.values(r).join(' ')).toLowerCase().includes(f)) rows.push(i); }
+      for(let i=0;i<all.length;i++){ const r=all[i]; if(!inRange(r)) continue; if(normName(Object.values(r).join(' ')).toLowerCase().includes(f)) rows.push(i); }
     }
     if(!rows.length){ body.innerHTML=emptyHtml; renderPager(0,0,type); return 0; }
     // 分页窗口：页码越界（删除/导入后总数缩水）时钳回最后一页
@@ -4160,13 +4209,33 @@
     renderPager(pages,rows.length,type);
     return rows.length;
   }
+  // R43：数据管理年份切换器（今天高亮默认、历史自动隐藏；"全部" 显示所有年份）
+  function renderDataYearSwitch(){
+    const el=document.getElementById('dataYearSwitch'); if(!el) return;
+    const ys=yearList();
+    const mk=(val,label,active)=>`<div class="chip${active?' active':''}" data-year="${val}">${label}</div>`;
+    let html=mk('all','全部',viewYear==='all');
+    ys.forEach(y=>{ html+=mk(String(y),String(y)+' 年',String(viewYear)===String(y)); });
+    el.innerHTML=html;
+    el.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
+      viewYear=c.dataset.year==='all'?'all':+c.dataset.year;
+      dataPage.in=0; dataPage.out=0;
+      renderDataYearSwitch(); renderDataTables();
+    }));
+  }
   function renderDataTables(){
     if(activeDataTab==='archive') return; // 历史归档走 renderArchive
-    const f=document.getElementById('dataSearch').value;
+    renderDataYearSwitch();
+    const f=dataSearchKeyword;
     // 只渲染当前激活页签：隐藏面板无渲染必要，数据翻倍后可省一半全量 HTML 拼接 + innerHTML 解析成本
     const n=renderData(activeDataTab,f);
     const dc=document.getElementById('dataCount');
-    if(dc){ const pages=Math.max(1,Math.ceil(n/DATA_PAGE)); dc.textContent=(activeDataTab==='in'?'入库':'出库')+'共 '+n+' 条'+(pages>1?'（第 '+(dataPage[activeDataTab]+1)+' / '+pages+' 页）':''); }
+    if(dc){
+      const yLabel=viewYear==='all'?'全部年份':(viewYear+' 年');
+      const dLabel=(dateRange.from||dateRange.to)?(' · '+dateRange.from+'~'+(dateRange.to||'')+''):'';
+      const pages=Math.max(1,Math.ceil(n/DATA_PAGE));
+      dc.textContent=yLabel+' · '+(activeDataTab==='in'?'入库':'出库')+'共 '+n+' 条'+(pages>1?'（第 '+(dataPage[activeDataTab]+1)+' / '+pages+' 页）':'')+dLabel;
+    }
     checkTableOverflow();
   }
   // 导出防公式注入（CSV/Formula Injection）：单元格文本以 = + - @ 等开头时，
@@ -4392,15 +4461,22 @@
   }
   function downloadAll(){
     const type=activeDataTab;
-    const all=type==='in'?inboundRecords:outboundRecords;
+    let all=(type==='in'?inboundRecords:outboundRecords);
+    if(viewYear!=='all'){ all=recordsForYear(viewYear,type).rows; }   // R43：年份隔离
     const cols=type==='in'?inCols:outCols;
     const header=cols.map(c=>c.t);
-    // 与列表所见即所得：应用「数据管理」页当前搜索词（按钮文案承诺的是「当前筛选」）
-    const f=normName(document.getElementById('dataSearch').value||'').toLowerCase();
-    const src=f? all.filter(r=>normName(Object.values(r).join(' ')).toLowerCase().includes(f)) : all;
+    // R43：与列表所见即所得（年份 + 日期范围 + 关键字）
+    const f=normName(dataSearchKeyword||'').toLowerCase();
+    const dr=dateRange;
+    const src=all.filter(r=>{
+      if(dr.from||dr.to){ const d=String(r.date||''); if(dr.from&&d<dr.from) return false; if(dr.to&&d>dr.to) return false; }
+      if(f && !normName(Object.values(r).join(' ')).toLowerCase().includes(f)) return false;
+      return true;
+    });
     const body=src.map(r=>cols.map(c=> c.k==='category'? safeMeta(r.category).t : (c.k==='qty'? r.qty+' '+(r.unit||'') : r[c.k])));
-    exportXLSX([header].concat(body), (type==='in'?'入库记录':'出库记录')+(f?'_筛选结果':'_全部')+'.xlsx');
-    toast('正在下载记录','ok', f? `已导出筛选结果 ${src.length} 条（全部 ${all.length} 条）` : `已导出全部 ${all.length} 条记录`);
+    const yLabel=viewYear==='all'?'全部':(viewYear+'年');
+    exportXLSX([header].concat(body), (type==='in'?'入库记录':'出库记录')+'_'+yLabel+(f||dr.from||dr.to?'_筛选结果':'')+'.xlsx');
+    toast('正在下载记录','ok', `已导出 ${yLabel} ${src.length} 条记录（当前筛选）`);
   }
   let currentRec=null;
   let currentInvIdx=-1;
@@ -4497,7 +4573,8 @@
     }).join('');
 
     // ===== 第二部分：入库明细（按时间倒序，最新在最上，含该物品全部入库记录） =====
-    const inRs=inboundRecords.filter(r=>normName(r.name)===normName(i.n) && r.category===i.c)
+    const _yrF=r=> viewYear==='all' || yearOf(r)===viewYear;   // R43：详情入库/出库明细按年份隔离
+    const inRs=inboundRecords.filter(r=>normName(r.name)===normName(i.n) && r.category===i.c && _yrF(r))
       .slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     document.getElementById('invInCount').textContent='共 '+inRs.length+' 次';
     document.getElementById('invInList').innerHTML = inRs.length ? inRs.map(r=>`
@@ -4522,7 +4599,7 @@
       </div>`).join('') : '<div class="inv-empty">暂无入库记录</div>';
 
     // ===== 第三部分：出库明细（按时间倒序，最新在最上，含该物品全部出库记录） =====
-    const outRs=outboundRecords.filter(r=>normName(r.name)===normName(i.n) && r.category===i.c)
+    const outRs=outboundRecords.filter(r=>normName(r.name)===normName(i.n) && r.category===i.c && _yrF(r))
       .slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     document.getElementById('invOutCount').textContent='共 '+outRs.length+' 次';
     document.getElementById('invOutList').innerHTML = outRs.length ? outRs.map(r=>`
@@ -4560,10 +4637,31 @@
   // 搜索防抖：大数据量下每按一个键全量重渲染整表会明显掉帧（与库存搜索同款 160ms 防抖），
   // 防抖后仅渲染最后一次输入，输入流畅度显著提升；命中集变化时回到第一页
   let dataSearchTimer=null;
+  let dataSearchKeyword='';   // R43：解析日期短语后的纯关键字（与 dateRange 分离）
+  function applyDataSearch(){
+    const raw=document.getElementById('dataSearch').value||'';
+    const pr=parseDateRange(raw);
+    dataSearchKeyword=pr.rest;
+    if(pr.from||pr.to){
+      dateRange={from:pr.from,to:pr.to};
+      const df=document.getElementById('dataFrom'), dt=document.getElementById('dataTo'), dr=document.getElementById('dataDateRange');
+      if(df) df.value=pr.from||''; if(dt) dt.value=pr.to||''; if(dr) dr.style.display='flex';
+    } else if(!(document.getElementById('dataFrom')||{}).value && !(document.getElementById('dataTo')||{}).value){
+      dateRange={from:null,to:null};
+    }
+    dataPage.in=0; dataPage.out=0;
+    renderDataTables();
+  }
   document.getElementById('dataSearch').addEventListener('input',()=>{
     clearTimeout(dataSearchTimer);
-    dataSearchTimer=setTimeout(()=>{ dataPage[activeDataTab]=0; renderDataTables(); },160);
+    dataSearchTimer=setTimeout(applyDataSearch,160);
   });
+  const _df=document.getElementById('dataFrom'), _dt=document.getElementById('dataTo');
+  function syncDateInputs(){ dateRange.from=_df.value||null; dateRange.to=_dt.value||null; const dr=document.getElementById('dataDateRange'); if(dr) dr.style.display=(dateRange.from||dateRange.to)?'flex':'none'; dataPage.in=0; dataPage.out=0; renderDataTables(); }
+  if(_df) _df.addEventListener('change',syncDateInputs);
+  if(_dt) _dt.addEventListener('change',syncDateInputs);
+  const _dc=document.getElementById('dataDateClear');
+  if(_dc) _dc.addEventListener('click',()=>{ dateRange={from:null,to:null}; if(_df)_df.value=''; if(_dt)_dt.value=''; const dr=document.getElementById('dataDateRange'); if(dr) dr.style.display='none'; dataSearchKeyword=''; const ds=document.getElementById('dataSearch'); if(ds) ds.value=''; dataPage.in=0; dataPage.out=0; renderDataTables(); });
   document.getElementById('downloadAll').addEventListener('click',downloadAll);
   document.getElementById('recModalClose').addEventListener('click',()=>document.getElementById('recModal').classList.remove('show'));
   document.getElementById('recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') document.getElementById('recModal').classList.remove('show'); });
@@ -4585,6 +4683,50 @@
   // ============ 年度结转 / 历史归档 ============
   // 稳健地解析记录所属年份（兼容 YYYY-MM-DD / YYYY/MM/DD / 纯数字等多种日期格式）
   function yearOf(r){ const m=String(r.date||'').match(/(19|20)\d{2}/); return m? +m[0] : NaN; }
+  // ===== R43 统一年份上下文（纯显示层，不碰 SSOT / 期初）=====
+  // 三个 let 已在文件顶部声明（viewYear/dateRange/archViewYear），这里只放辅助函数，避免 TDZ。
+  function yearList(){
+    const ys=new Set();
+    inboundRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) ys.add(y); });
+    outboundRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) ys.add(y); });
+    checkRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) ys.add(y); });
+    archivedRecords.forEach(a=>{ if(a&&a.year) ys.add(+a.year); });
+    ys.add(new Date().getFullYear());
+    return Array.from(ys).sort((a,b)=>b-a);
+  }
+  // 统一访问器：已结转封存年直接取 archivedRecords；否则从活动流水实时过滤（非破坏性）
+  function recordsForYear(y,type){
+    if(y!=='all'){
+      const arch=archivedRecords.find(a=>a&&+a.year===+y);
+      if(arch){
+        const arr=type==='in'?arch.inbound:(type==='out'?arch.outbound:[]);
+        return {from:'arch',rows:arr||[]};
+      }
+    }
+    const all=type==='in'?inboundRecords:(type==='out'?outboundRecords:[]);
+    if(y==='all') return {from:'live',rows:all.slice()};
+    return {from:'live',rows:all.filter(r=>yearOf(r)===+y)};
+  }
+  // 解析搜索栏日期区间：支持「2026年1月1日 至 2026年12月31日」与「2026-01-01 至 2026-12-31」
+  function parseDateRange(str){
+    if(!str) return {from:null,to:null,rest:str};
+    const cn=str.match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*[至到~\-]\s*(\d{4})年(\d{1,2})月(\d{1,2})日/);
+    if(cn){ const p=(y,m,d)=>y+'-'+String(+m).padStart(2,'0')+'-'+String(+d).padStart(2,'0'); return {from:p(cn[1],cn[2],cn[3]),to:p(cn[4],cn[5],cn[6]),rest:str.replace(cn[0],' ').trim()}; }
+    const iso=str.match(/(\d{4}-\d{1,2}-\d{1,2})\s*[至到~\-]\s*(\d{4}-\d{1,2}-\d{1,2})/);
+    if(iso){ return {from:iso[1],to:iso[2],rest:str.replace(iso[0],' ').trim()}; }
+    return {from:null,to:null,rest:str};
+  }
+  // archViewYear 已在文件顶部声明（与 viewYear/dateRange 同块）
+  // R43：非破坏性年度视图模型（已结转走 archivedRecords，未结转实时派生流水+盘点）
+  function archiveViewModel(y){
+    const arch=archivedRecords.find(a=>a&&+a.year===+y);
+    if(arch) return {fromArch:true,year:y,label:String(y),opening:arch.opening||[],closing:arch.closing||[],inbound:arch.inbound||[],outbound:arch.outbound||[],checks:arch.checks||[],carriedAt:arch.carriedAt};
+    const priceOf={}; inboundRecords.forEach(r=>{ if(r.name&&r.price) priceOf[normName(r.name)+'|'+r.category]=r.price; });
+    const inY=inboundRecords.filter(r=>yearOf(r)===+y).map(r=>({...r,price:(+r.price||0),amount:(+r.amount||+(+r.qty||0)*(+r.price||0))}));
+    const outY=outboundRecords.filter(r=>yearOf(r)===+y).map(r=>{ const p=priceOf[normName(r.name)+'|'+r.category]||0; return {...r,price:p,amount:+(+(+r.qty||0)*p).toFixed(2)}; });
+    const checks=checkRecords.filter(r=>yearOf(r)===+y).map(r=>({date:r.date,title:r.title||'盘点',scope:(r.sub||'').split('·')[0]||'—',diffCount:r.diffCount!=null?r.diffCount:null,diffNet:r.diffNet!=null?r.diffNet:null,diffAbs:r.diffAbs!=null?r.diffAbs:null}));
+    return {fromArch:false,year:y,label:String(y),opening:[],closing:[],inbound:inY,outbound:outY,checks,carriedAt:null};
+  }
   function carryoverStats(){
     const cur=new Date().getFullYear();
     const inH=inboundRecords.filter(r=>yearOf(r)<cur);
@@ -4751,85 +4893,101 @@
     toast('年度结转完成','ok',`已按年度归档 ${inArch.length+outArch.length} 笔历史流水（${years.length>1?years[0]+'–'+years[years.length-1]:years[0]} 年），年末库存已冻结为本年期初`);
   }
   function renderArchive(){
-    const sel=document.getElementById('archiveYear'); if(!sel) return;
-    const ov=document.getElementById('archiveOverview');
+    const listEl=document.getElementById('archYearList');
     const expBtn=document.getElementById('exportArchiveBtn');
+    const jsonBtn=document.getElementById('exportArchiveJsonBtn');
     const delBtn=document.getElementById('delArchiveBtn');
-    if(!archivedRecords.length){
-      sel.innerHTML='<option value="">暂无归档年度</option>';
-      sel.disabled=true;
-      const m=document.getElementById('archiveMeta'); if(m) m.textContent='暂无归档数据';
-      const st=document.getElementById('archiveStats'); if(st) st.innerHTML='<div class="kp-stat"><span class="kp-stat-v">0</span><span class="kp-stat-l">已归档年度</span></div><div class="kp-stat"><span class="kp-stat-v">0</span><span class="kp-stat-l">出入库流水</span></div>';
-      if(ov) ov.innerHTML='<div class="ao-empty">暂无年度归档 · 执行「年度数据结转」后按年度归类展示</div>';
+    const ys=yearList();
+    const archYears=new Set(archivedRecords.map(a=>+a.year));
+    const curY=new Date().getFullYear();
+    if(!ys.length){
+      if(listEl) listEl.innerHTML='<div class="ao-empty">暂无年度数据 · 入库/出库后按年度归类展示</div>';
+      const m=document.getElementById('archiveMeta'); if(m) m.textContent='暂无数据';
+      const st=document.getElementById('archiveStats'); if(st) st.innerHTML='<div class="kp-stat"><span class="kp-stat-v">0</span><span class="kp-stat-l">可查看年度</span></div><div class="kp-stat"><span class="kp-stat-v">0</span><span class="kp-stat-l">出入库流水</span></div>';
       const ek=document.getElementById('archiveKpis'); if(ek) ek.innerHTML='';
-      if(expBtn) expBtn.disabled=true; if(delBtn) delBtn.disabled=true;
-      ['trialBody','snapBody','archInBody','archOutBody'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML='<tr><td colspan="9" class="empty">暂无归档数据</td></tr>'; });
-      const cb0=document.getElementById('archCheckBody'); if(cb0) cb0.innerHTML='<tr><td colspan="7" class="empty">暂无年度归档 · 执行「年度数据结转」后，该年度盘点记录将在此随档案一并封存展示</td></tr>';
+      if(expBtn) expBtn.disabled=true; if(jsonBtn) jsonBtn.disabled=true; if(delBtn) delBtn.disabled=true;
+      ['trialBody','snapBody','archInBody','archOutBody'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML='<tr><td colspan="9" class="empty">暂无数据</td></tr>'; });
+      const cb0=document.getElementById('archCheckBody'); if(cb0) cb0.innerHTML='<tr><td colspan="7" class="empty">暂无盘点记录</td></tr>';
       ['trialFoot','snapFoot','archInFoot','archOutFoot'].forEach(id=>{ const b=document.getElementById(id); if(b) b.innerHTML=''; });
       apCount(); updateCarryoverBadge();
       return;
     }
-    sel.disabled=false;
-    sel.innerHTML=archivedRecords.map((a,i)=>`<option value="${i}">${escHtml(a.label||a.year||i)} 年（${a.inbound.length+a.outbound.length} 笔）</option>`).join('');
-    const totalRecs=archivedRecords.reduce((s,a)=>s+a.inbound.length+a.outbound.length,0);
-    const st=document.getElementById('archiveStats'); if(st) st.innerHTML=`<div class="kp-stat"><span class="kp-stat-v">${archivedRecords.length}</span><span class="kp-stat-l">已归档年度</span></div><div class="kp-stat"><span class="kp-stat-v">${totalRecs}</span><span class="kp-stat-l">出入库流水</span></div>`;
-    if(expBtn) expBtn.disabled=false; if(delBtn) delBtn.disabled=false;
-    renderArchiveKpis(+sel.value||0);
-    renderArchiveDetail(+sel.value||0);
+    if(!ys.includes(+archViewYear)) archViewYear=ys[0];
+    listEl.innerHTML=ys.map(y=>{
+      const isArch=archYears.has(+y);
+      const isCur=(+y===curY);
+      const badge=isCur?'<span class="ab ad">本年</span>':(isArch?'<span class="ab ok">已封存</span>':'<span class="ab warn">未结转</span>');
+      const cnt=(recordsForYear(y,'in').rows.length+recordsForYear(y,'out').rows.length);
+      return `<div class="arch-year${String(archViewYear)===String(y)?' active':''}" data-year="${y}">${badge}<b>${y} 年</b><span class="ac">${cnt} 笔</span></div>`;
+    }).join('');
+    listEl.querySelectorAll('.arch-year').forEach(el=>el.addEventListener('click',()=>{ archViewYear=+el.dataset.year; renderArchive(); renderArchiveDetail(archViewYear); }));
+    const totalRecs=ys.reduce((s,y)=>s+(recordsForYear(y,'in').rows.length+recordsForYear(y,'out').rows.length),0);
+    const st=document.getElementById('archiveStats'); if(st) st.innerHTML=`<div class="kp-stat"><span class="kp-stat-v">${ys.length}</span><span class="kp-stat-l">可查看年度</span></div><div class="kp-stat"><span class="kp-stat-v">${totalRecs}</span><span class="kp-stat-l">出入库流水</span></div>`;
+    const isArch=archYears.has(+archViewYear);
+    if(expBtn) expBtn.disabled=false; if(jsonBtn) jsonBtn.disabled=false; if(delBtn) delBtn.disabled=!isArch;
+    renderArchiveKpis(archViewYear);
+    renderArchiveDetail(archViewYear);
     apCount();
     updateCarryoverBadge();
   }
-  function renderArchiveKpis(idx){
-    const a=archivedRecords[idx]; if(!a) return;
+  function renderArchiveKpis(y){
+    const vm=archiveViewModel(y); if(!vm) return;
     const kpis=document.getElementById('archiveKpis'); if(!kpis) return;
-    const inAmt=a.inbound.reduce((s,r)=>s+(+r.amount||0),0);
-    const outAmt=(a.outbound||[]).reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0);
-    const snapAmt=(a.closing||a.snapshot||[]).reduce((s,x)=>s+(+x.amount||0),0);
-    const opAmt=(a.opening||[]).reduce((s,x)=>s+(+x.amount||0),0);
+    const inAmt=vm.inbound.reduce((s,r)=>s+(+r.amount||0),0);
+    const outAmt=vm.outbound.reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0);
+    const snapAmt=vm.closing.reduce((s,x)=>s+(+x.amount||0),0);
+    const opAmt=vm.opening.reduce((s,x)=>s+(+x.amount||0),0);
     kpis.innerHTML=`<div class="kp-stat"><span class="kp-stat-v">${fmtNum(opAmt)}</span><span class="kp-stat-l">期初结存(元)</span></div>`
       +`<div class="kp-stat"><span class="kp-stat-v">${fmtNum(inAmt)}</span><span class="kp-stat-l">本期入库(元)</span></div>`
       +`<div class="kp-stat"><span class="kp-stat-v">${fmtNum(outAmt)}</span><span class="kp-stat-l">本期出库(元)</span></div>`
       +`<div class="kp-stat"><span class="kp-stat-v">${fmtNum(snapAmt)}</span><span class="kp-stat-l">期末结存(元)</span></div>`;
   }
-  function renderArchiveDetail(idx){
-    const a=archivedRecords[idx]; if(!a) return;
-    renderArchiveKpis(idx);
-    const sel=document.getElementById('archiveYear'); if(sel&&+sel.value!==idx) sel.value=String(idx);
-    const m=document.getElementById('archiveMeta'); if(m) m.textContent='结转于 '+a.carriedAt+' · 共 '+(a.inbound.length+a.outbound.length)+' 笔历史流水';
+  function renderArchiveDetail(y){
+    const vm=archiveViewModel(y); if(!vm) return;
+    renderArchiveKpis(y);
+    const m=document.getElementById('archiveMeta'); if(m) m.textContent=(vm.fromArch?('结转于 '+vm.carriedAt+' · '):'未结转（实时派生）· ')+'共 '+(vm.inbound.length+vm.outbound.length)+' 笔历史流水';
     const ts=document.getElementById('archiveTrialSub');
-    if(ts) ts.textContent='期初结存 + 本期入库 − 本期出库 = 期末结存 · 勾稽平衡校验（'+a.label+' 年）';
-    // ---- 年度汇总 · 试算平衡表（期初+入库−出库=期末，按物资逐项勾稽）----
+    if(ts) ts.textContent='期初结存 + 本期入库 − 本期出库 = 期末结存 · 勾稽平衡校验（'+vm.label+' 年）';
+    const opening=vm.opening||[], closing=vm.closing||[];
+    const inY=vm.inbound||[], outY=vm.outbound||[];
+    const hasSnap=opening.length||closing.length;
+    // ---- 年度汇总 · 试算平衡表（仅已结转年有冻结快照）----
     const trialBody=document.getElementById('trialBody');
-    const opening=a.opening||[], closing=a.closing||[];
-    const inY=a.inbound||[], outY=a.outbound||[];
-    // 物资全集：期末∪期初∪入库∪出库
-    const keys=new Map();
-    [[opening,'op'],[closing,'cl'],[inY,'in'],[outY,'out']].forEach(([arr,tag])=>{
-      arr.forEach(r=>{ const nm=r.n||r.name, ct=r.c||r.category; const k=normName(nm)+'|'+(ct||''); /* R34: 并集键两侧 normName 归一（落档 n 已 normName、归档流水 name 为 sanitizeText 原文可含 NBSP）→ 防同物资拆行误报勾稽差异 */ if(!keys.has(k)) keys.set(k,{n:nm,c:ct,u:r.unit||r.u||'件',op:0,cl:0,iq:0,oq:0,price:0}); const e=keys.get(k); if(tag==='op')e.op+=(+r.q||0); if(tag==='cl'){e.cl+=(+r.q||0); e.price=+(r.price||0)||e.price;} if(tag==='in')e.iq+=(+r.qty||0); if(tag==='out')e.oq+=(+r.qty||0); });
-    });
-    let tOp=0,tIn=0,tOut=0,tCl=0,tAmt=0,tBal=0;
-    const rows=Array.from(keys.values()).map(e=>{
-      const bal=+(e.op+e.iq-e.oq-e.cl).toFixed(2);
-      const amt=+((e.cl*(e.price||0)).toFixed(2));
-      tOp+=e.op; tIn+=e.iq; tOut+=e.oq; tCl+=e.cl; tAmt+=amt; tBal+=bal;
-      return `<tr><td>${escHtml(e.n)}</td><td>${safeMeta(e.c).t}</td><td class="num">${fmtNum(e.op)}</td><td class="num">${fmtNum(e.iq)}</td><td class="num">${fmtNum(e.oq)}</td><td class="num">${fmtNum(e.cl)}</td><td>${escHtml(e.u)}</td><td class="num">${fmtNum(amt)}</td><td><span class="status ${Math.abs(bal)<0.01?'ok':'down'}">${Math.abs(bal)<0.01?'平衡':'差异 '+bal}</span></td></tr>`;
-    }).join('')||'<tr><td colspan="9" class="empty">该年度无库存数据</td></tr>';
-    trialBody.innerHTML=rows;
-    const trialFoot=document.getElementById('trialFoot');
-    if(trialFoot) trialFoot.innerHTML=`<tr class="arch-total"><td colspan="2">合计</td><td class="num">${fmtNum(tOp)}</td><td class="num">${fmtNum(tIn)}</td><td class="num">${fmtNum(tOut)}</td><td class="num">${fmtNum(tCl)}</td><td></td><td class="num">${fmtNum(tAmt)}</td><td><span class="status ${Math.abs(tBal)<0.01?'ok':'down'}">${Math.abs(tBal)<0.01?'勾稽平衡':'差异 '+tBal}</span></td></tr>`;
-    // ---- 期末结存明细（资产负债表 · 存货）----
+    if(trialBody){
+      if(!hasSnap){ trialBody.innerHTML='<tr><td colspan="9" class="empty">未结转年份：期初/期末结存需执行「年度数据结转」后生成；下方展示该年实际入库/出库流水</td></tr>'; }
+      else {
+        const keys=new Map();
+        [[opening,'op'],[closing,'cl'],[inY,'in'],[outY,'out']].forEach(([arr,tag])=>{
+          arr.forEach(r=>{ const nm=r.n||r.name, ct=r.c||r.category; const k=normName(nm)+'|'+(ct||''); if(!keys.has(k)) keys.set(k,{n:nm,c:ct,u:r.unit||r.u||'件',op:0,cl:0,iq:0,oq:0,price:0}); const e=keys.get(k); if(tag==='op')e.op+=(+r.q||0); if(tag==='cl'){e.cl+=(+r.q||0); e.price=+(r.price||0)||e.price;} if(tag==='in')e.iq+=(+r.qty||0); if(tag==='out')e.oq+=(+r.qty||0); });
+        });
+        let tOp=0,tIn=0,tOut=0,tCl=0,tAmt=0,tBal=0;
+        trialBody.innerHTML=Array.from(keys.values()).map(e=>{
+          const bal=+(e.op+e.iq-e.oq-e.cl).toFixed(2);
+          const amt=+((e.cl*(e.price||0)).toFixed(2));
+          tOp+=e.op; tIn+=e.iq; tOut+=e.oq; tCl+=e.cl; tAmt+=amt; tBal+=bal;
+          return `<tr><td>${escHtml(e.n)}</td><td>${safeMeta(e.c).t}</td><td class="num">${fmtNum(e.op)}</td><td class="num">${fmtNum(e.iq)}</td><td class="num">${fmtNum(e.oq)}</td><td class="num">${fmtNum(e.cl)}</td><td>${escHtml(e.u)}</td><td class="num">${fmtNum(amt)}</td><td><span class="status ${Math.abs(bal)<0.01?'ok':'down'}">${Math.abs(bal)<0.01?'平衡':'差异 '+bal}</span></td></tr>`;
+        }).join('')||'<tr><td colspan="9" class="empty">该年度无库存数据</td></tr>';
+        const trialFoot=document.getElementById('trialFoot');
+        if(trialFoot) trialFoot.innerHTML=`<tr class="arch-total"><td colspan="2">合计</td><td class="num">${fmtNum(tOp)}</td><td class="num">${fmtNum(tIn)}</td><td class="num">${fmtNum(tOut)}</td><td class="num">${fmtNum(tCl)}</td><td></td><td class="num">${fmtNum(tAmt)}</td><td><span class="status ${Math.abs(tBal)<0.01?'ok':'down'}">${Math.abs(tBal)<0.01?'勾稽平衡':'差异 '+tBal}</span></td></tr>`;
+      }
+    }
+    // ---- 期末结存明细 ----
     const sb=document.getElementById('snapBody');
-    const snapAmt=closing.reduce((s,x)=>s+(+x.amount||+((+x.q||0)*(+x.price||0))||0),0);
-    sb.innerHTML=closing.length?closing.map(s=>`<tr><td>${escHtml(s.n)}</td><td>${safeMeta(s.c).t}</td><td class="num">${escHtml(s.price!=null?s.price:'—')}</td><td class="num">${escHtml(s.q)}</td><td>${escHtml(s.u||'—')}</td><td class="num">${escHtml(s.amount!=null?s.amount:(+(s.q*(s.price||0))).toFixed(2))}</td></tr>`).join('')+'<tr class="arch-total"><td colspan="4">期末结存合计</td><td></td><td class="num">'+fmtNum(snapAmt)+'</td></tr>':'<tr><td colspan="6" class="empty">无期末结存记录</td></tr>';
-    const snapFoot=document.getElementById('snapFoot');
-    if(snapFoot) snapFoot.innerHTML='';
+    if(sb){
+      if(!hasSnap){ sb.innerHTML='<tr><td colspan="6" class="empty">未结转年份无冻结期末结存 · 执行「年度数据结转」后生成</td></tr>'; }
+      else {
+        const snapAmt=closing.reduce((s,x)=>s+(+x.amount||+((+x.q||0)*(+x.price||0))||0),0);
+        sb.innerHTML=closing.length?closing.map(s=>`<tr><td>${escHtml(s.n)}</td><td>${safeMeta(s.c).t}</td><td class="num">${escHtml(s.price!=null?s.price:'—')}</td><td class="num">${escHtml(s.q)}</td><td>${escHtml(s.u||'—')}</td><td class="num">${escHtml(s.amount!=null?s.amount:(+(s.q*(s.price||0))).toFixed(2))}</td></tr>`).join('')+'<tr class="arch-total"><td colspan="4">期末结存合计</td><td></td><td class="num">'+fmtNum(snapAmt)+'</td></tr>':'<tr><td colspan="6" class="empty">无期末结存记录</td></tr>';
+      }
+      const snapFoot=document.getElementById('snapFoot'); if(snapFoot) snapFoot.innerHTML='';
+    }
     // ---- 入库明细账 ----
     const ib=document.getElementById('archInBody');
     ib.innerHTML=inY.length?inY.map(r=>`<tr><td class="code">${escHtml(r.inNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.name)}</td><td>${safeMeta(r.category).t}</td><td class="num">${escHtml(r.qty)}</td><td class="num">${escHtml(r.price!=null?r.price:'—')}</td><td class="num">${escHtml(r.amount||'—')}</td><td>${escHtml(r.supplier||'—')}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">无入库记录</td></tr>';
     const inQty=inY.reduce((s,r)=>s+(+r.qty||0),0);
-    const inAmt=inY.reduce((s,r)=>s+(+r.amount||0),0);
+    const inAmt2=inY.reduce((s,r)=>s+(+r.amount||0),0);
     const inFoot=document.getElementById('archInFoot');
-    if(inFoot) inFoot.innerHTML=inY.length?`<tr class="arch-total"><td colspan="4">入库合计</td><td class="num">${fmtNum(inQty)}</td><td></td><td class="num">${fmtNum(inAmt)}</td><td></td></tr>`:'';
+    if(inFoot) inFoot.innerHTML=inY.length?`<tr class="arch-total"><td colspan="4">入库合计</td><td class="num">${fmtNum(inQty)}</td><td></td><td class="num">${fmtNum(inAmt2)}</td><td></td></tr>`:'';
     // ---- 出库明细账（含发出成本）----
     const ob=document.getElementById('archOutBody');
     ob.innerHTML=outY.length?outY.map(r=>{
@@ -4839,7 +4997,7 @@
     }).join(''):'<tr><td colspan="10" class="empty">无出库记录</td></tr>';
     // ---- 年度盘点档案（盘点联动 · 账实差异）----
     const cb=document.getElementById('archCheckBody');
-    const checks=a.checks||[];
+    const checks=vm.checks||[];
     if(cb){
       cb.innerHTML=checks.length?checks.map(c=>{
         const diffOk=!(c.diffCount!=null && c.diffCount>0);
@@ -4847,12 +5005,12 @@
         const abs=c.diffAbs!=null?c.diffAbs:'—';
         const concl=c.diffCount==null?'—':(c.diffCount>0?'存在差异':'账实相符');
         return `<tr><td>${escHtml(c.date||'—')}</td><td>${escHtml(c.title||'盘点')}</td><td>${escHtml(c.scope||'—')}</td><td class="num">${c.diffCount!=null?c.diffCount:'—'}</td><td class="num ${c.diffNet>0?'':'down'}">${escHtml(net)}</td><td class="num">${escHtml(abs)}</td><td><span class="status ${diffOk?'ok':'warn'}">${concl}</span></td></tr>`;
-      }).join(''):'<tr><td colspan="7" class="empty">该年度无盘点记录 · 建议每年结转前完成一次全面盘点</td></tr>';
+      }).join(''):'<tr><td colspan="7" class="empty">该年度无盘点记录</td></tr>';
     }
     const outQty=outY.reduce((s,r)=>s+(+r.qty||0),0);
-    const outAmt=outY.reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0);
+    const outAmt2=outY.reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0);
     const outFoot=document.getElementById('archOutFoot');
-    if(outFoot) outFoot.innerHTML=outY.length?`<tr class="arch-total"><td colspan="5">出库合计</td><td class="num">${fmtNum(outQty)}</td><td></td><td></td><td class="num">${fmtNum(outAmt)}</td><td></td></tr>`:'';
+    if(outFoot) outFoot.innerHTML=outY.length?`<tr class="arch-total"><td colspan="5">出库合计</td><td class="num">${fmtNum(outQty)}</td><td></td><td></td><td class="num">${fmtNum(outAmt2)}</td><td></td></tr>`:'';
   }
   const _coBtn=document.getElementById('btnCarryover');
   if(_coBtn) _coBtn.addEventListener('click',()=>{
@@ -4879,8 +5037,7 @@
   document.getElementById('carryoverCancel').addEventListener('click',()=>document.getElementById('carryoverModal').classList.remove('show'));
   document.getElementById('carryoverModal').addEventListener('click',e=>{ if(e.target.id==='carryoverModal') document.getElementById('carryoverModal').classList.remove('show'); });
   document.getElementById('carryoverConfirm').addEventListener('click',()=>{ document.getElementById('carryoverModal').classList.remove('show'); doCarryover(); });
-  const _archSel=document.getElementById('archiveYear'); if(_archSel) _archSel.addEventListener('change',()=>renderArchiveDetail(+_archSel.value||0));
-  // 年度归档：导出 / 删除
+  // 年度归档：导出 / 删除（年份切换由 archYearList 点击驱动，无需 select change 监听）
   // ---- 归档报表折叠面板：点击头部展开/收起对应表格，支持全部展开/收起 ----
   function apSet(panel, open){
     const p=document.querySelector('.arch-panel[data-panel="'+panel+'"]');
@@ -4914,12 +5071,14 @@
     if(!label){ b.textContent='已是最新年度'; b.className='kp-badge ok'; }
     else { b.textContent='待结转 '+label+' 年'; b.className='kp-badge warn'; }
   }
+  // R43：导出按 archViewYear + archiveViewModel 驱动，已结转年走封存快照、未结转年实时派生（非破坏性）
   function exportArchiveYear(){
-    const a=archivedRecords[+document.getElementById('archiveYear').value||0]; if(!a) return;
-    const label=(a.label||a.year||'')+' 年';
-    const opening=a.opening||[], closing=a.closing||[];
-    const inY=a.inbound||[], outY=a.outbound||[];
-    const rows=[[label+' 年度归档报表'],['结转日期',a.carriedAt||'—'],
+    const y=archViewYear;
+    const vm=archiveViewModel(y); if(!vm) return;
+    const label=(vm.label||y)+' 年';
+    const opening=vm.opening||[], closing=vm.closing||[];
+    const inY=vm.inbound||[], outY=vm.outbound||[];
+    const rows=[[label+' 年度归档报表'+(vm.fromArch?'（已结转封存）':'（实时派生·未结转）')],['年度',vm.label||y],['结转日期',vm.fromArch?(vm.carriedAt||'—'):'未结转'],
       ['期初结存金额', fmtNum(opening.reduce((s,x)=>s+(+x.amount||0),0))+' 元'],
       ['本期入库金额', fmtNum(inY.reduce((s,r)=>s+(+r.amount||0),0))+' 元'],
       ['本期出库金额', fmtNum(outY.reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0))+' 元'],
@@ -4927,7 +5086,7 @@
       ['年度库存汇总 · 试算平衡'],['物资名称','分类','期初结存','本期入库','本期出库','期末结存','单位','期末金额(元)','勾稽']];
     const keys=new Map();
     [[opening,'op'],[closing,'cl'],[inY,'in'],[outY,'out']].forEach(([arr,tag])=>{
-      arr.forEach(r=>{ const nm=r.n||r.name, ct=r.c||r.category; const k=normName(nm)+'|'+(ct||''); /* R34: 并集键两侧 normName 归一（落档 n 已 normName、归档流水 name 为 sanitizeText 原文可含 NBSP）→ 防同物资拆行误报勾稽差异 */ if(!keys.has(k)) keys.set(k,{n:nm,c:ct,u:r.unit||r.u||'件',op:0,cl:0,iq:0,oq:0,price:0}); const e=keys.get(k); if(tag==='op')e.op+=(+r.q||0); if(tag==='cl'){e.cl+=(+r.q||0); e.price=+(r.price||0)||e.price;} if(tag==='in')e.iq+=(+r.qty||0); if(tag==='out')e.oq+=(+r.qty||0); });
+      arr.forEach(r=>{ const nm=r.n||r.name, ct=r.c||r.category; const k=normName(nm)+'|'+(ct||''); /* R34: 并集键两侧 normName 归一 → 防同物资拆行误报勾稽差异 */ if(!keys.has(k)) keys.set(k,{n:nm,c:ct,u:r.unit||r.u||'件',op:0,cl:0,iq:0,oq:0,price:0}); const e=keys.get(k); if(tag==='op')e.op+=(+r.q||0); if(tag==='cl'){e.cl+=(+r.q||0); e.price=+(r.price||0)||e.price;} if(tag==='in')e.iq+=(+r.qty||0); if(tag==='out')e.oq+=(+r.qty||0); });
     });
     Array.from(keys.values()).forEach(e=>{
       const bal=+(e.op+e.iq-e.oq-e.cl).toFixed(2);
@@ -4945,18 +5104,34 @@
     outY.forEach(r=>rows.push([r.outNo||r.id,r.date,r.applicant||'—',r.name,safeMeta(r.category).t,r.qty,(r.price!=null)?r.price:'—',(r.amount!=null)?r.amount:(+(+r.qty||0)*(+r.price||0)).toFixed(2),r.purpose||'—']));
     rows.push([]);
     rows.push(['年度盘点档案'],['盘点日期','盘点类型','盘点范围','差异项数','净差异','差异绝对值','结论']);
-    (a.checks||[]).forEach(c=>rows.push([c.date||'—',c.title||'盘点',c.scope||'—',c.diffCount!=null?c.diffCount:'—',c.diffNet!=null?c.diffNet:'—',c.diffAbs!=null?c.diffAbs:'—',(c.diffCount==null)?'—':(c.diffCount>0?'存在差异':'账实相符')]));
+    (vm.checks||[]).forEach(c=>rows.push([c.date||'—',c.title||'盘点',c.scope||'—',c.diffCount!=null?c.diffCount:'—',c.diffNet!=null?c.diffNet:'—',c.diffAbs!=null?c.diffAbs:'—',(c.diffCount==null)?'—':(c.diffCount>0?'存在差异':'账实相符')]));
     exportXLSX(rows, label+'年度归档报表.xlsx', {});
     toast('已导出归档','ok',label+'年度归档报表.xlsx 已生成');
   }
+  // R43：按年导出 JSON 快照（可年份隔离归档，含实时派生年）
+  function exportArchiveJson(){
+    const y=archViewYear;
+    const vm=archiveViewModel(y); if(!vm) return;
+    const payload={year:vm.year,label:vm.label,fromArch:vm.fromArch,carriedAt:vm.carriedAt,
+      opening:vm.opening||[],closing:vm.closing||[],inbound:vm.inbound||[],outbound:vm.outbound||[],checks:vm.checks||[]};
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=(vm.label||y)+'年归档快照.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('已导出 JSON','ok',(vm.label||y)+'年归档快照.json 已生成');
+  }
   const _expA=document.getElementById('exportArchiveBtn'); if(_expA) _expA.addEventListener('click',exportArchiveYear);
+  const _jsonA=document.getElementById('exportArchiveJsonBtn'); if(_jsonA) _jsonA.addEventListener('click',exportArchiveJson);
   const _delA=document.getElementById('delArchiveBtn');
   if(_delA) _delA.addEventListener('click',()=>{
-    const idx=+document.getElementById('archiveYear').value||0;
-    const a=archivedRecords[idx]; if(!a) return;
-    if(!confirm('确定删除「'+(a.label||a.year||idx)+' 年」的归档数据吗？此操作不可恢复。')) return;
+    const y=archViewYear;
+    const idx=archivedRecords.findIndex(a=>a&&+a.year===+y);
+    if(idx<0){ toast('该年度未封存，无需删除','warn'); return; }
+    const a=archivedRecords[idx];
+    if(!confirm('确定删除「'+(a.label||a.year||y)+' 年」的归档数据吗？此操作不可恢复。')) return;
     archivedRecords.splice(idx,1);
     wmsSave();
+    if(!yearList().includes(+y)) archViewYear=new Date().getFullYear();
     renderArchive();
     toast('已删除归档','ok','该年度归档已删除');
   });
@@ -5373,7 +5548,8 @@
 
   // ============ 出库领用：最近出库记录 ============
   function renderRecentOut(){
-    const list=topNBy(outboundRecords,8,r=>String(r.date||''),r=>r);
+    const src=(viewYear==='all'?outboundRecords:recordsForYear(viewYear,'out').rows);   // R43：年份隔离
+    const list=topNBy(src,8,r=>String(r.date||''),r=>r);
     const el=document.getElementById('recentOutList'); if(!el) return;
     el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.applicant)} 领用 ${escHtml(r.name)} ×${escHtml(r.qty)} ${escHtml(r.unit||'件')}</div><div class="rs">${escHtml(r.dept)} · ${escHtml(r.purpose||'—')} · ${escHtml(r.date)}</div></div><div class="rq out">−${escHtml(r.qty)} ${escHtml(r.unit||'件')}</div></div>`).join('')
       : '<div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无出库记录</div>';
@@ -5468,7 +5644,7 @@
     try{
       if(activeDataTab==='archive') renderArchive();
       renderDashboard(); renderReports();
-      renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCheckTimeline(); renderCarryoverCard();
+      renderCheckYearSwitch(); renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCheckTimeline(); renderCarryoverCard();
       renderCheck();
     }catch(e){ console.warn('备份还原后刷新界面失败', e); }
     return true;
@@ -5501,7 +5677,7 @@
       updateDataNote();
       if(activeDataTab==='archive') renderArchive();
       renderDashboard(); renderReports();
-      renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCheckTimeline(); renderCarryoverCard(); renderCheck();
+      renderCheckYearSwitch(); renderPlanQuarter(); renderPlanYear(); renderCheckKpi(); renderCheckTimeline(); renderCarryoverCard(); renderCheck();
     }catch(e){ console.warn('清空后刷新界面失败', e); }
   }
   // 重置数据：清空本地业务数据，并（若已开启云同步）同步清空云端。
