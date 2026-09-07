@@ -460,7 +460,7 @@
     .chart-box{height:210px}
   }
   /* ---- 数据管理 ---- */
-  .data-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 18px 14px}
+  .data-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:nowrap;overflow-x:auto;padding:12px 18px 14px}
   .data-pager{display:flex;gap:8px;align-items:center}
   .data-pager .btn{min-width:auto;padding:6px 12px;font-size:12px}
   .data-pager .btn:disabled{opacity:.4;cursor:not-allowed}
@@ -468,12 +468,22 @@
   .year-select{height:34px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.12);color:var(--ink);font-size:12.5px;font-family:var(--font);outline:none;cursor:pointer;transition:all .18s;max-width:132px;flex:0 0 auto}
   .year-select:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(91,140,255,.15)}
   [data-theme="light"] .year-select{background:rgba(255,255,255,.7);color:var(--ink)}
-  .date-range{display:flex;align-items:center;gap:5px;flex:0 0 auto}
-  .date-range input[type=date]{height:34px;padding:0 8px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.12);color:var(--ink);font-size:12px;font-family:var(--font);outline:none;color-scheme:dark}
-  .date-range input[type=date]:focus{border-color:var(--primary)}
-  .date-range .dr-sep{font-size:12px;color:var(--ink-3)}
-  .date-range .btn{min-width:auto;padding:6px 10px;font-size:12px}
-  [data-theme="light"] .date-range input[type=date]{background:rgba(255,255,255,.7);color:var(--ink);color-scheme:light}
+  /* 日期范围搜索：统一一体美观 UI */
+  .date-range{display:flex;align-items:center;gap:6px;flex:0 0 auto;background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:11px;padding:3px 7px 3px 10px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color .18s,box-shadow .18s}
+  .date-range:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.15)}
+  .date-range .dr-ico{font-size:13px;opacity:.72;flex:0 0 auto;line-height:1}
+  .date-range .dr-input{height:28px;padding:0 7px;border:1px solid var(--line);border-radius:8px;background:rgba(0,0,0,.18);color:var(--ink);font-size:12px;font-family:var(--font);outline:none;color-scheme:dark}
+  .date-range .dr-input:focus{border-color:var(--primary)}
+  .date-range .dr-sep{font-size:12px;color:var(--ink-3);flex:0 0 auto}
+  .date-range .dr-clear{min-width:auto;padding:5px 10px;font-size:12px;height:28px}
+  [data-theme="light"] .date-range{background:rgba(255,255,255,.6)}
+  [data-theme="light"] .date-range .dr-input{background:rgba(255,255,255,.7);color:var(--ink);color-scheme:light}
+  /* 库存管理工具栏：所有控件单行 */
+  #view-inventory .toolbar.inv-toolbar{flex-wrap:nowrap;overflow-x:auto}
+  #view-inventory .toolbar.inv-toolbar .chips{flex:0 0 auto}
+  /* 归档年份胶囊条 */
+  .arch-year-bar{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+  .arch-year-bar .arch-hint{font-size:11.5px;color:var(--ink-3)}
   .data-pager{justify-content:center}
   .arch-yearlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;width:100%}
   .arch-year-card{padding:9px 6px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);cursor:pointer;transition:all .18s;text-align:center}
@@ -1161,7 +1171,7 @@
       <!-- ============ INVENTORY ============ -->
       <section class="view" id="view-inventory">
         <div class="card">
-          <div class="toolbar">
+          <div class="toolbar inv-toolbar">
             <div class="chips" id="invChips">
               <div class="chip active" data-cat="all">全部</div>
               <div class="chip c-office" data-cat="office"><span class="d" style="background:var(--c-office)"></span>办公用品</div>
@@ -1169,7 +1179,11 @@
               <div class="chip c-gift" data-cat="gift"><span class="d" style="background:var(--c-gift)"></span>礼品</div>
             </div>
             <div class="search inv-search" id="invSearchWrap">🔍<input id="invSearch" placeholder="搜索讯号 / 物资名称 / 规格 / 状态…" /></div>
-            <div class="spacer"></div>
+            <select id="invYearSelect" class="year-select" title="库存年份：按当年出入库活动筛选（默认全部年份）"></select>
+            <div class="date-range" id="invDateRange">
+              <span class="dr-ico">📅</span>
+              <input type="date" id="invFrom" class="dr-input" title="起始日期" /><span class="dr-sep">至</span><input type="date" id="invTo" class="dr-input" title="截止日期" /><button class="btn btn-ghost dr-clear" id="invDateClear" type="button">清空</button>
+            </div>
             <button class="btn btn-ghost" id="invExport" data-perm="data">⬇ 导出</button>
             <button class="btn btn-primary" id="invAdd" data-perm="data">＋ 新增物资</button>
           </div>
@@ -1389,7 +1403,8 @@
             <select id="viewYearSelect" class="year-select" title="数据年份：默认只看当年，历史自动隐藏"></select>
             <div class="search">🔍<input id="dataSearch" placeholder="搜索单号 / 物资名称 / 供应商 / 领用人，或日期范围「2026年1月1日至2026年12月31日」…" /></div>
             <div class="date-range" id="dataDateRange">
-              <input type="date" id="dataFrom" title="起始日期" /><span class="dr-sep">至</span><input type="date" id="dataTo" title="截止日期" /><button class="btn btn-ghost" id="dataDateClear" type="button">清空</button>
+              <span class="dr-ico">📅</span>
+              <input type="date" id="dataFrom" class="dr-input" title="起始日期" /><span class="dr-sep">至</span><input type="date" id="dataTo" class="dr-input" title="截止日期" /><button class="btn btn-ghost dr-clear" id="dataDateClear" type="button">清空</button>
             </div>
             <span class="plan-meta" id="dataCount"></span>
             <div style="flex:1"></div>
@@ -1461,7 +1476,11 @@
                     <div class="kp-content">
                       <div class="kp-row" style="grid-template-columns:minmax(140px,0.75fr) 1fr">
                         <div class="kp-field">
-                          <label>选择年度（点击卡片切换 · 未结转年度也可实时查看与下载）</label>
+                          <label>选择年度（年份胶囊切换 · 未结转年度也可实时查看与下载）</label>
+                          <div class="arch-year-bar">
+                            <select id="archYearSelect" class="year-select" title="归档年度：年份胶囊切换"></select>
+                            <span class="arch-hint">未结转年度也可实时查看与下载</span>
+                          </div>
                           <div class="arch-yearlist" id="archYearList"></div>
                         </div>
                         <div class="kp-stats" id="archiveStats">
@@ -2090,6 +2109,10 @@
   let archViewYear=new Date().getFullYear();  // 历史归档当前查看年份
   let planViewYear=new Date().getFullYear();  // 盘点计划当前查看年份
   let dateRange={from:null,to:null};          // 搜索栏日期范围（存在时覆盖年份，可跨年）
+  // 库存管理年份胶囊 / 日期范围（纯显示层 · 不影响 SSOT 库存）
+  let invViewYear='all';                      // 库存管理当前查看年份（'all'=全部年份，否则按当年出入库活动筛选）
+  let invDateRange={from:null,to:null};       // 库存管理日期范围（存在时覆盖年份）
+  let _daMap=null,_daKey='';                  // 物资→活跃日期索引缓存（库存年份/日期筛选用）
   // 数据中出现过的全部年份（倒序，今年在前）
   function yearList(){
     const set=new Set();
@@ -2186,7 +2209,7 @@
   // 声明位置刻意前置：wmsSave()/recomputeStocks() 等在初始化阶段就可能被调用，
   // 若 let 声明在其后，会触发暂时性死区（TDZ）导致白屏
   let _flowIdx=null, _flowKey='';
-  function invalidateFlowIndex(){ _flowIdx=null; _flowKey=''; }
+  function invalidateFlowIndex(){ _flowIdx=null; _flowKey=''; _daMap=null; _daKey=''; }
   // 自动备份延迟合并：主库保存已做一次全量 JSON.stringify，备份若紧随其后立刻再序列化一遍
   // 会在数据量大时翻倍放大同步写盘耗时（二次导入后数据翻倍 → 保存成本翻倍），
   // 改为 12s 合并写一次 + 页面卸载（pagehide）兜底写，保底备份新鲜度且不阻塞交互。
@@ -2491,12 +2514,19 @@
   }
   function renderInv(cat,filter){
     const body=document.getElementById('invBody'); if(!body) return; // 防御：库存页尚未挂载时不抛错
+    renderInvYearSelect(); // 填充年份胶囊（全部年份 + 各活动年份）
     const fInput=document.getElementById('invSearch');
     const f=normName(filter===undefined?(fInput?fInput.value:''):filter).toLowerCase();
     const list=cat==='all'?items:items.filter(i=>i.c===cat); // 全量视图直接复用 items 引用，不再 slice() 拷贝（数据翻倍时省一次 O(N) 复制）
     // 搜索过滤分支同样要兜底：未知分类（normCat 归类失败返回空串）会让 catMeta[i.c] 为 undefined 而整表白屏
     // 注意：不能用 list=list.filter(...) 重新赋值——list 为 const 且全量时直连 items 引用，会抛「Assignment to constant」
-    const view=f? list.filter(i=>{ const m=safeMeta(i.c); const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; const statusText=statusOf(i.q,i.safe)[1]; const text=normName([code, i.n, m.t, i.b||'', i.s, i.u, String(i.q), String(i.safe), statusText].join(' ')).toLowerCase(); return text.includes(f); }) : list;
+    let view=f? list.filter(i=>{ const m=safeMeta(i.c); const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; const statusText=statusOf(i.q,i.safe)[1]; const text=normName([code, i.n, m.t, i.b||'', i.s, i.u, String(i.q), String(i.safe), statusText].join(' ')).toLowerCase(); return text.includes(f); }) : list;
+    // R43V2-扩展：库存年份胶囊 / 日期范围筛选（纯显示层，不影响 SSOT 库存；默认"全部年份"不裁剪）
+    if(invDateRange.from||invDateRange.to){
+      view=view.filter(i=>itemInDateRange(i,invDateRange.from,invDateRange.to));
+    } else if(invViewYear && invViewYear!=='all'){
+      view=view.filter(i=>itemActiveInYear(i,+invViewYear));
+    }
     // 预建「物资对象 → 在 items 中的下标」映射：原实现每行 items.indexOf(i) 是全表扫描，
     // 2000 条物资即 400 万次比较（O(N²)），是切表/导入后卡顿的隐形元凶。
     // 全量视图下标即 start+idx（零成本），仅分类/搜索过滤视图才需要建映射
@@ -2531,9 +2561,43 @@
         <td><span class="status ${st}">${txt}</span></td>
       </tr>`;
     }).join('');
-    if(!view.length){ body.innerHTML='<tr><td colspan="15" class="empty">暂无库存物资，请通过「入库管理 · 入库登记」或「数据导入」添加</td></tr>'; }
+    if(!view.length){
+      const scope=(invDateRange.from||invDateRange.to)?('日期 '+invDateRange.from+' 至 '+invDateRange.to+' 范围内')
+        :(invViewYear&&invViewYear!=='all'?(invViewYear+' 年（按出入库活动筛选）'):'');
+      body.innerHTML='<tr><td colspan="15" class="empty">'
+        +(scope?scope+'暂无有出入库活动的库存物资':'暂无库存物资')
+        +(scope?'（切换「全部年份」或清除日期范围可查看全部）':'，请通过「入库管理 · 入库登记」或「数据导入」添加')
+        +'</td></tr>';
+    }
     renderInvPager(pages);
     checkTableOverflow();
+  }
+  // ---- 库存管理：年份胶囊 + 日期范围筛选（纯显示层 · 不影响 SSOT 库存）----
+  // 物资→活跃日期索引：键 normName(n)|c → 该物资所有出入库日期数组（用于年份/日期范围筛选，O(流水数) 构建一次并缓存）
+  function dateActivityMap(){
+    const key=inboundRecords.length+':'+outboundRecords.length;
+    if(_daMap&&_daKey===key) return _daMap;
+    const m=new Map();
+    const add=r=>{ const d=String(r.date||'').slice(0,10); if(d.length<10) return; const k=normName(r.name||r.n)+'|'+(r.category||r.c||''); let a=m.get(k); if(!a){a=[];m.set(k,a);} a.push(d); };
+    inboundRecords.forEach(add); outboundRecords.forEach(add);
+    _daMap=m; _daKey=key; return m;
+  }
+  function itemInDateRange(i,from,to){
+    const a=dateActivityMap().get(normName(i.n)+'|'+(i.c||'')); if(!a||!a.length) return false;
+    for(let j=0;j<a.length;j++){ const d=a[j]; if(from&&d<from) continue; if(to&&d>to) continue; return true; }
+    return false;
+  }
+  function itemActiveInYear(i,y){ return itemInDateRange(i, y+'-01-01', y+'-12-31'); }
+  function renderInvYearSelect(){
+    const sel=document.getElementById('invYearSelect'); if(!sel) return;
+    const ys=yearList();
+    if(invViewYear!=='all' && ys.indexOf(+invViewYear)<0) invViewYear='all';
+    sel.innerHTML=`<option value="all">全部年份</option>`+ys.map(y=>`<option value="${y}">${y} 年</option>`).join('');
+    sel.value=String(invViewYear);
+  }
+  function syncInvDateInputs(){
+    const a=document.getElementById('invFrom'), b=document.getElementById('invTo');
+    if(a) a.value=invDateRange.from||''; if(b) b.value=invDateRange.to||'';
   }
   // 分页按钮：翻页仅重绘当前页窗口，成本恒定
   const _invPrev=document.getElementById('invPrev'), _invNext=document.getElementById('invNext');
@@ -2554,6 +2618,13 @@
       renderInv(ac?ac.dataset.cat:'all');
     },160);
   });
+  // 库存管理：年份胶囊 + 日期范围（一次性绑定，元素持久存在）
+  const _iys=document.getElementById('invYearSelect');
+  if(_iys) _iys.addEventListener('change',()=>{ invViewYear=_iys.value; invDateRange={from:null,to:null}; syncInvDateInputs(); invPage=0; const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); });
+  const _ifd=document.getElementById('invFrom'), _itd=document.getElementById('invTo'), _icd=document.getElementById('invDateClear');
+  if(_ifd) _ifd.addEventListener('change',()=>{ invDateRange.from=_ifd.value||null; invPage=0; const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); });
+  if(_itd) _itd.addEventListener('change',()=>{ invDateRange.to=_itd.value||null; invPage=0; const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); });
+  if(_icd) _icd.addEventListener('click',()=>{ invDateRange={from:null,to:null}; syncInvDateInputs(); invPage=0; const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); });
 
   // ---- 盘点管理 ----
   let checkItems=items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
@@ -2726,7 +2797,7 @@
     const sel=document.getElementById('planYearSelect'); if(!sel) return;
     const ys=planYearList(); const cur=new Date().getFullYear();
     if(ys.indexOf(+planViewYear)<0) planViewYear=ys[0];
-    sel.innerHTML=ys.map(y=>`<option value="${y}">${y} 年${y===cur?'（本年）':''}</option>`).join('');
+    sel.innerHTML=ys.map(y=>`<option value="${y}">${y} 年</option>`).join('');
     sel.value=String(planViewYear);
   }
   function renderPlanQuarter(){
@@ -4318,7 +4389,7 @@
     const sel=document.getElementById('viewYearSelect'); if(!sel) return;
     const ys=yearList(); const cur=new Date().getFullYear();
     if(ys.indexOf(+viewYear)<0) viewYear=cur;
-    sel.innerHTML=ys.map(y=>`<option value="${y}">${y} 年${y===cur?'（本年）':''}</option>`).join('');
+    sel.innerHTML=ys.map(y=>`<option value="${y}">${y} 年</option>`).join('');
     sel.value=String(viewYear);
   }
   function renderDataTables(){
@@ -4751,6 +4822,8 @@
   if(_drF) _drF.addEventListener('change',()=>{ dateRange.from=_drF.value||null; dataPage.in=0; dataPage.out=0; renderDataTables(); });
   if(_drT) _drT.addEventListener('change',()=>{ dateRange.to=_drT.value||null; dataPage.in=0; dataPage.out=0; renderDataTables(); });
   if(_drC) _drC.addEventListener('click',()=>{ dateRange={from:null,to:null}; syncDateInputs(); const s=document.getElementById('dataSearch'); if(s) s.value=''; dataSearchKeyword=''; dataPage.in=0; dataPage.out=0; renderDataTables(); });
+  const _ays=document.getElementById('archYearSelect');
+  if(_ays) _ays.addEventListener('change',()=>{ archViewYear=+_ays.value||new Date().getFullYear(); renderArchive(); });
   document.getElementById('recModalClose').addEventListener('click',()=>document.getElementById('recModal').classList.remove('show'));
   document.getElementById('recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') document.getElementById('recModal').classList.remove('show'); });
   document.getElementById('recModalDownload').addEventListener('click',()=>{ if(currentRec) downloadRec(currentRec.type,currentRec.idx); });
@@ -4951,7 +5024,13 @@
         const badge=vm.fromArch?'<span class="ay-badge arch">已封存</span>':(y===cur?'<span class="ay-badge cur">本年</span>':'<span class="ay-badge live">未结转</span>');
         return `<div class="arch-year-card${+y===+archViewYear?' active':''}" data-arch-year="${y}" title="${y} 年 · ${n} 笔流水"><div class="ay-year">${y}</div>${badge}<div class="ay-count">${n} 笔</div></div>`;
       }).join('');
-      list.querySelectorAll('[data-arch-year]').forEach(el=>el.addEventListener('click',()=>{ archViewYear=+el.dataset.archYear; renderArchive(); }));
+      list.querySelectorAll('[data-arch-year]').forEach(el=>el.addEventListener('click',()=>{ archViewYear=+el.dataset.archYear; const _as=document.getElementById('archYearSelect'); if(_as) _as.value=String(archViewYear); renderArchive(); }));
+    }
+    const asel=document.getElementById('archYearSelect');
+    if(asel){
+      if(ys.indexOf(+archViewYear)<0) archViewYear=ys[0];
+      asel.innerHTML=ys.map(y=>`<option value="${y}">${y} 年</option>`).join('');
+      asel.value=String(archViewYear);
     }
     const ov=document.getElementById('archiveOverview');
     if(ov && !archivedRecords.length) ov.innerHTML='<div class="ao-empty">暂无已封存年度 · 执行「年度数据结转」后按年度归类展示（未结转年度仍可实时查看与下载）</div>';
