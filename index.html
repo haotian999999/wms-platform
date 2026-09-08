@@ -177,7 +177,7 @@
   .icon-btn:hover .badge{transform:scale(1.1)}
   .top-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#4f6ef7,#7d8cff);display:grid;place-items:center;color:#fff;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(91,140,255,.5)}
 
-  .content{padding:26px 28px 40px;overflow-x:hidden;overflow-y:auto;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+  .content{padding:18px 28px 18px;overflow-x:hidden;overflow-y:auto;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
   .view{display:none;animation:fade .4s var(--ease)}
   .view.active{display:block}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -376,6 +376,7 @@
   @keyframes cardPulse{0%{box-shadow:0 0 0 0 rgba(91,140,255,.55)}70%{box-shadow:0 0 0 10px rgba(91,140,255,0)}100%{box-shadow:0 0 0 0 rgba(91,140,255,0)}}
   .pulse{animation:cardPulse .85s ease 2;border-color:rgba(91,140,255,.55)!important}
   .plan-meta{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .data-pager .plan-meta{margin:0 4px;font-size:11px;color:var(--ink-2);font-weight:600}
   .dropzone{border:2px dashed var(--line);border-radius:16px;padding:38px;text-align:center;background:rgba(255,255,255,.025);cursor:pointer;transition:all .18s;margin-top:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   .dropzone:hover{border-color:var(--primary);background:rgba(91,140,255,.1)}
   .dropzone.drag{border-color:var(--primary);background:rgba(91,140,255,.14)}
@@ -461,9 +462,10 @@
   }
   /* ---- 数据管理 ---- */
   .data-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:nowrap;overflow-x:auto;padding:12px 18px 14px}
-  .data-pager{display:flex;gap:8px;align-items:center}
-  .data-pager .btn{min-width:auto;padding:6px 12px;font-size:12px}
+  .data-pager{display:flex;gap:6px;align-items:center;padding:4px 0 2px}
+  .data-pager .btn{min-width:auto;padding:3px 9px;font-size:11px;height:24px;border-radius:7px;line-height:1}
   .data-pager .btn:disabled{opacity:.4;cursor:not-allowed}
+  .data-pager .pager-info{font-size:11px;color:var(--ink-2);font-weight:600;letter-spacing:.1px}
   /* ===== R43V2 年份隔离 UI（紧凑下拉 / 日期范围 / 归档年度卡片） ===== */
   .year-select{height:34px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.12);color:var(--ink);font-size:12.5px;font-family:var(--font);outline:none;cursor:pointer;transition:all .18s;max-width:132px;flex:0 0 auto}
   .year-select:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(91,140,255,.15)}
@@ -478,42 +480,44 @@
   .date-range .dr-clear{min-width:auto;padding:5px 10px;font-size:12px;height:28px}
   [data-theme="light"] .date-range{background:rgba(255,255,255,.6)}
   [data-theme="light"] .date-range .dr-input{background:rgba(255,255,255,.7);color:var(--ink);color-scheme:light}
-  /* 库存管理工具栏：所有控件单行 */
-  #view-inventory .toolbar.inv-toolbar{flex-wrap:nowrap;overflow-x:auto;gap:8px;padding:12px 18px 14px}
-  #view-inventory .toolbar.inv-toolbar .chips{flex:0 0 auto;display:flex;flex-wrap:nowrap;gap:5px;max-width:230px;overflow:hidden;flex-shrink:0;align-items:center;margin:0}
-  #view-inventory .toolbar.inv-toolbar .chips .chip{padding:6px 10px;font-size:12px;flex:0 0 auto;margin:0}
-  #view-inventory .toolbar.inv-toolbar .search{margin-left:0;width:200px;flex:0 0 200px;max-width:200px;padding:6px 10px;font-size:12px;border-radius:10px}
+  /* 库存管理工具栏：所有控件单行（不裁切 chip） */
+  #view-inventory .toolbar.inv-toolbar{flex-wrap:nowrap;overflow-x:auto;gap:7px;padding:8px 18px 9px}
+  #view-inventory .toolbar.inv-toolbar .chips{flex:0 0 auto;display:flex;flex-wrap:nowrap;gap:4px;flex-shrink:0;align-items:center;margin:0}
+  #view-inventory .toolbar.inv-toolbar .chips .chip{padding:5px 9px;font-size:11.5px;flex:0 0 auto;margin:0;white-space:nowrap}
+  #view-inventory .toolbar.inv-toolbar .search{margin-left:0;width:180px;flex:0 0 180px;max-width:180px;padding:5px 9px;font-size:12px;border-radius:9px}
   #view-inventory .toolbar.inv-toolbar .search input{font-size:12px}
-  #view-inventory .toolbar.inv-toolbar .year-select{height:30px;font-size:12px;max-width:108px;padding:0 8px}
-  #view-inventory .toolbar.inv-toolbar .date-range{padding:2px 6px 2px 8px;gap:4px}
-  #view-inventory .toolbar.inv-toolbar .date-range .dr-input{width:128px;height:26px;font-size:11.5px;padding:0 5px}
-  #view-inventory .toolbar.inv-toolbar .date-range .dr-clear{padding:3px 8px;font-size:11.5px;height:26px}
+  #view-inventory .toolbar.inv-toolbar .year-select{height:28px;font-size:11.5px;max-width:96px;padding:0 7px;border-radius:8px}
+  #view-inventory .toolbar.inv-toolbar .date-range{padding:2px 5px 2px 7px;gap:3px;border-radius:9px}
+  #view-inventory .toolbar.inv-toolbar .date-range .dr-input{width:120px;height:24px;font-size:11px;padding:0 4px;border-radius:6px}
+  #view-inventory .toolbar.inv-toolbar .date-range .dr-clear{padding:2px 7px;font-size:11px;height:24px;border-radius:6px}
+  #view-inventory .toolbar.inv-toolbar .date-range .dr-sep{font-size:11px}
+  #view-inventory .toolbar.inv-toolbar .date-range .dr-ico{font-size:12px}
   /* 数据管理工具栏：同样紧凑化 + search 取消 margin-left:auto */
-  .data-toolbar .search{margin-left:0;width:200px;flex:0 0 200px;max-width:200px;padding:6px 10px;font-size:12px;border-radius:10px}
+  .data-toolbar .search{margin-left:0;width:180px;flex:0 0 180px;max-width:180px;padding:5px 9px;font-size:12px;border-radius:9px}
   .data-toolbar .search input{font-size:12px}
-  .data-toolbar .year-select{height:30px;font-size:12px;max-width:108px;padding:0 8px}
-  .data-toolbar .date-range{padding:2px 6px 2px 8px;gap:4px}
-  .data-toolbar .date-range .dr-input{width:128px;height:26px;font-size:11.5px;padding:0 5px}
-  .data-toolbar .date-range .dr-clear{padding:3px 8px;font-size:11.5px;height:26px}
+  .data-toolbar .year-select{height:28px;font-size:11.5px;max-width:96px;padding:0 7px;border-radius:8px}
+  .data-toolbar .date-range{padding:2px 5px 2px 7px;gap:3px;border-radius:9px}
+  .data-toolbar .date-range .dr-input{width:120px;height:24px;font-size:11px;padding:0 4px;border-radius:6px}
+  .data-toolbar .date-range .dr-clear{padding:2px 7px;font-size:11px;height:24px;border-radius:6px}
   /* 归档年份胶囊条 */
   .arch-year-bar{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
   .arch-year-bar .arch-hint{font-size:11.5px;color:var(--ink-3)}
   /* 工具栏右侧操作按钮组 */
-  .toolbar-actions{display:flex;align-items:center;gap:8px;margin-left:auto;padding-left:4px;flex:0 0 auto}
-  .toolbar-actions .btn{height:32px;padding:0 12px;border-radius:10px;font-size:12.5px;font-weight:600;gap:5px;white-space:nowrap;flex:0 0 auto}
-  .toolbar-actions .btn-primary{padding:0 14px}
+  .toolbar-actions{display:flex;align-items:center;gap:6px;margin-left:auto;padding-left:2px;flex:0 0 auto}
+  .toolbar-actions .btn{height:28px;padding:0 11px;border-radius:8px;font-size:12px;font-weight:600;gap:4px;white-space:nowrap;flex:0 0 auto;line-height:1}
+  .toolbar-actions .btn-primary{padding:0 13px}
   .data-pager{justify-content:center}
   /* ===== R47 表格延伸到底部 + 表头不裁切（仅 active 视图生效，不影响 .view{display:none}） ===== */
   /* 库存管理：flex 列链让 .table-scroll 占满视口底部 */
   #view-inventory.active,#view-data.active{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
   #view-inventory.active > .card,#view-data.active > .card{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;overflow:hidden}
   #view-inventory.active > .card > .toolbar,#view-data.active > .card > .panel-head,#view-data.active > .card > .data-toolbar{flex:0 0 auto}
-  #view-inventory.active > .card > .data-pager{flex:0 0 auto;padding:10px 0 4px}
+  #view-inventory.active > .card > .data-pager{flex:0 0 auto;padding:4px 0 0}
   #view-inventory.active > .card > .table-scroll{flex:1 1 auto;min-height:220px}
   /* 数据管理：tabpane 内 table-scroll 撑满 */
   #view-data.active > .card > .tabpane.active{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
   #view-data.active > .card > .tabpane.active > .table-scroll{flex:1 1 auto;min-height:220px}
-  #view-data.active > .card > .tabpane.active > .data-pager{flex:0 0 auto;padding:8px 0 0}
+  #view-data.active > .card > .tabpane.active > .data-pager{flex:0 0 auto;padding:4px 0 0}
   /* 滚动提示融入分页条附近 */
   .scroll-hint{flex:0 0 auto;text-align:center;padding:6px 0 2px;font-size:11px;color:var(--ink-3);opacity:.7}
   .arch-yearlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;width:100%}
@@ -541,7 +545,7 @@
   .lnk.dl{color:#ffb088}
   .lnk+.lnk{margin-left:10px}
   /* 数据管理/库存表格：表头加大、单元格居中、字号统一、比例协调 */
-  .table-scroll{overflow:auto;flex:1 1 auto;min-height:200px;padding:0 18px 6px;-webkit-overflow-scrolling:touch;position:relative;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.3) transparent}
+  .table-scroll{overflow:auto;flex:1 1 auto;min-height:200px;padding:0 18px 2px;-webkit-overflow-scrolling:touch;position:relative;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.3) transparent}
   .table-scroll::-webkit-scrollbar{width:8px;height:8px}
   .table-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3);border-radius:8px}
   .table-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.5)}
