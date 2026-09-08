@@ -261,12 +261,12 @@
   tbody td{padding:9px 14px;font-size:12px;border-bottom:1px solid var(--line-2);color:var(--ink)}
   tbody tr:hover{background:rgba(255,255,255,.04)}
   .code{font-family:var(--font);font-size:13px;color:var(--ink-3)}
-  .tag{padding:3px 10px;border-radius:7px;font-size:12px;font-weight:400;display:inline-flex;align-items:center;gap:5px}
-  .tag .d{width:7px;height:7px;border-radius:50%}
+  .tag{padding:3px 10px;border-radius:7px;font-size:12px;font-weight:400;display:inline-flex;align-items:center;gap:5px;max-width:100%;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tag .d{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
   .tag.office{background:rgba(91,140,255,.16);color:#9db4ff}
   .tag.tobacco{background:rgba(255,138,76,.16);color:#ffb088}
   .tag.gift{background:rgba(192,139,255,.16);color:#cda6ff}
-  .status{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:400}
+  .status{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:400;display:inline-block;vertical-align:middle}
   .status.ok{background:rgba(47,230,160,.15);color:#6ff0bf}
   .status.low{background:rgba(255,194,75,.16);color:#ffd486}
   .status.out{background:rgba(255,93,108,.16);color:#ff97a1}
@@ -463,7 +463,7 @@
     .chart-box{height:210px}
   }
   /* ---- 数据管理 ---- */
-  .data-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:12px 18px 14px}
+  .data-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;overflow:visible;row-gap:8px;padding:12px 18px 14px}
   .data-pager{display:flex;gap:6px;align-items:center;padding:4px 0 2px}
   .data-pager .btn{min-width:auto;padding:3px 9px;font-size:11px;height:24px;border-radius:7px;line-height:1}
   .data-pager .btn:disabled{opacity:.4;cursor:not-allowed}
@@ -485,7 +485,7 @@
   [data-theme="light"] .date-range{background:rgba(255,255,255,.6)}
   [data-theme="light"] .date-range .dr-input{background:rgba(255,255,255,.7);color:var(--ink);color-scheme:light}
   /* 库存管理工具栏：所有控件单行（不裁切 chip） */
-  #view-inventory .toolbar.inv-toolbar{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:12px;padding:12px 18px 14px}
+  #view-inventory .toolbar.inv-toolbar{flex-wrap:wrap;overflow:visible;row-gap:8px;gap:10px;padding:12px 18px 14px}
   #view-inventory .toolbar.inv-toolbar .chips{flex:0 0 auto;display:flex;flex-wrap:nowrap;gap:4px;flex-shrink:0;align-items:center;margin:0}
   #view-inventory .toolbar.inv-toolbar .chips .chip{padding:5px 9px;font-size:11.5px;flex:0 0 auto;margin:0;white-space:nowrap}
   #view-inventory .toolbar.inv-toolbar .search{margin-left:0;width:180px;flex:0 0 180px;max-width:180px;padding:5px 9px;font-size:12px;border-radius:9px}
@@ -677,20 +677,20 @@
   /* 库存管理表格列宽（15 列固定比例 · table-layout:fixed 严格生效 · 全表单行不换行 · 长文本省略） */
   #view-inventory .data-table{table-layout:fixed;width:100%;min-width:1080px}
   #view-inventory .data-table th:nth-child(1),#view-inventory .data-table td:nth-child(1){width:7.0%}    /* 讯号 */
-  #view-inventory .data-table th:nth-child(2),#view-inventory .data-table td:nth-child(2){width:13.0%}   /* 物资名称 */
-  #view-inventory .data-table th:nth-child(3),#view-inventory .data-table td:nth-child(3){width:6.0%}    /* 分类 */
-  #view-inventory .data-table th:nth-child(4),#view-inventory .data-table td:nth-child(4){width:7.0%}    /* 品牌 */
-  #view-inventory .data-table th:nth-child(5),#view-inventory .data-table td:nth-child(5){width:6.0%}    /* 规格 */
-  #view-inventory .data-table th:nth-child(6),#view-inventory .data-table td:nth-child(6){width:4.0%}    /* 单位 */
+  #view-inventory .data-table th:nth-child(2),#view-inventory .data-table td:nth-child(2){width:11.0%}  /* 物资名称（原13%，腾出空间给分类） */
+  #view-inventory .data-table th:nth-child(3),#view-inventory .data-table td:nth-child(3){width:10.0%}   /* 分类（原6%→10%，让"办公用品"chip 60px 完整显示在 8px content 内） */
+  #view-inventory .data-table th:nth-child(4),#view-inventory .data-table td:nth-child(4){width:4.0%}    /* 品牌（原7%→4%，2-3 字品牌名足够） */
+  #view-inventory .data-table th:nth-child(5),#view-inventory .data-table td:nth-child(5){width:5.0%}    /* 规格（原6%→5%） */
+  #view-inventory .data-table th:nth-child(6),#view-inventory .data-table td:nth-child(6){width:3.0%}    /* 单位（原4%→3%，1 字单位足够） */
   #view-inventory .data-table th:nth-child(7),#view-inventory .data-table td:nth-child(7){width:7.0%}    /* 库存数量 */
   #view-inventory .data-table th:nth-child(8),#view-inventory .data-table td:nth-child(8){width:6.0%}    /* 安全库存 */
   #view-inventory .data-table th:nth-child(9),#view-inventory .data-table td:nth-child(9){width:12.0%}   /* 入库单号（申购单号） */
-  #view-inventory .data-table th:nth-child(10),#view-inventory .data-table td:nth-child(10){width:5.0%}  /* 入库累计 */
+  #view-inventory .data-table th:nth-child(10),#view-inventory .data-table td:nth-child(10){width:4.0%}  /* 入库累计（原5%→4%） */
   #view-inventory .data-table th:nth-child(11),#view-inventory .data-table td:nth-child(11){width:12.0%} /* 出库单号（审批编号） */
-  #view-inventory .data-table th:nth-child(12),#view-inventory .data-table td:nth-child(12){width:5.0%}  /* 出库累计 */
+  #view-inventory .data-table th:nth-child(12),#view-inventory .data-table td:nth-child(12){width:4.0%}  /* 出库累计（原5%→4%） */
   #view-inventory .data-table th:nth-child(13),#view-inventory .data-table td:nth-child(13){width:4.5%}  /* 质保期(月) */
   #view-inventory .data-table th:nth-child(14),#view-inventory .data-table td:nth-child(14){width:6.5%}  /* 到期日 */
-  #view-inventory .data-table th:nth-child(15),#view-inventory .data-table td:nth-child(15){width:5.0%}  /* 状态 */
+  #view-inventory .data-table th:nth-child(15),#view-inventory .data-table td:nth-child(15){width:4.0%}  /* 状态（原5%→4%，2 字状态足够） */
   /* 库存表：全表单行不换行 + 长文本省略 + 表头居中 */
   #view-inventory .data-table th,#view-inventory .data-table td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #view-inventory .data-table thead th{text-align:center}
