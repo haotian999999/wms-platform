@@ -79,7 +79,7 @@
   body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:48px 48px;-webkit-mask-image:radial-gradient(circle at 50% 25%,#000,transparent 78%);mask-image:radial-gradient(circle at 50% 25%,#000,transparent 78%)}
   body::after{content:'';position:fixed;inset:-25%;z-index:-2;pointer-events:none;background:radial-gradient(620px 520px at 22% 32%, rgba(91,140,255,.18), transparent 60%),radial-gradient(540px 540px at 82% 72%, rgba(168,94,234,.15), transparent 60%);filter:blur(24px);animation:auraShift 20s ease-in-out infinite}
   @keyframes auraShift{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(2.5%,-2.5%,0)}}
-  .app{position:relative;display:flex;min-height:100vh;opacity:0;visibility:hidden;transition:opacity .35s var(--ease)}
+  .app{position:relative;display:flex;min-height:100vh;height:100dvh;max-height:100dvh;overflow:hidden;opacity:0;visibility:hidden;transition:opacity .35s var(--ease)}
   .app.ready{opacity:1;visibility:visible}
   /* 主界面背景：仓库内部底图（已内联 base64，国内加载稳定） */
   .app::before{
@@ -136,7 +136,7 @@
     box-shadow:0 0 10px rgba(255,93,108,.5);
   }
   /* ===== Main ===== */
-  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .main{flex:1 1 0;min-width:0;min-height:0;display:flex;flex-direction:column}
   .topbar{
     height:68px;background:linear-gradient(180deg,rgba(13,19,36,.52),rgba(13,19,36,.36));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
     border-bottom:1px solid var(--line);
@@ -177,7 +177,7 @@
   .icon-btn:hover .badge{transform:scale(1.1)}
   .top-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#4f6ef7,#7d8cff);display:grid;place-items:center;color:#fff;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(91,140,255,.5)}
 
-  .content{padding:26px 28px 40px;overflow-x:hidden;overflow-y:auto}
+  .content{padding:26px 28px 40px;overflow-x:hidden;overflow-y:auto;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
   .view{display:none;animation:fade .4s var(--ease)}
   .view.active{display:block}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -503,6 +503,19 @@
   .toolbar-actions .btn{height:32px;padding:0 12px;border-radius:10px;font-size:12.5px;font-weight:600;gap:5px;white-space:nowrap;flex:0 0 auto}
   .toolbar-actions .btn-primary{padding:0 14px}
   .data-pager{justify-content:center}
+  /* ===== R47 表格延伸到底部 + 表头不裁切（仅 active 视图生效，不影响 .view{display:none}） ===== */
+  /* 库存管理：flex 列链让 .table-scroll 占满视口底部 */
+  #view-inventory.active,#view-data.active{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  #view-inventory.active > .card,#view-data.active > .card{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  #view-inventory.active > .card > .toolbar,#view-data.active > .card > .panel-head,#view-data.active > .card > .data-toolbar{flex:0 0 auto}
+  #view-inventory.active > .card > .data-pager{flex:0 0 auto;padding:10px 0 4px}
+  #view-inventory.active > .card > .table-scroll{flex:1 1 auto;min-height:220px}
+  /* 数据管理：tabpane 内 table-scroll 撑满 */
+  #view-data.active > .card > .tabpane.active{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+  #view-data.active > .card > .tabpane.active > .table-scroll{flex:1 1 auto;min-height:220px}
+  #view-data.active > .card > .tabpane.active > .data-pager{flex:0 0 auto;padding:8px 0 0}
+  /* 滚动提示融入分页条附近 */
+  .scroll-hint{flex:0 0 auto;text-align:center;padding:6px 0 2px;font-size:11px;color:var(--ink-3);opacity:.7}
   .arch-yearlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;width:100%}
   .arch-year-card{padding:9px 6px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);cursor:pointer;transition:all .18s;text-align:center}
   .arch-year-card:hover{border-color:var(--primary);background:rgba(91,140,255,.08)}
@@ -528,7 +541,7 @@
   .lnk.dl{color:#ffb088}
   .lnk+.lnk{margin-left:10px}
   /* 数据管理/库存表格：表头加大、单元格居中、字号统一、比例协调 */
-  .table-scroll{overflow:auto;max-height:calc(100dvh - 300px);min-height:160px;padding:0 18px 6px;-webkit-overflow-scrolling:touch;position:relative;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.3) transparent}
+  .table-scroll{overflow:auto;flex:1 1 auto;min-height:200px;padding:0 18px 6px;-webkit-overflow-scrolling:touch;position:relative;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.3) transparent}
   .table-scroll::-webkit-scrollbar{width:8px;height:8px}
   .table-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3);border-radius:8px}
   .table-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.5)}
@@ -555,18 +568,19 @@
   #view-check .plan-table tbody tr:nth-child(even){background:rgba(255,255,255,.025)}
   #view-check .plan-table tbody tr:hover{background:rgba(91,140,255,.10)}
   #view-check .plan-table td:last-child{min-width:104px}
-  .data-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;line-height:1.45}
-  .data-table th,.data-table td{white-space:nowrap;vertical-align:middle;overflow:visible;text-align:center;padding:9px 13px}
+  .data-table{width:100%;border-collapse:separate;border-spacing:0;font-size:11.5px;line-height:1.4;table-layout:auto;min-width:0}
+  .data-table th,.data-table td{white-space:nowrap;vertical-align:middle;overflow:visible;text-overflow:ellipsis;max-width:220px;text-align:center;padding:7px 8px}
   .data-table th.num,.data-table td.num{text-align:right}
   .data-table th:first-child,.data-table td:first-child{text-align:left}
   .data-table td.down{color:var(--danger);font-weight:600}
   .data-table thead th{
-    position:sticky;top:0;z-index:2;
-    padding:12px 14px;font-size:12px;font-weight:700;color:#cdd6ed;
+    position:sticky;top:0;z-index:3;
+    padding:10px 8px;font-size:11.5px;font-weight:700;color:#cdd6ed;
     background:linear-gradient(180deg,rgba(30,38,62,.98),rgba(20,28,50,.96));
     border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-    letter-spacing:.4px;text-shadow:0 1px 2px rgba(0,0,0,.2);
+    letter-spacing:.2px;text-shadow:0 1px 2px rgba(0,0,0,.2);
     box-shadow:0 2px 6px rgba(0,0,0,.28);
+    white-space:normal;line-height:1.25;word-break:keep-all;
   }
   .data-table thead th:first-child{border-top-left-radius:10px}
   .data-table thead th:last-child{border-top-right-radius:10px}
