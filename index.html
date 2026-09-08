@@ -466,6 +466,8 @@
   .data-pager .btn{min-width:auto;padding:3px 9px;font-size:11px;height:24px;border-radius:7px;line-height:1}
   .data-pager .btn:disabled{opacity:.4;cursor:not-allowed}
   .data-pager .pager-info{font-size:11px;color:var(--ink-2);font-weight:600;letter-spacing:.1px}
+  /* 去底部翻页：按用户要求移除表格底部分页器，所有行一次性渲染 */
+  .data-pager{display:none !important}
   /* ===== R43V2 年份隔离 UI（紧凑下拉 / 日期范围 / 归档年度卡片） ===== */
   .year-select{height:34px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.12);color:var(--ink);font-size:12.5px;font-family:var(--font);outline:none;cursor:pointer;transition:all .18s;max-width:132px;flex:0 0 auto}
   .year-select:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(91,140,255,.15)}
@@ -2541,7 +2543,7 @@
   // 拼接与 DOM 解析随每次导入线性增长（实测 3900 物资单次渲染 1.3s，占导入耗时 72%）。
   // 改为每页 200 行后渲染成本恒定，与库内物资总数无关；data-row-inv 仍保留全量下标，
   // 行点击详情/编辑/删除等定位逻辑不受影响（导出直接从 items 读取，也不受影响）。
-  const INV_PAGE=200;
+  const INV_PAGE=999999;
   let invPage=0;
   function renderInvPager(pages){
     const el=document.getElementById('invPager'); if(!el) return;
@@ -4366,7 +4368,7 @@
   let activeDataTab='in';
   // 数据表分页：单页行数上限。几十万条流水若一次全量拼 HTML 再 innerHTML 解析，
   // 在「第一次导入后紧接第二次导入」的数据翻倍场景下会假死数秒——分页后单次构建恒为 PAGE 行
-  const DATA_PAGE=200;
+  const DATA_PAGE=999999;
   let dataPage={in:0,out:0};
   let dataSearchKeyword=''; // R43V2：剥离日期范围后的纯关键字（renderDataTables/downloadAll 共用）
   function renderPager(pages,total,type){
