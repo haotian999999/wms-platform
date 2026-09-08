@@ -463,7 +463,7 @@
     .chart-box{height:210px}
   }
   /* ---- 数据管理 ---- */
-  .data-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:nowrap;overflow-x:auto;padding:12px 18px 14px}
+  .data-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:12px 18px 14px}
   .data-pager{display:flex;gap:6px;align-items:center;padding:4px 0 2px}
   .data-pager .btn{min-width:auto;padding:3px 9px;font-size:11px;height:24px;border-radius:7px;line-height:1}
   .data-pager .btn:disabled{opacity:.4;cursor:not-allowed}
@@ -485,17 +485,18 @@
   [data-theme="light"] .date-range{background:rgba(255,255,255,.6)}
   [data-theme="light"] .date-range .dr-input{background:rgba(255,255,255,.7);color:var(--ink);color-scheme:light}
   /* 库存管理工具栏：所有控件单行（不裁切 chip） */
-  #view-inventory .toolbar.inv-toolbar{flex-wrap:nowrap;overflow-x:auto;gap:7px;padding:8px 18px 9px}
+  #view-inventory .toolbar.inv-toolbar{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:12px;padding:12px 18px 14px}
   #view-inventory .toolbar.inv-toolbar .chips{flex:0 0 auto;display:flex;flex-wrap:nowrap;gap:4px;flex-shrink:0;align-items:center;margin:0}
   #view-inventory .toolbar.inv-toolbar .chips .chip{padding:5px 9px;font-size:11.5px;flex:0 0 auto;margin:0;white-space:nowrap}
-  #view-inventory .toolbar.inv-toolbar .search{margin-left:0;width:180px;flex:0 0 180px;max-width:180px;padding:5px 9px;font-size:12px;border-radius:9px}
+  #view-inventory .toolbar.inv-toolbar .search{margin-left:0;width:160px;flex:0 0 160px;min-width:160px;max-width:160px;padding:5px 9px;font-size:12px;border-radius:9px}
   #view-inventory .toolbar.inv-toolbar .search input{font-size:12px}
   #view-inventory .toolbar.inv-toolbar .year-select{height:28px;font-size:11.5px;max-width:96px;padding:0 7px;border-radius:8px}
   #view-inventory .toolbar.inv-toolbar .date-range{padding:2px 5px 2px 7px;gap:3px;border-radius:9px}
-  #view-inventory .toolbar.inv-toolbar .date-range .dr-input{width:120px;height:24px;font-size:11px;padding:0 4px;border-radius:6px}
+  #view-inventory .toolbar.inv-toolbar .date-range .dr-input{width:95px;height:24px;font-size:11px;padding:0 4px;border-radius:6px}
   #view-inventory .toolbar.inv-toolbar .date-range .dr-clear{padding:2px 7px;font-size:11px;height:24px;border-radius:6px}
   #view-inventory .toolbar.inv-toolbar .date-range .dr-sep{font-size:11px}
   #view-inventory .toolbar.inv-toolbar .date-range .dr-ico{font-size:12px}
+  #view-inventory .toolbar.inv-toolbar .plan-meta{flex:0 0 auto;white-space:nowrap;margin-top:0;align-self:center;font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis}
   /* 数据管理工具栏：同样紧凑化 + search 取消 margin-left:auto */
   .data-toolbar .search{margin-left:0;width:180px;flex:0 0 180px;max-width:180px;padding:5px 9px;font-size:12px;border-radius:9px}
   .data-toolbar .search input{font-size:12px}
@@ -1222,12 +1223,13 @@
               <div class="chip c-tobacco" data-cat="tobacco"><span class="d" style="background:var(--c-tobacco)"></span>烟酒茶</div>
               <div class="chip c-gift" data-cat="gift"><span class="d" style="background:var(--c-gift)"></span>礼品</div>
             </div>
-            <div class="search inv-search" id="invSearchWrap">🔍<input id="invSearch" placeholder="搜索讯号 / 物资名称 / 规格 / 状态…" /></div>
             <select id="invYearSelect" class="year-select" title="库存年份：按当年出入库活动筛选（默认全部年份）"></select>
+            <div class="search inv-search" id="invSearchWrap">🔍<input id="invSearch" placeholder="搜索讯号 / 物资名称 / 规格 / 状态…" /></div>
             <div class="date-range" id="invDateRange">
               <span class="dr-ico">📅</span>
               <input type="date" id="invFrom" class="dr-input" title="起始日期" /><span class="dr-sep">至</span><input type="date" id="invTo" class="dr-input" title="截止日期" /><button class="btn btn-ghost dr-clear" id="invDateClear" type="button">清空</button>
             </div>
+            <span class="plan-meta" id="invCount"></span>
             <div class="toolbar-actions">
               <button class="btn btn-ghost" id="invExport" data-perm="data" title="导出库存">⬇ 导出</button>
               <button class="btn btn-primary" id="invAdd" data-perm="data" title="新增物资">＋ 新增</button>
@@ -2615,6 +2617,17 @@
         +(scope?scope+'暂无有出入库活动的库存物资':'暂无库存物资')
         +(scope?'（切换「全部年份」或清除日期范围可查看全部）':'，请通过「入库管理 · 入库登记」或「数据导入」添加')
         +'</td></tr>';
+    }
+    const _ic=document.getElementById('invCount');
+    if(_ic){
+      const _cn={all:'全部',office:'办公用品',tobacco:'烟酒茶',gift:'礼品'};
+      const _cName=_cn[cat]||'全部';
+      let _scope='';
+      if(invDateRange.from||invDateRange.to) _scope=' · '+invDateRange.from+'~'+(invDateRange.to||'');
+      else if(invViewYear&&invViewYear!=='all') _scope=' · '+invViewYear+'年';
+      const _text=_cName+' '+view.length+' 条'+_scope;
+      _ic.textContent=_text;
+      _ic.title=_text;
     }
     renderInvPager(pages);
     checkTableOverflow();
