@@ -610,6 +610,13 @@
   [data-theme="light"] .kp-context{background:rgba(91,140,255,.06);border-color:rgba(91,140,255,.22);color:#3f4a5e}
   [data-theme="light"] .arch-year-card{background:rgba(255,255,255,.6)}
   [data-theme="light"] .arch-year-card .ay-year{color:#1d2433}
+  /* R60 归档 / 结转双卡 hero 年份展示：大字号年份磁贴 + 侧栏上下文与年份选择条 */
+  .arch-hero{display:flex;gap:14px;align-items:stretch;flex:0 0 auto}
+  .arch-hero-year{flex:0 0 92px;min-height:92px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:linear-gradient(135deg,rgba(91,140,255,.24),rgba(91,140,255,.08));border:1px solid rgba(91,140,255,.32);color:#d6e4ff;font-weight:800;font-size:27px;font-variant-numeric:tabular-nums;letter-spacing:.5px;line-height:1;padding:6px;text-align:center}
+  .arch-hero-year small{font-size:11px;font-weight:600;color:var(--ink-3);letter-spacing:0}
+  .arch-hero-side{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:10px}
+  .arch-ctx{margin-bottom:0}
+  [data-theme="light"] .arch-hero-year{background:linear-gradient(135deg,rgba(91,140,255,.18),rgba(91,140,255,.05));color:#1f2a3d;border-color:rgba(91,140,255,.3)}
   .data-toolbar .search{flex:0 0 180px;min-width:180px;max-width:180px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:9px;padding:0 10px;height:32px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color .18s,box-shadow .18s,background-color .18s}
   .data-toolbar .search:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.15);background:rgba(255,255,255,.09)}
   .data-toolbar .search input{border:none;background:none;outline:none;font-family:var(--font);font-size:12px;width:100%;color:var(--ink)}
@@ -1572,42 +1579,50 @@
                   </div>
                 </div>
                 <div class="kp-body">
-                  <div class="kp-context" id="carryoverCtx"></div>
-                  <div id="carryoverPreview" class="carryover-preview kp-content"></div>
+                  <div class="arch-hero">
+                    <div class="arch-hero-year" id="carryoverHero">—</div>
+                    <div class="arch-hero-side">
+                      <div class="kp-context" id="carryoverCtx"></div>
+                      <div id="carryoverPreview" class="carryover-preview kp-content"></div>
+                    </div>
+                  </div>
                   <div class="kp-foot">
                     <button class="btn btn-primary" id="btnCarryover" data-perm="login">执行年度结转</button>
                     <span class="plan-meta" id="carryoverMsg"></span>
                   </div>
                 </div>
               </div>
-              <!-- 右：归档操作 + 年度总览 -->
+              <!-- 右：年度归档档案（年份胶囊驱动） -->
               <div class="kpi-card archive-card">
-                  <div class="kp-header">
-                    <div class="kp-title">
-                      <div class="kp-icon">📁</div>
-                      <div>
-                        <div class="kp-h">年度归档档案</div>
-                        <div class="kp-sub" id="archiveMeta">暂无归档数据</div>
-                      </div>
+                <div class="kp-header">
+                  <div class="kp-title">
+                    <div class="kp-icon">📁</div>
+                    <div>
+                      <div class="kp-h">年度归档档案</div>
+                      <div class="kp-sub" id="archiveMeta">暂无归档数据</div>
                     </div>
                   </div>
-                  <div class="kp-body">
-                    <div class="kp-content">
-                      <div class="kp-context">
+                </div>
+                <div class="kp-body">
+                  <div class="arch-hero">
+                    <div class="arch-hero-year" id="archiveYearHero">—</div>
+                    <div class="arch-hero-side">
+                      <div class="kp-context arch-ctx" id="archiveCtx">
                         <span class="kp-context-ico">🗓️</span>
                         <span>年度跟随顶部工具栏「数据年份」胶囊切换 · 未结转年度也可实时查看与下载</span>
                       </div>
                       <div class="arch-yearlist" id="archYearList"></div>
-                      <div class="kp-stats arch-stats" id="archiveStats"></div>
-                      <div id="archiveKpis" class="kp-row kp-row-4"></div>
-                    </div>
-                    <div class="kp-foot">
-                      <button class="btn btn-ghost" id="exportArchiveBtn" disabled>⬇ Excel</button>
-                      <button class="btn btn-ghost" id="exportArchiveJsonBtn" disabled>⬇ JSON</button>
-                      <button class="btn btn-danger" id="delArchiveBtn" disabled>🗑 删除</button>
                     </div>
                   </div>
+                  <div class="kp-stats arch-stats" id="archiveStats"></div>
+                  <div id="archiveKpis" class="kp-row kp-row-4"></div>
                 </div>
+                <div class="kp-foot">
+                  <button class="btn btn-ghost" id="exportArchiveBtn" disabled>⬇ Excel</button>
+                  <button class="btn btn-ghost" id="exportArchiveJsonBtn" disabled>⬇ JSON</button>
+                  <button class="btn btn-danger" id="delArchiveBtn" disabled>🗑 删除</button>
+                </div>
+              </div>
             </div>
             <!-- 报表折叠面板控制条：全部展开 / 全部收起 -->
             <div class="arch-panelbar">
@@ -2271,11 +2286,18 @@
     return {archMode:false,all,rows};
   }
   // 统一访问器：已结转年走 archivedRecords 封存快照，未结转年实时过滤（绝不修改原始数组）
+  // R60 深度修复：年份视图数据丢失。已结转年度在 archivedRecords 存快照，但结转后若仍有该年 live 流水
+  // （如补录 / 导入历史数据），原逻辑二选一返回 → live 记录被静默丢弃。改为「归档快照 ∪ live 同年度记录」去重合并，
+  // 切换任意年份都展示完整数据，绝不丢数。
   function recordsForYear(y,type){
     const arch=archivedRecords.find(a=>+a.year===+y);
-    if(arch) return {fromArch:true,rows:type==='in'?(arch.inbound||[]):(arch.outbound||[])};
     const src=type==='in'?inboundRecords:outboundRecords;
-    return {fromArch:false,rows:src.filter(r=>yearOf(r)===+y)};
+    const live=src.filter(r=>yearOf(r)===+y);
+    const seen=new Set(), rows=[];
+    const add=r=>{ const k=String(r.id||r.inNo||r.outNo||((r.date||'')+'|'+(r.name||r.n||'')+'|'+(r.category||r.c||''))); if(seen.has(k))return; seen.add(k); rows.push(r); };
+    if(arch)(type==='in'?(arch.inbound||[]):(arch.outbound||[])).forEach(add);
+    live.forEach(add);
+    return {fromArch:!!arch,rows};
   }
   // 搜索框日期范围解析：中文「2026年1月1日至2026年12月31日」与标准「2026-01-01~2026-12-31」双格式
   function parseDateRange(str){
@@ -2288,16 +2310,18 @@
     return {from:null,to:null,rest:s.trim()};
   }
   // R43V2：非破坏性年度视图模型（历史归档统一数据源）
+  // R60 深度修复：与 recordsForYear 同理，已结转年度 = 归档快照 ∪ 结转后补录的 live 同年度记录（去重），
+  // 保证「年度归档档案」试算平衡 / 明细账 / 盘点档案在任何年份切换下都完整无遗漏。
   function archiveViewModel(y){
     const arch=archivedRecords.find(a=>+a.year===+y);
+    const liveIn=inboundRecords.filter(r=>yearOf(r)===+y);
+    const liveOut=outboundRecords.filter(r=>yearOf(r)===+y);
+    const liveChecks=checkRecords.filter(r=>yearOf(r)===+y);
+    const union=(base,live)=>{ const seen=new Set(),out=[]; const key=r=>String(r.id||r.inNo||r.outNo||((r.date||'')+'|'+(r.name||r.n||r.title||'')+'|'+(r.category||r.c||r.scope||''))); (base||[]).forEach(r=>{const x=key(r);if(seen.has(x))return;seen.add(x);out.push(r);}); live.forEach(r=>{const x=key(r);if(seen.has(x))return;seen.add(x);out.push(r);}); return out; };
     if(arch) return {fromArch:true,year:+y,label:arch.label||y,carriedAt:arch.carriedAt||'—',
       opening:arch.opening||[],closing:arch.closing||arch.snapshot||[],
-      inbound:arch.inbound||[],outbound:arch.outbound||[],checks:arch.checks||[]};
-    return {fromArch:false,year:+y,label:y,carriedAt:null,
-      opening:[],closing:[],
-      inbound:inboundRecords.filter(r=>yearOf(r)===+y),
-      outbound:outboundRecords.filter(r=>yearOf(r)===+y),
-      checks:checkRecords.filter(r=>yearOf(r)===+y)};
+      inbound:union(arch.inbound,liveIn),outbound:union(arch.outbound,liveOut),checks:union(arch.checks,liveChecks)};
+    return {fromArch:false,year:+y,label:y,carriedAt:null,opening:[],closing:[],inbound:liveIn,outbound:liveOut,checks:liveChecks};
   }
   // 数据完整性兜底：主数据文件异常（损坏/为空）但存在有效自动备份时，自动还原，避免信息丢失
   // 注意：若存在重置纪元，只有「纪元 >= 当前纪元」的新备份才允许自动还原；
@@ -5042,6 +5066,8 @@
     if(ctx) ctx.innerHTML='<span class="kp-context-ico">🗓️</span><span>当前数据年份：'+viewYear+' 年 · 结转将归档全部历史年度流水</span>';
     const btn=document.getElementById('btnCarryover'); const msg=document.getElementById('carryoverMsg');
     const s=carryoverStats(); const label=carryoverYearsLabel();
+    const heroC=document.getElementById('carryoverHero');
+    if(heroC) heroC.innerHTML=(s.cur||new Date().getFullYear())+'<small>会计年度</small>';
     const yb=carryoverYearBreakdown();
     const ybHtml=yb.length? ('<div class="kp-yearlist"><div class="kp-yl-title">识别年份 · 归档笔数明细</div>'+
       yb.map(y=>'<div class="kp-yearrow"><span class="kp-yr">'+y.year+' 年</span><span class="kp-yr-in">入库 '+y.inCount+' 笔</span><span class="kp-yr-out">出库 '+y.outCount+' 笔</span><span class="kp-yr-tot">合计 '+y.total+' 笔</span></div>').join('')+
@@ -5194,6 +5220,10 @@
     const st=document.getElementById('archiveStats');
     if(st) st.innerHTML=`<div class="kp-stat"><span class="kp-stat-v">${ys.length}</span><span class="kp-stat-l">可查看年度</span></div><div class="kp-stat"><span class="kp-stat-v">${totalArch}</span><span class="kp-stat-l">已封存年度</span></div><div class="kp-stat"><span class="kp-stat-v">${totalRecs}</span><span class="kp-stat-l">封存流水</span></div>`;
     const vm=archiveViewModel(archViewYear);
+    const heroY=document.getElementById('archiveYearHero');
+    if(heroY) heroY.innerHTML=archViewYear+'<small>'+(vm.fromArch?'已封存':'实时')+'</small>';
+    const actx=document.getElementById('archiveCtx');
+    if(actx) actx.innerHTML='<span class="kp-context-ico">🗓️</span><span>当前查看 '+archViewYear+' 年 · '+(vm.fromArch?'已封存快照，明细以结转时为准':'实时派生，不修改库存')+'</span>';
     const m=document.getElementById('archiveMeta');
     if(m) m.textContent=vm.fromArch? ('结转于 '+vm.carriedAt+' · 共 '+(vm.inbound.length+vm.outbound.length)+' 笔历史流水') : (archViewYear+' 年尚未结转 · 以下为该年实时流水（只读派生，不修改库存）');
     if(expBtn) expBtn.disabled=false;
