@@ -206,6 +206,9 @@
   .panel-head h3{font-size:14.5px;font-weight:700;color:#fff}
   .panel-head .sub{font-size:11.5px;color:var(--ink-3);margin-top:2px}
   .more{font-size:11.5px;color:#9db4ff;font-weight:600;cursor:pointer}
+  .card.clickable{cursor:pointer;transition:box-shadow .18s ease,transform .18s ease}
+  .card.clickable:hover{box-shadow:0 6px 22px rgba(0,0,0,.18);transform:translateY(-1px)}
+  .more-row{text-align:center;color:var(--ink-3);font-size:11.5px;padding:8px 0;cursor:pointer;font-style:italic}
 
   .row-2{grid-template-columns:1.4fr 1fr}
   .row-3{grid-template-columns:repeat(3,1fr)}
@@ -589,6 +592,8 @@
   #view-data.active > .card > .tabpane.active{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
   #view-data.active > .card > .tabpane.active > .table-scroll{flex:1 1 auto;min-height:220px}
   #view-data.active > .card > .tabpane.active > .data-pager{flex:0 0 auto;padding:4px 0 0}
+  /* 历史归档：最右端独立纵向滚动条（内容超长时可滚动查看全部） */
+  #view-data.active > .card > .tabpane#pane-data-archive.active{overflow-y:auto;overflow-x:hidden;padding-right:2px}
   /* 滚动提示融入分页条附近 */
   .scroll-hint{flex:0 0 auto;text-align:center;padding:6px 0 2px;font-size:11px;color:var(--ink-3);opacity:.7}
   .arch-yearlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;width:100%}
@@ -1235,12 +1240,12 @@
             <div class="trend" id="kpiTotalTrend">— 暂无数据</div>
           </div>
           <div class="card kpi" data-kpi="in" role="button" tabindex="0" title="点击查看当年入库明细">
-            <div class="top"><div class="lbl">本月入库</div><div class="ic">⬇️</div></div>
+            <div class="top"><div class="lbl">本年入库</div><div class="ic">⬇️</div></div>
             <div class="val" id="kpiMonthIn" data-count="0">0</div>
             <div class="trend" id="kpiMonthInTrend">— 暂无数据</div>
           </div>
           <div class="card kpi" data-kpi="out" role="button" tabindex="0" title="点击查看当年领用明细">
-            <div class="top"><div class="lbl">本月领用</div><div class="ic">⬆️</div></div>
+            <div class="top"><div class="lbl">本年领用</div><div class="ic">⬆️</div></div>
             <div class="val" id="kpiMonthOut" data-count="0">0</div>
             <div class="trend" id="kpiMonthOutTrend">— 暂无数据</div>
           </div>
@@ -1248,7 +1253,7 @@
 
         <div class="grid row-2 mt">
           <div class="card">
-            <div class="panel-head"><div><h3>出入库趋势对比</h3><div class="sub" id="trendSub">本月 · 单位：件</div></div><div style="display:flex;align-items:center;gap:8px"><div class="trend-switch" id="trendSwitch"><button class="ts active" data-range="month">本月</button><button class="ts" data-range="quarter">季度</button><button class="ts" data-range="year">年度</button></div><span class="more" id="exportTrendBtn" role="button" tabindex="0">导出报表</span></div></div>
+            <div class="panel-head"><div><h3>出入库趋势对比</h3><div class="sub" id="trendSub">本月 · 单位：件</div></div><div style="display:flex;align-items:center;gap:8px"><div class="trend-switch" id="trendSwitch"><button class="ts" data-range="month">本月</button><button class="ts" data-range="quarter">季度</button><button class="ts active" data-range="year">年度</button></div><span class="more" id="exportTrendBtn" role="button" tabindex="0">导出报表</span></div></div>
             <div class="chart-box"><canvas id="trendChart"></canvas></div>
           </div>
           <div class="card">
@@ -1263,15 +1268,15 @@
         </div>
 
         <div class="grid row-2 mt">
-          <div class="card">
+          <div class="card clickable" id="cardAlert" data-panel="alert">
             <div class="panel-head"><div><h3>库存预警</h3><div class="sub">低于安全库存的物资</div></div><span class="more" id="processAllAlertBtn" role="button" tabindex="0">全部处理</span></div>
             <table>
               <thead><tr><th>物资名称</th><th>分类</th><th>当前库存</th><th>安全库存</th><th>状态</th></tr></thead>
               <tbody id="alertBody"></tbody>
             </table>
           </div>
-          <div class="card">
-            <div class="panel-head"><div><h3>最近动态</h3><div class="sub">实时业务流水</div></div></div>
+          <div class="card clickable" id="cardRecent" data-panel="recent">
+            <div class="panel-head"><div><h3>最近动态</h3><div class="sub">实时业务流水（本年度）</div></div><span class="more" data-open="recent">查看全部 ›</span></div>
             <div class="timeline" id="dashTimeline">
               <div class="tl-item"><div class="tl-dot out">⬆️</div><div class="tl-body"><div class="t1">暂无业务流水</div><div class="t2">完成入库或出库后将在此展示</div></div><div class="tl-time">—</div></div>
             </div>
@@ -1279,15 +1284,15 @@
         </div>
 
         <div class="grid row-2 mt">
-          <div class="card">
+          <div class="card clickable" id="cardWarranty" data-panel="warranty">
             <div class="panel-head"><div><h3>质保期预警</h3><div class="sub">临期 / 已过保物资（剩余 ≤ 90 天）</div></div><span class="more" id="openWarBtn">查看预警窗口</span></div>
             <table>
               <thead><tr><th>物资名称</th><th>分类</th><th>到期日</th><th>剩余天数</th><th>状态</th></tr></thead>
               <tbody id="warBody"></tbody>
             </table>
           </div>
-          <div class="card">
-            <div class="panel-head"><div><h3>质保期概览</h3><div class="sub">按到期状态分布</div></div></div>
+          <div class="card clickable" id="cardWarOverview" data-panel="warrantyOverview">
+            <div class="panel-head"><div><h3>质保期概览</h3><div class="sub">按到期状态分布</div></div><span class="more" data-open="warrantyOverview">查看全部 ›</span></div>
             <div class="legend" id="warLegend"></div>
           </div>
         </div>
@@ -1687,10 +1692,9 @@
       <section class="view" id="view-reports">
         <div class="panel-head" style="margin-bottom:14px"><div><h3>统计分析</h3><div class="sub" id="repRangeSub">按时间范围聚合出入库与库存数据</div></div>
           <div class="chips" id="repRangeTabs">
-            <button class="chip active" data-range="month"><span class="d" style="background:var(--c-office)"></span>本月</button>
+            <button class="chip" data-range="month"><span class="d" style="background:var(--c-office)"></span>本月</button>
             <button class="chip" data-range="quarter"><span class="d" style="background:var(--c-tobacco)"></span>本季度</button>
-            <button class="chip" data-range="year"><span class="d" style="background:var(--c-gift)"></span>本年度</button>
-            <button class="chip" data-range="all"><span class="d" style="background:#4b5563"></span>全部</button>
+            <button class="chip active" data-range="year"><span class="d" style="background:var(--c-gift)"></span>本年度</button>
           </div>
         </div>
         <div class="grid row-3">
@@ -1727,15 +1731,14 @@
       <!-- ============ SETTINGS ============ -->
       <section class="view" id="view-settings">
         <div class="grid row-2">
-          <div class="card form-card">
-            <div class="section-title">库存分类管理</div>
-            <div class="section-sub" id="settingsCatSub">系统当前启用 3 个物资分类</div>
-            <div class="rec-list" id="settingsCatList">
-              <div class="rec"><div class="ri" style="color:var(--c-office)">🖇️</div><div><div class="rt">办公用品</div><div class="rs">复印纸、笔墨、文件夹等 · 0 项</div></div><span class="tag office"><span class="d" style="background:var(--c-office)"></span>启用</span></div>
-              <div class="rec"><div class="ri" style="color:var(--c-tobacco)">🍵</div><div><div class="rt">烟酒茶</div><div class="rs">香烟、酒水、茶叶 · 0 项</div></div><span class="tag tobacco"><span class="d" style="background:var(--c-tobacco)"></span>启用</span></div>
-              <div class="rec"><div class="ri" style="color:var(--c-gift)">🎁</div><div><div class="rt">礼品</div><div class="rs">礼盒、周边、定制礼品 · 0 项</div></div><span class="tag gift"><span class="d" style="background:var(--c-gift)"></span>启用</span></div>
+          <div class="card form-card" data-perm="login">
+            <div class="section-title">登录管理</div>
+            <div class="section-sub" id="loginMgmtSub">配置 4 类角色的登录账号与密码，仅系统管理员可修改</div>
+            <div id="loginMgmtBody" style="display:flex;flex-direction:column;gap:14px;margin-top:6px"></div>
+            <div style="display:flex;gap:12px;align-items:center;margin-top:18px">
+              <button class="btn btn-primary" id="saveLogin">保存登录设置</button>
+              <span class="plan-meta" id="loginMsg"></span>
             </div>
-            <button class="btn btn-ghost" id="addCat" style="margin:4px 20px 20px">＋ 新增分类</button>
           </div>
           <div class="card form-card">
             <div class="section-title">安全库存阈值</div>
@@ -1770,16 +1773,6 @@
               </div>
               <div class="note" style="padding-left:0;padding-right:0;font-size:11px;margin-top:8px">提示：单品「单独预警」留空时沿用分类默认值；填写数值则单独设定。保存后库存管理 / 预警同步更新，表格自动收起。</div>
             </div>
-          </div>
-        </div>
-
-        <div class="card form-card mt" data-perm="login">
-          <div class="section-title">登录管理</div>
-          <div class="section-sub" id="loginMgmtSub">配置 4 类角色的登录账号与密码，仅系统管理员可修改</div>
-          <div id="loginMgmtBody" style="display:flex;flex-direction:column;gap:14px;margin-top:6px"></div>
-          <div style="display:flex;gap:12px;align-items:center;margin-top:18px">
-            <button class="btn btn-primary" id="saveLogin">保存登录设置</button>
-            <span class="plan-meta" id="loginMsg"></span>
           </div>
         </div>
       </section>
@@ -1911,6 +1904,13 @@
     <div class="modal" style="--mw:720px">
       <div class="modal-head"><h3 id="kpiModalTitle">数据详情</h3><button class="modal-close" id="kpiModalClose">✕</button></div>
       <div class="modal-body"><div id="kpiModalBody"></div></div>
+    </div>
+  </div>
+  <!-- 工作台 KPI 卡片详情弹窗（点击卡片查看全部） -->
+  <div class="modal-mask" id="dashPanelModal">
+    <div class="modal" style="--mw:760px">
+      <div class="modal-head"><h3 id="dashPanelTitle">详情</h3><button class="modal-close" id="dashPanelClose">✕</button></div>
+      <div class="modal-body" id="dashPanelBody"></div>
     </div>
   </div>
   <!-- 记录查看弹窗 -->
@@ -4107,8 +4107,10 @@
   function renderRecentActivity(){
     const el=document.getElementById('dashTimeline'); if(!el) return;
     // 入/出各取最新 6 条合并后再取 6：mapFn 仅在进入窗口时执行，避免对全量流水 map+sort（大数据下最大 GC/排序源）
-    const inTop=topNBy(inboundRecords,6,r=>String(r.date||''),r=>({type:'in',date:r.date,title:`入库 ${r.name} ×${r.qty} ${r.unit||''}`,sub:`供应商：${r.supplier||'—'} · 经办 ${r.handler||'—'}`,dot:'in'}));
-    const outTop=topNBy(outboundRecords,6,r=>String(r.date||''),r=>({type:'out',date:r.date,title:`${r.applicant||'—'} 领用 ${r.name} ×${r.qty} ${r.unit||''}`,sub:`${r.dept||'—'} · ${r.status||'已出库'}`,dot:'out'}));
+    // 仅展示本年度业务流水（满足「工作台只显示本年度数据」）
+    const curY=new Date().getFullYear();
+    const inTop=topNBy(inboundRecords.filter(r=>String(r.date||'').startsWith(String(curY))),6,r=>String(r.date||''),r=>({type:'in',date:r.date,title:`入库 ${r.name} ×${r.qty} ${r.unit||''}`,sub:`供应商：${r.supplier||'—'} · 经办 ${r.handler||'—'}`,dot:'in'}));
+    const outTop=topNBy(outboundRecords.filter(r=>String(r.date||'').startsWith(String(curY))),6,r=>String(r.date||''),r=>({type:'out',date:r.date,title:`${r.applicant||'—'} 领用 ${r.name} ×${r.qty} ${r.unit||''}`,sub:`${r.dept||'—'} · ${r.status||'已出库'}`,dot:'out'}));
     const list=inTop.concat(outTop).sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,6);
     const today=monthKey(new Date()); const yest=monthKey(new Date(Date.now()-86400000));
     const fmt=d=>{ if(!d) return '—'; if(d===today) return '今天'; if(d===yest) return '昨天'; const [yy,mm,dd]=String(d).split('-'); return `${mm}-${dd}`; };
@@ -4123,11 +4125,12 @@
   function renderDashboardKPIs(){
     const totalQty=items.reduce((s,i)=>s+(+i.q||0),0);
     const catCount=new Set(items.map(i=>i.c)).size;
-    const now=new Date(); const cur=monthKey(now); const prev=prevMonthKey(cur);
-    const monthInCur=inboundRecords.filter(r=>String(r.date).startsWith(cur)).reduce((s,r)=>s+(+r.qty||0),0);
-    const monthInPrev=inboundRecords.filter(r=>String(r.date).startsWith(prev)).reduce((s,r)=>s+(+r.qty||0),0);
-    const monthOutCur=outboundRecords.filter(r=>String(r.date).startsWith(cur)).reduce((s,r)=>s+(+r.qty||0),0);
-    const monthOutPrev=outboundRecords.filter(r=>String(r.date).startsWith(prev)).reduce((s,r)=>s+(+r.qty||0),0);
+    // 本年度口径：只统计当前自然年（同比上一年），满足「工作台只显示本年度数据」
+    const curY=new Date().getFullYear(), pY=curY-1;
+    const ytdInCur=inboundRecords.filter(r=>String(r.date).startsWith(curY)).reduce((s,r)=>s+(+r.qty||0),0);
+    const ytdInPrev=inboundRecords.filter(r=>String(r.date).startsWith(pY)).reduce((s,r)=>s+(+r.qty||0),0);
+    const ytdOutCur=outboundRecords.filter(r=>String(r.date).startsWith(curY)).reduce((s,r)=>s+(+r.qty||0),0);
+    const ytdOutPrev=outboundRecords.filter(r=>String(r.date).startsWith(pY)).reduce((s,r)=>s+(+r.qty||0),0);
 
     const elCat=document.getElementById('kpiCatCount'); if(elCat) elCat.textContent=catCount+' 类 / '+items.length+' 项';
     const tCat=document.getElementById('kpiCatTrend'); if(tCat){ tCat.textContent=items.length?'— 基于当前库存统计':'— 暂无数据'; tCat.className='trend'; }
@@ -4137,13 +4140,13 @@
 
     setCount('kpiTotalQty',totalQty);
     const tTotal=document.getElementById('kpiTotalTrend'); if(tTotal){ tTotal.textContent=totalQty?'— 实时库存总量':'— 暂无数据'; tTotal.className='trend'; }
-    setCount('kpiMonthIn',monthInCur); setTrend('kpiMonthInTrend',monthInCur,monthInPrev);
-    setCount('kpiMonthOut',monthOutCur); setTrend('kpiMonthOutTrend',monthOutCur,monthOutPrev);
+    setCount('kpiMonthIn',ytdInCur); setTrend('kpiMonthInTrend',ytdInCur,ytdInPrev);
+    setCount('kpiMonthOut',ytdOutCur); setTrend('kpiMonthOutTrend',ytdOutCur,ytdOutPrev);
   }
   // ---- 工作台 KPI 详情弹窗（当年口径：仅统计当前自然年） ----
   function openKpiModal(kpi){
     const year=new Date().getFullYear();
-    const titleMap={cat:'物资品类 · '+year+' 年',qty:'库存总量 · '+year+' 年',in:'本月入库 · '+year+' 年',out:'本月领用 · '+year+' 年'};
+    const titleMap={cat:'物资品类 · '+year+' 年',qty:'库存总量 · '+year+' 年',in:'本年入库 · '+year+' 年',out:'本年领用 · '+year+' 年'};
     const t=document.getElementById('kpiModalTitle'); if(t) t.textContent=titleMap[kpi]||'数据详情';
     const body=document.getElementById('kpiModalBody'); if(!body) return;
     const isYear=r=>String(r.date||'').startsWith(String(year));
@@ -4198,7 +4201,44 @@
   });
   const kpiClose=document.getElementById('kpiModalClose'); if(kpiClose) kpiClose.addEventListener('click',()=>document.getElementById('kpiModal').classList.remove('show'));
   const kpiModal=document.getElementById('kpiModal'); if(kpiModal) kpiModal.addEventListener('click',e=>{ if(e.target.id==='kpiModal') e.target.classList.remove('show'); });
-  let repRange='month';
+  // ---- 工作台 KPI 卡片详情弹窗（点击卡片查看全部，列表统一最多 6 条 + 弹窗看全部） ----
+  function openDashPanel(type){
+    const year=new Date().getFullYear();
+    const titleMap={ alert:'库存预警 · 全部（'+year+' 年）', recent:'最近动态 · 全部（'+year+' 年）', warranty:'质保期预警 · 全部（'+year+' 年）', warrantyOverview:'质保期概览 · 明细（'+year+' 年）' };
+    const t=document.getElementById('dashPanelTitle'); if(t) t.textContent=titleMap[type]||'详情';
+    const body=document.getElementById('dashPanelBody'); if(!body) return;
+    let html='';
+    if(type==='alert'){
+      const list=getLowStock();
+      html = list.length ? '<div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th class="num">当前库存</th><th class="num">安全库存</th><th>状态</th></tr></thead><tbody>'+list.map(it=>{const m=safeMeta(it.c);return '<tr><td>'+escHtml(it.n)+'</td><td><span class="tag '+m.cls+'"><span class="d" style="background:'+m.col+'"></span>'+m.t+'</span></td><td class="num">'+it.q+' '+(it.u||'')+'</td><td class="num">'+it.safe+' '+(it.u||'')+'</td><td>'+alertStatusBadge(it)+'</td></tr>';}).join('')+'</tbody></table></div>' : '<div class="empty">暂无库存预警 🎉</div>';
+    } else if(type==='recent'){
+      const curY=String(year);
+      const arr=[].concat(
+        inboundRecords.filter(r=>String(r.date||'').startsWith(curY)).map(r=>({date:r.date,title:'入库 '+r.name+' ×'+r.qty+' '+(r.unit||''),sub:'供应商：'+(r.supplier||'—')+' · 经办 '+(r.handler||'—'),dot:'in'})),
+        outboundRecords.filter(r=>String(r.date||'').startsWith(curY)).map(r=>({date:r.date,title:(r.applicant||'—')+' 领用 '+r.name+' ×'+r.qty+' '+(r.unit||''),sub:(r.dept||'—')+' · '+(r.status||'已出库'),dot:'out'}))
+      ).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+      html = arr.length ? arr.map(r=>'<div class="tl-item"><div class="tl-dot '+r.dot+'">'+(r.dot==='in'?'⬇️':'⬆️')+'</div><div class="tl-body"><div class="t1">'+escHtml(r.title)+'</div><div class="t2">'+escHtml(r.sub)+'</div></div><div class="tl-time">'+escHtml(String(r.date||'—'))+'</div></div>').join('') : '<div class="empty">本年暂无业务流水</div>';
+    } else if(type==='warranty'){
+      const list=warList();
+      html = list.length ? '<div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th>到期日</th><th class="num">剩余天数</th><th>状态</th></tr></thead><tbody>'+list.map(warRow).join('')+'</tbody></table></div>' : '<div class="empty">暂无临期 / 已过保物资 🎉</div>';
+    } else if(type==='warrantyOverview'){
+      const all=items.filter(i=>i.warranty);
+      const rows=all.map(i=>{const dl=daysLeft(i.expire);const st=wStatus(dl);const m=safeMeta(i.c);return '<tr><td>'+escHtml(i.n)+'</td><td><span class="tag '+m.cls+'"><span class="d" style="background:'+m.col+'"></span>'+m.t+'</span></td><td class="code">'+escHtml(i.expire||'—')+'</td><td class="num">'+(dl===null?'—':dl)+'</td><td><span class="status '+st.cls+'">'+st.txt+'</span></td></tr>';}).join('');
+      html = all.length ? '<div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th>到期日</th><th class="num">剩余天数</th><th>状态</th></tr></thead><tbody>'+rows+'</tbody></table></div>' : '<div class="empty">暂无带质保期的物资</div>';
+    }
+    body.innerHTML=html;
+    document.getElementById('dashPanelModal').classList.add('show');
+  }
+  // 工作台 4 张 KPI 卡片：点击卡片弹窗查看全部（专属「全部处理 / 查看预警窗口」按钮仍走各自弹窗）
+  document.querySelectorAll('#view-dashboard .card[data-panel]').forEach(card=>{
+    card.addEventListener('click',e=>{
+      if(e.target.closest('#processAllAlertBtn')||e.target.closest('#openWarBtn')) return;
+      openDashPanel(card.dataset.panel);
+    });
+  });
+  const dashPanelClose=document.getElementById('dashPanelClose'); if(dashPanelClose) dashPanelClose.addEventListener('click',()=>document.getElementById('dashPanelModal').classList.remove('show'));
+  const dashPanelModal=document.getElementById('dashPanelModal'); if(dashPanelModal) dashPanelModal.addEventListener('click',e=>{ if(e.target.id==='dashPanelModal') e.target.classList.remove('show'); });
+  let repRange='year'; // 默认仅统计本年度数据（满足「统计报表只显示本年度数据」）
   function repPeriodFilter(range){
     const now=new Date();
     if(range==='month'){ const k=monthKey(now); return r=>String(r.date||'').startsWith(k); }
@@ -4252,7 +4292,7 @@
     const subEl=document.getElementById('settingsCatSub'); if(subEl) subEl.textContent='系统当前启用 '+Object.keys(catMeta).length+' 个物资分类';
     listEl.innerHTML=Object.keys(catMeta).map(k=>{ const m=catMeta[k]; const cnt=items.filter(i=>i.c===k).length; return `<div class="rec"><div class="ri" style="color:${m.col}">${m.icon||'📦'}</div><div><div class="rt">${m.t}</div><div class="rs">${m.desc||''} · ${cnt} 项</div></div><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>启用</span></div>`; }).join('');
   }
-  let trendRange='month';
+  let trendRange='year'; // 工作台趋势默认展示本年度 1–12 月（满足「只显示本年度数据」）
   function trendSubText(range){ const map={month:'本月',quarter:'本年度',year:'本年度'}; return (map[range]||'本月')+' · 单位：件'; }
   function updateDashboardCharts(){
     if(typeof window.Chart==='undefined' || !charts.dashboard) return;
@@ -4853,7 +4893,11 @@
   function renderWarranty(){
     const list=warList();
     const wb=document.getElementById('warBody');
-    if(wb) wb.innerHTML = list.length? list.map(warRow).join('') : '<tr><td colspan="5" class="empty">暂无临期 / 已过保物资 🎉</td></tr>';
+    if(wb){
+      const disp=list.slice(0,6); // 统一最多显示 6 条，详情点击卡片弹窗查看
+      if(list.length>6) disp.push('<tr><td colspan="5" class="more-row">… 其余 '+(list.length-6)+' 项，点击卡片查看全部 ›</td></tr>');
+      wb.innerHTML = disp.length? disp.map(warRow).join('') : '<tr><td colspan="5" class="empty">暂无临期 / 已过保物资 🎉</td></tr>';
+    }
     const all=items.filter(i=>i.warranty);
     const ok=all.filter(i=>daysLeft(i.expire)>90).length;
     const near=all.filter(i=>{const d=daysLeft(i.expire);return d!==null&&d<=90&&d>=0;}).length;
@@ -6338,8 +6382,6 @@
   if(safeToggleBtn) safeToggleBtn.addEventListener('click',()=>{
     safeTableHidden=!safeTableHidden; applySafeTableVisibility();
   });
-  const addCat=document.getElementById('addCat');
-  if(addCat) addCat.addEventListener('click',()=>toast('新增分类','info','请在正式版中填写分类信息'));
   /* 盘点入口已改为计划行「开始盘点」按钮，触发 startCheckModal（见 openStartCheck） */
   const allCheck=document.getElementById('allCheckRecords');
   if(allCheck) allCheck.addEventListener('click',()=>{ renderCheckTimeline(); const tl=document.getElementById('checkTimeline'); if(tl) tl.scrollIntoView({behavior:'smooth',block:'center'}); toast('全部记录','info','共 '+checkRecords.length+' 条盘点记录'); });
@@ -6498,16 +6540,16 @@
   function renderAlerts(){
     const body=document.getElementById('alertBody'); if(!body) return;
     const list=getLowStock();
-    body.innerHTML=list.length? list.map((it,idx)=>{
-      const m=safeMeta(it.c);
-      return '<tr class="'+(it.processed?'row-done':'')+'" data-alert="'+idx+'">'
+    const rows=list.map((it,idx)=>{ const m=safeMeta(it.c); return '<tr class="'+(it.processed?'row-done':'')+'" data-alert="'+idx+'">'
         +'<td>'+escHtml(it.n)+'</td>'
         +'<td><span class="tag '+m.cls+'"><span class="d" style="background:'+m.col+'"></span>'+m.t+'</span></td>'
         +'<td class="num">'+it.q+' '+(it.u||'')+'</td>'
         +'<td class="num">'+it.safe+' '+(it.u||'')+'</td>'
         +'<td>'+alertStatusBadge(it)+'</td>'
-        +'</tr>';
-    }).join('') : '<tr><td colspan="5" class="empty">暂无库存预警 🎉</td></tr>';
+        +'</tr>'; });
+    const disp=rows.slice(0,6); // 统一最多显示 6 条，详情点击卡片弹窗查看
+    if(list.length>6) disp.push('<tr><td colspan="5" class="more-row">… 其余 '+(list.length-6)+' 项，点击卡片查看全部 ›</td></tr>');
+    body.innerHTML = disp.length? disp.join('') : '<tr><td colspan="5" class="empty">暂无库存预警 🎉</td></tr>';
     const btn=document.getElementById('processAllAlertBtn');
     if(btn){ const remaining=list.filter(i=>!i.processed).length; if(remaining===0){ btn.textContent='已全部处理 ✓'; btn.classList.add('done'); } else { btn.textContent='全部处理'; btn.classList.remove('done'); } }
   }
