@@ -573,9 +573,6 @@
   /* plan-meta（计数）：32px 行内垂直居中 · 单行不换行 */
   #view-inventory .toolbar.inv-toolbar .plan-meta,
   .data-toolbar .plan-meta{flex:0 0 auto;white-space:nowrap;margin-top:0;align-self:center;font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis}
-  /* 归档年份胶囊条 */
-  .arch-year-bar{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
-  .arch-year-bar .arch-hint{font-size:11.5px;color:var(--ink-3)}
   /* 工具栏右侧操作按钮组 */
   .toolbar-actions{display:flex;align-items:center;gap:6px;margin-left:auto;padding-left:2px;flex:0 0 auto}
   .toolbar-actions .btn{height:32px;padding:0 12px;border-radius:9px;font-size:12px;font-weight:600;gap:4px;white-space:nowrap;flex:0 0 auto;line-height:1}
@@ -604,6 +601,13 @@
   .arch-year-card .ay-badge.arch{background:rgba(46,204,113,.18);color:#2ecc71}
   .arch-year-card .ay-badge.live{background:rgba(255,159,67,.18);color:#ff9f43}
   .arch-year-card .ay-count{margin-top:3px;font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  /* 历史归档：年份统一跟随工具栏胶囊 · 上下文提示条与统计网格 */
+  .kp-context{display:flex;align-items:center;gap:8px;font-size:12px;line-height:1.4;color:var(--ink-2);background:rgba(91,140,255,.07);border:1px solid rgba(91,140,255,.18);border-radius:10px;padding:9px 12px;margin-bottom:12px}
+  .kp-context-ico{flex:0 0 auto;font-size:13px;line-height:1}
+  .arch-stats{grid-template-columns:repeat(3,1fr)}
+  .kp-row-4{grid-template-columns:repeat(4,1fr)}
+  .arch-yearlist{gap:10px}
+  [data-theme="light"] .kp-context{background:rgba(91,140,255,.06);border-color:rgba(91,140,255,.22);color:#3f4a5e}
   [data-theme="light"] .arch-year-card{background:rgba(255,255,255,.6)}
   [data-theme="light"] .arch-year-card .ay-year{color:#1d2433}
   .data-toolbar .search{flex:0 0 180px;min-width:180px;max-width:180px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:9px;padding:0 10px;height:32px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color .18s,box-shadow .18s,background-color .18s}
@@ -1568,6 +1572,7 @@
                   </div>
                 </div>
                 <div class="kp-body">
+                  <div class="kp-context" id="carryoverCtx"></div>
                   <div id="carryoverPreview" class="carryover-preview kp-content"></div>
                   <div class="kp-foot">
                     <button class="btn btn-primary" id="btnCarryover" data-perm="login">执行年度结转</button>
@@ -1588,21 +1593,13 @@
                   </div>
                   <div class="kp-body">
                     <div class="kp-content">
-                      <div class="kp-row" style="grid-template-columns:minmax(140px,0.75fr) 1fr">
-                        <div class="kp-field">
-                          <label>选择年度（年份胶囊切换 · 未结转年度也可实时查看与下载）</label>
-                          <div class="arch-year-bar">
-                            <select id="archYearSelect" class="year-select" title="归档年度：年份胶囊切换"></select>
-                            <span class="arch-hint">未结转年度也可实时查看与下载</span>
-                          </div>
-                          <div class="arch-yearlist" id="archYearList"></div>
-                        </div>
-                        <div class="kp-stats" id="archiveStats">
-                          <div class="kp-stat"><span class="kp-stat-v" id="akStatYears">0</span><span class="kp-stat-l">已归档年度</span></div>
-                          <div class="kp-stat"><span class="kp-stat-v" id="akStatRecs">0</span><span class="kp-stat-l">出入库流水</span></div>
-                        </div>
+                      <div class="kp-context">
+                        <span class="kp-context-ico">🗓️</span>
+                        <span>年度跟随顶部工具栏「数据年份」胶囊切换 · 未结转年度也可实时查看与下载</span>
                       </div>
-                      <div id="archiveKpis" class="kp-row"></div>
+                      <div class="arch-yearlist" id="archYearList"></div>
+                      <div class="kp-stats arch-stats" id="archiveStats"></div>
+                      <div id="archiveKpis" class="kp-row kp-row-4"></div>
                     </div>
                     <div class="kp-foot">
                       <button class="btn btn-ghost" id="exportArchiveBtn" disabled>⬇ Excel</button>
@@ -4979,13 +4976,12 @@
   });
   document.getElementById('downloadAll').addEventListener('click',downloadAll);
   const _vys=document.getElementById('viewYearSelect');
-  if(_vys) _vys.addEventListener('change',()=>{ viewYear=+_vys.value||new Date().getFullYear(); dateRange={from:null,to:null}; syncDateInputs(); dataPage.in=0; dataPage.out=0; renderDataTables(); });
+  if(_vys) _vys.addEventListener('change',()=>{ viewYear=+_vys.value||new Date().getFullYear(); archViewYear=viewYear; dateRange={from:null,to:null}; syncDateInputs(); dataPage.in=0; dataPage.out=0; renderDataTables(); renderCarryoverCard(); if(activeDataTab==='archive') renderArchive(); });
   const _drF=document.getElementById('dataFrom'), _drT=document.getElementById('dataTo'), _drC=document.getElementById('dataDateClear');
   if(_drF) _drF.addEventListener('change',()=>{ dateRange.from=_drF.value||null; dataPage.in=0; dataPage.out=0; renderDataTables(); });
   if(_drT) _drT.addEventListener('change',()=>{ dateRange.to=_drT.value||null; dataPage.in=0; dataPage.out=0; renderDataTables(); });
   if(_drC) _drC.addEventListener('click',()=>{ dateRange={from:null,to:null}; syncDateInputs(); const s=document.getElementById('dataSearch'); if(s) s.value=''; dataSearchKeyword=''; dataPage.in=0; dataPage.out=0; renderDataTables(); });
-  const _ays=document.getElementById('archYearSelect');
-  if(_ays) _ays.addEventListener('change',()=>{ archViewYear=+_ays.value||new Date().getFullYear(); renderArchive(); });
+  // 年度归档年份统一跟随顶部工具栏「数据年份」胶囊（archViewYear 已与 viewYear 同步），不再保留独立胶囊
   document.getElementById('recModalClose').addEventListener('click',()=>document.getElementById('recModal').classList.remove('show'));
   document.getElementById('recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') document.getElementById('recModal').classList.remove('show'); });
   document.getElementById('recModalDownload').addEventListener('click',()=>{ if(currentRec) downloadRec(currentRec.type,currentRec.idx); });
@@ -5042,6 +5038,8 @@
   }
   function renderCarryoverCard(){
     const el=document.getElementById('carryoverPreview'); if(!el) return;
+    const ctx=document.getElementById('carryoverCtx');
+    if(ctx) ctx.innerHTML='<span class="kp-context-ico">🗓️</span><span>当前数据年份：'+viewYear+' 年 · 结转将归档全部历史年度流水</span>';
     const btn=document.getElementById('btnCarryover'); const msg=document.getElementById('carryoverMsg');
     const s=carryoverStats(); const label=carryoverYearsLabel();
     const yb=carryoverYearBreakdown();
@@ -5186,14 +5184,9 @@
         const badge=vm.fromArch?'<span class="ay-badge arch">已封存</span>':(y===cur?'<span class="ay-badge cur">本年</span>':'<span class="ay-badge live">未结转</span>');
         return `<div class="arch-year-card${+y===+archViewYear?' active':''}" data-arch-year="${y}" title="${y} 年 · ${n} 笔流水"><div class="ay-year">${y}</div>${badge}<div class="ay-count">${n} 笔</div></div>`;
       }).join('');
-      list.querySelectorAll('[data-arch-year]').forEach(el=>el.addEventListener('click',()=>{ archViewYear=+el.dataset.archYear; const _as=document.getElementById('archYearSelect'); if(_as) _as.value=String(archViewYear); renderArchive(); }));
+      list.querySelectorAll('[data-arch-year]').forEach(el=>el.addEventListener('click',()=>{ archViewYear=+el.dataset.archYear; viewYear=archViewYear; const _vys2=document.getElementById('viewYearSelect'); if(_vys2) _vys2.value=String(archViewYear); renderArchive(); renderCarryoverCard(); }));
     }
-    const asel=document.getElementById('archYearSelect');
-    if(asel){
-      if(ys.indexOf(+archViewYear)<0) archViewYear=ys[0];
-      asel.innerHTML=ys.map(y=>`<option value="${y}">${y}</option>`).join('');
-      asel.value=String(archViewYear);
-    }
+    // 年度归档年份由顶部工具栏「数据年份」胶囊统一驱动（archViewYear 已与 viewYear 同步），此处不再重建独立胶囊
     const ov=document.getElementById('archiveOverview');
     if(ov && !archivedRecords.length) ov.innerHTML='<div class="ao-empty">暂无已封存年度 · 执行「年度数据结转」后按年度归类展示（未结转年度仍可实时查看与下载）</div>';
     const totalArch=archivedRecords.length;
