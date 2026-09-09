@@ -484,26 +484,42 @@
   .date-range .dr-clear{min-width:auto;padding:5px 10px;font-size:12px;height:28px}
   [data-theme="light"] .date-range{background:rgba(255,255,255,.6)}
   [data-theme="light"] .date-range .dr-input{background:rgba(255,255,255,.7);color:var(--ink);color-scheme:light}
-  /* 库存管理工具栏：所有控件单行（不裁切 chip） */
-  #view-inventory .toolbar.inv-toolbar{flex-wrap:wrap;overflow:visible;row-gap:8px;gap:10px;padding:12px 18px 14px}
-  #view-inventory .toolbar.inv-toolbar .chips{flex:0 0 auto;display:flex;flex-wrap:nowrap;gap:4px;flex-shrink:0;align-items:center;margin:0}
-  #view-inventory .toolbar.inv-toolbar .chips .chip{padding:5px 9px;font-size:11.5px;flex:0 0 auto;margin:0;white-space:nowrap}
-  #view-inventory .toolbar.inv-toolbar .search{margin-left:0;width:180px;flex:0 0 180px;max-width:180px;padding:5px 9px;font-size:12px;border-radius:9px}
-  #view-inventory .toolbar.inv-toolbar .search input{font-size:12px}
-  #view-inventory .toolbar.inv-toolbar .year-select{height:28px;font-size:11.5px;max-width:96px;padding:0 7px;border-radius:8px}
-  #view-inventory .toolbar.inv-toolbar .date-range{padding:2px 5px 2px 7px;gap:3px;border-radius:9px}
-  #view-inventory .toolbar.inv-toolbar .date-range .dr-input{width:120px;height:24px;font-size:11px;padding:0 4px;border-radius:6px}
-  #view-inventory .toolbar.inv-toolbar .date-range .dr-clear{padding:2px 7px;font-size:11px;height:24px;border-radius:6px}
-  #view-inventory .toolbar.inv-toolbar .date-range .dr-sep{font-size:11px}
-  #view-inventory .toolbar.inv-toolbar .date-range .dr-ico{font-size:12px}
-  #view-inventory .toolbar.inv-toolbar .plan-meta{flex:0 0 auto;white-space:nowrap;margin-top:0;align-self:center;font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis}
-  /* 数据管理工具栏：同样紧凑化 + search 取消 margin-left:auto */
-  .data-toolbar .search{margin-left:0;width:180px;flex:0 0 180px;max-width:180px;padding:5px 9px;font-size:12px;border-radius:9px}
+  /* ===== R55 工具栏控件统一高度标准（= 32px · 与 .btn 同行） ===== */
+  #view-inventory .toolbar.inv-toolbar,
+  .data-toolbar{flex-wrap:nowrap;overflow:visible;gap:9px;padding:10px 18px 12px;align-items:center}
+  /* year-select：单行 · 32px · chip 一致 */
+  #view-inventory .toolbar.inv-toolbar .year-select,
+  .data-toolbar .year-select{height:32px;width:auto;min-width:84px;font-size:12px;padding:0 26px 0 10px;border-radius:9px;background-position:right 8px center}
+  /* search 容器：32px 高 · 与控件齐平 */
+  #view-inventory .toolbar.inv-toolbar .search,
+  .data-toolbar .search{margin-left:0;height:32px;width:180px;flex:0 0 180px;max-width:180px;padding:0 10px;font-size:12px;border-radius:9px;gap:6px}
+  #view-inventory .toolbar.inv-toolbar .search input,
   .data-toolbar .search input{font-size:12px}
-  .data-toolbar .year-select{height:28px;font-size:11.5px;max-width:96px;padding:0 7px;border-radius:8px}
-  .data-toolbar .date-range{padding:2px 5px 2px 7px;gap:3px;border-radius:9px}
-  .data-toolbar .date-range .dr-input{width:120px;height:24px;font-size:11px;padding:0 4px;border-radius:6px}
-  .data-toolbar .date-range .dr-clear{padding:2px 7px;font-size:11px;height:24px;border-radius:6px}
+  /* chips：单行 32px 标准 */
+  #view-inventory .toolbar.inv-toolbar .chips{flex:0 0 auto;display:flex;flex-wrap:nowrap;gap:5px;flex-shrink:0;align-items:center;margin:0}
+  #view-inventory .toolbar.inv-toolbar .chips .chip{padding:6px 12px;font-size:12px;flex:0 0 auto;margin:0;white-space:nowrap;height:32px;display:inline-flex;align-items:center;border-radius:9px}
+  /* 日期范围控件：与控件齐 32px */
+  #view-inventory .toolbar.inv-toolbar .date-range,
+  .data-toolbar .date-range{padding:3px 9px 3px 10px;gap:5px;border-radius:9px;height:32px;align-items:center}
+  #view-inventory .toolbar.inv-toolbar .date-range .dr-input,
+  .data-toolbar .date-range .dr-input{width:120px;height:24px;font-size:11.5px;padding:0 6px;border-radius:6px;line-height:24px}
+  #view-inventory .toolbar.inv-toolbar .date-range .dr-clear,
+  .data-toolbar .date-range .dr-clear{padding:3px 10px;font-size:12px;height:32px;border-radius:7px}
+  #view-inventory .toolbar.inv-toolbar .date-range .dr-sep{font-size:12px;align-self:center}
+  #view-inventory .toolbar.inv-toolbar .date-range .dr-ico{font-size:13px;align-self:center;line-height:1}
+  /* ===== R55 日期占位符：中文格式 xxxx年xx月xx日 ===== */
+  .di-wrap{position:relative;display:inline-flex;align-items:center}
+  .di-wrap{position:relative;display:inline-flex;align-items:center;z-index:1}
+  .di-wrap .di-ph{position:absolute;left:6px;top:50%;transform:translateY(-50%);color:var(--ink-3);font-size:11px;pointer-events:none;letter-spacing:0;opacity:1;z-index:2;transition:opacity .15s var(--ease)}
+  .di-wrap.is-filled .di-ph,
+  .di-wrap input:focus + .di-ph{opacity:0 !important}
+  /* 隐藏 type=date 默认的 yyyy/mm/dd 文本 · 空状态显示自定义 xxxx年xx月xx日 */
+  .di-wrap input[type="date"]::-webkit-datetime-edit{color:transparent;background:transparent}
+  .di-wrap.is-filled input[type="date"]::-webkit-datetime-edit{color:var(--ink)}
+  [data-theme="light"] .di-wrap .di-ph{color:#7d88a5}
+  /* plan-meta（计数）：32px 行内垂直居中 · 单行不换行 */
+  #view-inventory .toolbar.inv-toolbar .plan-meta,
+  .data-toolbar .plan-meta{flex:0 0 auto;white-space:nowrap;margin-top:0;align-self:center;font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis}
   /* 归档年份胶囊条 */
   .arch-year-bar{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
   .arch-year-bar .arch-hint{font-size:11.5px;color:var(--ink-3)}
@@ -537,13 +553,13 @@
   .arch-year-card .ay-count{margin-top:3px;font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
   [data-theme="light"] .arch-year-card{background:rgba(255,255,255,.6)}
   [data-theme="light"] .arch-year-card .ay-year{color:#1d2433}
-  .data-toolbar .search{flex:1;min-width:220px;max-width:380px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:11px;padding:0 12px;height:36px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color .18s,box-shadow .18s,background-color .18s}
+  .data-toolbar .search{flex:0 0 180px;min-width:180px;max-width:180px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:9px;padding:0 10px;height:32px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color .18s,box-shadow .18s,background-color .18s}
   .data-toolbar .search:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.15);background:rgba(255,255,255,.09)}
-  .data-toolbar .search input{border:none;background:none;outline:none;font-family:var(--font);font-size:13px;width:100%;color:var(--ink)}
+  .data-toolbar .search input{border:none;background:none;outline:none;font-family:var(--font);font-size:12px;width:100%;color:var(--ink)}
   .data-toolbar .search input::placeholder{color:var(--ink-3)}
-  .toolbar .inv-search{flex:1;min-width:220px;max-width:380px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:11px;padding:0 12px;height:36px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font-size:13px;color:var(--ink-3);transition:border-color .18s,box-shadow .18s,background-color .18s}
+  .toolbar .inv-search{flex:0 0 180px;min-width:180px;max-width:180px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:9px;padding:0 10px;height:32px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font-size:12px;color:var(--ink-3);transition:border-color .18s,box-shadow .18s,background-color .18s}
   .toolbar .inv-search:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.15);background:rgba(255,255,255,.09)}
-  .toolbar .inv-search input{border:none;background:none;outline:none;font-family:var(--font);font-size:13px;width:100%;color:var(--ink)}
+  .toolbar .inv-search input{border:none;background:none;outline:none;font-family:var(--font);font-size:12px;width:100%;color:var(--ink)}
   .toolbar .inv-search input::placeholder{color:var(--ink-3)}
   .lnk{color:#9db4ff;font-weight:400;cursor:pointer;font-size:12px}
   .lnk:hover{text-decoration:underline;text-shadow:0 0 10px rgba(91,140,255,.5)}
@@ -817,10 +833,10 @@
   .archive-toolbar label{font-size:13px;color:var(--ink-3)}
   .btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.35);box-shadow:none!important}
   .note.ok{color:var(--success)}
-  .tabs{padding:3px;border-radius:10px}
-  .tab{padding:6px 14px;border-radius:7px;font-size:12px}
-  #dataTabs{align-self:stretch;display:flex;align-items:center}
-  #dataTabs .tab{padding:8px 16px}
+  .tabs{padding:2px;border-radius:10px}
+  .tab{padding:5px 13px;border-radius:7px;font-size:12px;white-space:nowrap;height:24px;display:inline-flex;align-items:center}
+  #dataTabs{align-self:center;display:flex;align-items:center;flex:0 0 auto}
+  #dataTabs .tab{padding:5px 13px;white-space:nowrap;height:24px}
   .modal-mask{position:fixed;inset:0;background:rgba(20,26,44,.28);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:2000;padding:20px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .25s ease,visibility .25s ease}
   .modal-mask.show{opacity:1;visibility:visible;pointer-events:auto}
   .modal{background:linear-gradient(160deg,rgba(22,30,54,.76),rgba(14,20,38,.76));border:1px solid var(--line);border-radius:18px;width:min(var(--mw,560px), calc(100vw - 40px));max-height:86vh;overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);color:var(--ink);transform:translateY(14px) scale(.96);opacity:0;transition:transform .3s cubic-bezier(.2,.85,.25,1),opacity .3s ease}
@@ -1227,7 +1243,7 @@
             <div class="search inv-search" id="invSearchWrap">🔍<input id="invSearch" placeholder="搜索讯号 / 物资名称 / 规格 / 状态…" /></div>
             <div class="date-range" id="invDateRange">
               <span class="dr-ico">📅</span>
-              <input type="date" id="invFrom" class="dr-input" title="起始日期" /><span class="dr-sep">至</span><input type="date" id="invTo" class="dr-input" title="截止日期" /><button class="btn btn-ghost dr-clear" id="invDateClear" type="button">清空</button>
+              <span class="di-wrap"><input type="date" id="invFrom" class="dr-input" title="起始日期" data-ph="起始日期" /><span class="di-ph">xxxx年xx月xx日</span></span><span class="dr-sep">至</span><span class="di-wrap"><input type="date" id="invTo" class="dr-input" title="截止日期" data-ph="截止日期" /><span class="di-ph">xxxx年xx月xx日</span></span><button class="btn btn-ghost dr-clear" id="invDateClear" type="button">清空</button>
             </div>
             <span class="plan-meta" id="invCount"></span>
             <div class="toolbar-actions">
@@ -1452,7 +1468,7 @@
             <div class="search">🔍<input id="dataSearch" placeholder="搜索单号 / 物资名称 / 供应商 / 领用人，或日期范围「2026年1月1日至2026年12月31日」…" /></div>
             <div class="date-range" id="dataDateRange">
               <span class="dr-ico">📅</span>
-              <input type="date" id="dataFrom" class="dr-input" title="起始日期" /><span class="dr-sep">至</span><input type="date" id="dataTo" class="dr-input" title="截止日期" /><button class="btn btn-ghost dr-clear" id="dataDateClear" type="button">清空</button>
+              <span class="di-wrap"><input type="date" id="dataFrom" class="dr-input" title="起始日期" data-ph="起始日期" /><span class="di-ph">xxxx年xx月xx日</span></span><span class="dr-sep">至</span><span class="di-wrap"><input type="date" id="dataTo" class="dr-input" title="截止日期" data-ph="截止日期" /><span class="di-ph">xxxx年xx月xx日</span></span><button class="btn btn-ghost dr-clear" id="dataDateClear" type="button">清空</button>
             </div>
             <span class="plan-meta" id="dataCount"></span>
             <div class="toolbar-actions">
@@ -2685,6 +2701,25 @@
   if(_ifd) _ifd.addEventListener('change',()=>{ invDateRange.from=_ifd.value||null; invPage=0; const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); });
   if(_itd) _itd.addEventListener('change',()=>{ invDateRange.to=_itd.value||null; invPage=0; const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); });
   if(_icd) _icd.addEventListener('click',()=>{ invDateRange={from:null,to:null}; syncInvDateInputs(); invPage=0; const ac=document.querySelector('#invChips .chip.active'); renderInv(ac?ac.dataset.cat:'all'); });
+
+  // ---- R55 日期占位符中文化：监听 input 事件切换 .di-wrap.is-filled ----
+  function syncDatePlaceholder(input){
+    const wrap=input&&input.parentElement;
+    if(!wrap||!wrap.classList.contains('di-wrap'))return;
+    if(input.value)wrap.classList.add('is-filled');else wrap.classList.remove('is-filled');
+  }
+  ['invFrom','invTo','dataFrom','dataTo'].forEach(id=>{
+    const _el=document.getElementById(id);
+    if(!_el)return;
+    syncDatePlaceholder(_el);
+    _el.addEventListener('change',()=>syncDatePlaceholder(_el));
+    _el.addEventListener('input',()=>syncDatePlaceholder(_el));
+  });
+  // 清空时同步刷新 placeholder
+  const _icd2=document.getElementById('invDateClear');
+  if(_icd2) _icd2.addEventListener('click',()=>{ const _f=document.getElementById('invFrom'),_t=document.getElementById('invTo'); syncDatePlaceholder(_f); syncDatePlaceholder(_t); });
+  const _dcd2=document.getElementById('dataDateClear');
+  if(_dcd2) _dcd2.addEventListener('click',()=>{ const _f=document.getElementById('dataFrom'),_t=document.getElementById('dataTo'); syncDatePlaceholder(_f); syncDatePlaceholder(_t); });
 
   // ---- 盘点管理 ----
   let checkItems=items.map(i=>({n:i.n,c:i.c,u:i.u,sys:i.q,real:i.q}));
