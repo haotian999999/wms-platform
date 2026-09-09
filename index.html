@@ -471,25 +471,49 @@
   /* 去底部翻页：按用户要求移除表格底部分页器，所有行一次性渲染 */
   .data-pager{display:none !important}
   /* ===== R43V2 年份隔离 UI（紧凑下拉 / 日期范围 / 归档年度卡片） ===== */
-  .year-select{height:34px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.12);color:var(--ink);font-size:12.5px;font-family:var(--font);outline:none;cursor:pointer;transition:all .18s;max-width:132px;flex:0 0 auto}
-  .year-select:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(91,140,255,.15)}
-  [data-theme="light"] .year-select{background:rgba(255,255,255,.7);color:var(--ink)}
+  /* ===== R57 年份胶囊：全站统一紧凑胶囊（32px 高 · 78px 宽 · 9px 圆角） ===== */
+  .year-select{
+    height:32px;width:78px;min-width:78px;max-width:78px;padding:0 22px 0 10px;border-radius:9px;
+    border:1.5px solid var(--line);background:rgba(0,0,0,.12);color:var(--ink);font-size:12px;font-weight:600;
+    font-family:var(--font);font-variant-numeric:tabular-nums;outline:none;cursor:pointer;transition:all .18s;flex:0 0 auto;
+    appearance:none;-webkit-appearance:none;-moz-appearance:none;text-align:left;
+    background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23aab4cc' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 8px center;background-size:10px 6px;
+  }
+  .year-select:hover{border-color:rgba(91,140,255,.55);background-color:rgba(91,140,255,.08)}
+  .year-select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.15)}
+  /* 归档胶囊位于 .kp-field 内：避免 .kp-field select{height:36px;width:100%} 覆盖 */
+  .kp-field .year-select{height:32px;width:78px;min-width:78px;max-width:78px}
+  [data-theme="light"] .year-select{
+    background-color:rgba(255,255,255,.7);color:var(--ink);
+    background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235d6883' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
   /* 日期范围搜索：统一一体美观 UI */
-  .date-range{display:flex;align-items:center;gap:6px;flex:0 0 auto;background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:11px;padding:3px 7px 3px 10px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color .18s,box-shadow .18s}
+  /* ===== R57 日期筛选胶囊：标准区间选择器（32px 高 · 9px 圆角 · 内联无边框日期字段） ===== */
+  .date-range{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;box-sizing:border-box;background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:9px;padding:0 5px 0 10px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color .18s,box-shadow .18s,background-color .18s}
+  .date-range:hover{border-color:rgba(91,140,255,.5);background:rgba(255,255,255,.08)}
   .date-range:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,140,255,.15)}
-  .date-range .dr-ico{font-size:13px;opacity:.72;flex:0 0 auto;line-height:1}
-  .date-range .dr-input{height:28px;padding:0 7px;border:1px solid var(--line);border-radius:8px;background:rgba(0,0,0,.18);color:var(--ink);font-size:12px;font-family:var(--font);outline:none;color-scheme:dark}
-  .date-range .dr-input:focus{border-color:var(--primary)}
-  .date-range .dr-sep{font-size:12px;color:var(--ink-3);flex:0 0 auto}
-  .date-range .dr-clear{min-width:auto;padding:5px 10px;font-size:12px;height:28px}
+  .date-range .dr-ico{font-size:12px;opacity:.7;flex:0 0 auto;line-height:1}
+  .date-range .dr-input{width:96px;height:24px;padding:0 6px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--ink);font-size:11.5px;font-variant-numeric:tabular-nums;font-family:var(--font);outline:none;color-scheme:dark;transition:background-color .18s,border-color .18s}
+  .date-range .dr-input:hover{background:rgba(255,255,255,.07)}
+  .date-range .dr-input:focus{background:rgba(91,140,255,.12);border-color:rgba(91,140,255,.45)}
+  .date-range .dr-sep{font-size:11px;color:var(--ink-3);flex:0 0 auto;padding:0 1px}
+  .date-range .dr-clear{min-width:auto;width:22px;height:22px;flex:0 0 22px;padding:0;font-size:11px;line-height:1;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;color:var(--ink-3)}
+  .date-range .dr-clear:hover{color:#fff;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18)}
   [data-theme="light"] .date-range{background:rgba(255,255,255,.6)}
-  [data-theme="light"] .date-range .dr-input{background:rgba(255,255,255,.7);color:var(--ink);color-scheme:light}
+  [data-theme="light"] .date-range:hover{background:rgba(255,255,255,.85)}
+  [data-theme="light"] .date-range .dr-input{color:var(--ink);color-scheme:light}
+  [data-theme="light"] .date-range .dr-input:hover{background:rgba(0,0,0,.05)}
+  [data-theme="light"] .date-range .dr-clear:hover{color:#1d2433;background:rgba(0,0,0,.06)}
   /* ===== R55 工具栏控件统一高度标准（= 32px · 与 .btn 同行） ===== */
+  /* ===== R57 工具栏统一 60px 标准高度（所有界面一致） ===== */
   #view-inventory .toolbar.inv-toolbar,
-  .data-toolbar{flex-wrap:nowrap;overflow:visible;gap:8px;padding:10px 18px 12px;align-items:center}
+  .data-toolbar{flex-wrap:nowrap;overflow:visible;gap:8px;padding:0 18px;align-items:center;height:60px;min-height:60px;max-height:60px;flex:0 0 60px;box-sizing:border-box}
+  #view-inventory .toolbar.inv-toolbar > *,
+  .data-toolbar > *{flex:0 0 auto}
   /* year-select：单行 · 32px · chip 一致 */
   #view-inventory .toolbar.inv-toolbar .year-select,
-  .data-toolbar .year-select{height:32px;width:auto;min-width:76px;font-size:12px;padding:0 22px 0 9px;border-radius:9px;background-position:right 7px center}
+  .data-toolbar .year-select{height:32px;width:78px;min-width:78px;max-width:78px;font-size:12px;padding:0 22px 0 10px;border-radius:9px;background-position:right 8px center}
   /* search 容器：32px 高 · 与控件齐平 */
   #view-inventory .toolbar.inv-toolbar .search,
   .data-toolbar .search{margin-left:0;height:32px;width:156px;flex:0 0 156px;max-width:156px;padding:0 10px;font-size:12px;border-radius:9px;gap:6px}
@@ -501,11 +525,11 @@
   #view-inventory .toolbar.inv-toolbar .chips .chip .d{width:6px;height:6px;flex:0 0 6px}
   /* 日期范围控件：与控件齐 32px */
   #view-inventory .toolbar.inv-toolbar .date-range,
-  .data-toolbar .date-range{padding:3px 7px 3px 9px;gap:4px;border-radius:9px;height:32px;align-items:center}
+  .data-toolbar .date-range{padding:0 5px 0 10px;gap:6px;border-radius:9px;height:32px;align-items:center}
   #view-inventory .toolbar.inv-toolbar .date-range .dr-input,
-  .data-toolbar .date-range .dr-input{width:104px;height:24px;font-size:11.5px;padding:0 6px;border-radius:6px;line-height:24px}
+  .data-toolbar .date-range .dr-input{width:96px;height:24px;font-size:11.5px;padding:0 6px;border-radius:7px;line-height:24px}
   #view-inventory .toolbar.inv-toolbar .date-range .dr-clear,
-  .data-toolbar .date-range .dr-clear{padding:3px 9px;font-size:12px;height:32px;border-radius:7px}
+  .data-toolbar .date-range .dr-clear{width:22px;height:22px;flex:0 0 22px;padding:0;font-size:11px;border-radius:7px}
   #view-inventory .toolbar.inv-toolbar .date-range .dr-sep{font-size:11px;align-self:center;margin:0 1px}
   #view-inventory .toolbar.inv-toolbar .date-range .dr-ico{font-size:12px;align-self:center;line-height:1}
   /* ===== R55 日期占位符：中文格式 xxxx年xx月xx日 ===== */
@@ -1244,7 +1268,7 @@
             <div class="search inv-search" id="invSearchWrap">🔍<input id="invSearch" placeholder="搜索讯号 / 物资名称 / 规格 / 状态…" /></div>
             <div class="date-range" id="invDateRange">
               <span class="dr-ico">📅</span>
-              <span class="di-wrap"><input type="date" id="invFrom" class="dr-input" title="起始日期" data-ph="起始日期" /><span class="di-ph">xxxx年xx月xx日</span></span><span class="dr-sep">至</span><span class="di-wrap"><input type="date" id="invTo" class="dr-input" title="截止日期" data-ph="截止日期" /><span class="di-ph">xxxx年xx月xx日</span></span><button class="btn btn-ghost dr-clear" id="invDateClear" type="button">清空</button>
+              <span class="di-wrap"><input type="date" id="invFrom" class="dr-input" title="起始日期" data-ph="起始日期" /><span class="di-ph">xxxx年xx月xx日</span></span><span class="dr-sep">至</span><span class="di-wrap"><input type="date" id="invTo" class="dr-input" title="截止日期" data-ph="截止日期" /><span class="di-ph">xxxx年xx月xx日</span></span><button class="btn btn-ghost dr-clear" id="invDateClear" type="button" title="清空日期筛选" aria-label="清空日期筛选">✕</button>
             </div>
             <span class="plan-meta" id="invCount"></span>
             <div class="toolbar-actions">
@@ -1455,10 +1479,6 @@
       <!-- ============ 数据管理 ============ -->
       <section class="view" id="view-data">
         <div class="card">
-          <div class="panel-head">
-            <div><h3>数据管理 · 后台数据记录</h3></div>
-          </div>
-
           <div class="data-toolbar">
             <div class="tabs" id="dataTabs">
               <button class="tab active" data-tab="in">入库记录</button>
@@ -1469,7 +1489,7 @@
             <div class="search">🔍<input id="dataSearch" placeholder="搜索单号 / 物资名称 / 供应商 / 领用人，或日期范围「2026年1月1日至2026年12月31日」…" /></div>
             <div class="date-range" id="dataDateRange">
               <span class="dr-ico">📅</span>
-              <span class="di-wrap"><input type="date" id="dataFrom" class="dr-input" title="起始日期" data-ph="起始日期" /><span class="di-ph">xxxx年xx月xx日</span></span><span class="dr-sep">至</span><span class="di-wrap"><input type="date" id="dataTo" class="dr-input" title="截止日期" data-ph="截止日期" /><span class="di-ph">xxxx年xx月xx日</span></span><button class="btn btn-ghost dr-clear" id="dataDateClear" type="button">清空</button>
+              <span class="di-wrap"><input type="date" id="dataFrom" class="dr-input" title="起始日期" data-ph="起始日期" /><span class="di-ph">xxxx年xx月xx日</span></span><span class="dr-sep">至</span><span class="di-wrap"><input type="date" id="dataTo" class="dr-input" title="截止日期" data-ph="截止日期" /><span class="di-ph">xxxx年xx月xx日</span></span><button class="btn btn-ghost dr-clear" id="dataDateClear" type="button" title="清空日期筛选" aria-label="清空日期筛选">✕</button>
             </div>
             <span class="plan-meta" id="dataCount"></span>
             <div class="toolbar-actions">
@@ -2669,7 +2689,7 @@
     const sel=document.getElementById('invYearSelect'); if(!sel) return;
     const ys=yearList();
     if(invViewYear!=='all' && ys.indexOf(+invViewYear)<0) invViewYear='all';
-    sel.innerHTML=`<option value="all">全部年份</option>`+ys.map(y=>`<option value="${y}">${y} 年</option>`).join('');
+    sel.innerHTML=`<option value="all">全部</option>`+ys.map(y=>`<option value="${y}">${y}</option>`).join('');
     sel.value=String(invViewYear);
   }
   function syncInvDateInputs(){
@@ -2893,7 +2913,7 @@
     const sel=document.getElementById('planYearSelect'); if(!sel) return;
     const ys=planYearList(); const cur=new Date().getFullYear();
     if(ys.indexOf(+planViewYear)<0) planViewYear=ys[0];
-    sel.innerHTML=ys.map(y=>`<option value="${y}">${y} 年</option>`).join('');
+    sel.innerHTML=ys.map(y=>`<option value="${y}">${y}</option>`).join('');
     sel.value=String(planViewYear);
   }
   function renderPlanQuarter(){
@@ -4485,7 +4505,7 @@
     const sel=document.getElementById('viewYearSelect'); if(!sel) return;
     const ys=yearList(); const cur=new Date().getFullYear();
     if(ys.indexOf(+viewYear)<0) viewYear=cur;
-    sel.innerHTML=ys.map(y=>`<option value="${y}">${y} 年</option>`).join('');
+    sel.innerHTML=ys.map(y=>`<option value="${y}">${y}</option>`).join('');
     sel.value=String(viewYear);
   }
   function renderDataTables(){
@@ -5125,7 +5145,7 @@
     const asel=document.getElementById('archYearSelect');
     if(asel){
       if(ys.indexOf(+archViewYear)<0) archViewYear=ys[0];
-      asel.innerHTML=ys.map(y=>`<option value="${y}">${y} 年</option>`).join('');
+      asel.innerHTML=ys.map(y=>`<option value="${y}">${y}</option>`).join('');
       asel.value=String(archViewYear);
     }
     const ov=document.getElementById('archiveOverview');
