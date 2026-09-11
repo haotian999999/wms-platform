@@ -2310,11 +2310,17 @@
     const arch=archivedRecords.find(a=>+a.year===+y);
     const src=type==='in'?inboundRecords:outboundRecords;
     const live=src.filter(r=>yearOf(r)===+y);
-    const seen=new Set(), rows=[];
-    const add=r=>{ const k=String(r.id||r.inNo||r.outNo||((r.date||'')+'|'+(r.name||r.n||'')+'|'+(r.category||r.c||''))); if(seen.has(k))return; seen.add(k); rows.push(r); };
-    if(arch)(type==='in'?(arch.inbound||[]):(arch.outbound||[])).forEach(add);
-    live.forEach(add);
-    return {fromArch:!!arch,rows};
+    // 已结转年：快照为本，live 为结转后补录的同年度流水。去重仅以「业务单号(inNo/outNo)」为准——
+    // 同一真实单号在快照与 live 同时出现（如补录时重新导入原数据）才视为重复并跳过。
+    // 严禁用「日期|名称|分类」兜底去重：无单号的不同业务（导入/历史遗留的同日同品记录）会被误并、静默丢数（本 bug 根因）。
+    // 故：快照记录全部保留，live 仅在单号已存在于快照时跳过；无单号的 live 一律补齐（宁多勿丢）。
+    if(!arch) return {fromArch:false,rows:live};
+    const noKey=r=>String(type==='in'?(r.inNo||''):(r.outNo||'')||(r.id||''));
+    const seen=new Set();
+    (type==='in'?(arch.inbound||[]):(arch.outbound||[])).forEach(r=>{ const k=noKey(r); if(k) seen.add(k); });
+    const rows=(type==='in'?(arch.inbound||[]):(arch.outbound||[])).slice();
+    live.forEach(r=>{ const k=noKey(r); if(k && seen.has(k)) return; seen.add(k); rows.push(r); });
+    return {fromArch:true,rows};
   }
   // 搜索框日期范围解析：中文「2026年1月1日至2026年12月31日」与标准「2026-01-01~2026-12-31」双格式
   function parseDateRange(str){
@@ -2334,10 +2340,12 @@
     const liveIn=inboundRecords.filter(r=>yearOf(r)===+y);
     const liveOut=outboundRecords.filter(r=>yearOf(r)===+y);
     const liveChecks=checkRecords.filter(r=>yearOf(r)===+y);
-    const union=(base,live)=>{ const seen=new Set(),out=[]; const key=r=>String(r.id||r.inNo||r.outNo||((r.date||'')+'|'+(r.name||r.n||r.title||'')+'|'+(r.category||r.c||r.scope||''))); (base||[]).forEach(r=>{const x=key(r);if(seen.has(x))return;seen.add(x);out.push(r);}); live.forEach(r=>{const x=key(r);if(seen.has(x))return;seen.add(x);out.push(r);}); return out; };
+    // 去重仅以「单号(inNo/outNo) / id」为准；无单号记录一律保留（宁多勿丢），
+    // 杜绝「日期|名称|分类」兜底误并导致不同业务流水被静默丢弃（数据不完整根因）。
+    const union=(base,live,keyFn)=>{ const seen=new Set(); (base||[]).forEach(r=>{ const k=keyFn(r); if(k) seen.add(k); }); const out=(base||[]).slice(); (live||[]).forEach(r=>{ const k=keyFn(r); if(k && seen.has(k)) return; seen.add(k); out.push(r); }); return out; };
     if(arch) return {fromArch:true,year:+y,label:arch.label||y,carriedAt:arch.carriedAt||'—',
       opening:arch.opening||[],closing:arch.closing||arch.snapshot||[],
-      inbound:union(arch.inbound,liveIn),outbound:union(arch.outbound,liveOut),checks:union(arch.checks,liveChecks)};
+      inbound:union(arch.inbound,liveIn,r=>String(r.inNo||r.id||'')),outbound:union(arch.outbound,liveOut,r=>String(r.outNo||r.id||'')),checks:union(arch.checks,liveChecks,r=>String(r.date||'')+'|'+(r.title||r.name||''))};
     return {fromArch:false,year:+y,label:y,carriedAt:null,opening:[],closing:[],inbound:liveIn,outbound:liveOut,checks:liveChecks};
   }
   // 数据完整性兜底：主数据文件异常（损坏/为空）但存在有效自动备份时，自动还原，避免信息丢失
