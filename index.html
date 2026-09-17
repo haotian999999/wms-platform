@@ -786,25 +786,27 @@
   #pane-data-out .data-table th:nth-child(10),#pane-data-out .data-table td:nth-child(10){width:7.3%}
   #pane-data-out .data-table th:nth-child(11),#pane-data-out .data-table td:nth-child(11){width:6.9%}
   #pane-data-out .data-table th:nth-child(12),#pane-data-out .data-table td:nth-child(12){width:9.0%}
-  /* 库存管理表格列宽（15 列固定比例 · table-layout:fixed 严格生效 · 全表单行不换行 · 长文本省略） */
+  /* 库存管理表格列宽（16 列固定比例 · table-layout:fixed 严格生效 · 对齐 2025 台账：期初→入→出→期末 记账流） */
   #view-inventory .data-table{table-layout:fixed;width:100%;min-width:1080px}
-  #view-inventory .data-table th:nth-child(1),#view-inventory .data-table td:nth-child(1){width:7.0%}    /* 讯号 */
-  #view-inventory .data-table th:nth-child(2),#view-inventory .data-table td:nth-child(2){width:11.0%}  /* 物资名称（原13%，腾出空间给分类） */
-  #view-inventory .data-table th:nth-child(3),#view-inventory .data-table td:nth-child(3){width:10.0%}   /* 分类（原6%→10%，让"办公用品"chip 60px 完整显示在 8px content 内） */
-  #view-inventory .data-table th:nth-child(4),#view-inventory .data-table td:nth-child(4){width:4.0%}    /* 品牌（原7%→4%，2-3 字品牌名足够） */
-  #view-inventory .data-table th:nth-child(5),#view-inventory .data-table td:nth-child(5){width:5.0%}    /* 规格（原6%→5%） */
-  #view-inventory .data-table th:nth-child(6),#view-inventory .data-table td:nth-child(6){width:3.0%}    /* 单位（原4%→3%，1 字单位足够） */
-  #view-inventory .data-table th:nth-child(7),#view-inventory .data-table td:nth-child(7){width:7.0%}    /* 库存数量 */
-  #view-inventory .data-table th:nth-child(8),#view-inventory .data-table td:nth-child(8){width:6.0%}    /* 安全库存 */
-  #view-inventory .data-table th:nth-child(9),#view-inventory .data-table td:nth-child(9){width:12.0%}   /* 入库单号（申购单号） */
-  #view-inventory .data-table th:nth-child(10),#view-inventory .data-table td:nth-child(10){width:4.0%}  /* 入库累计（原5%→4%） */
-  #view-inventory .data-table th:nth-child(11),#view-inventory .data-table td:nth-child(11){width:12.0%} /* 出库单号（审批编号） */
-  #view-inventory .data-table th:nth-child(12),#view-inventory .data-table td:nth-child(12){width:4.0%}  /* 出库累计（原5%→4%） */
-  #view-inventory .data-table th:nth-child(13),#view-inventory .data-table td:nth-child(13){width:4.5%}  /* 质保期(月) */
-  #view-inventory .data-table th:nth-child(14),#view-inventory .data-table td:nth-child(14){width:6.5%}  /* 到期日 */
-  #view-inventory .data-table th:nth-child(15),#view-inventory .data-table td:nth-child(15){width:4.0%}  /* 状态（原5%→4%，2 字状态足够） */
-  /* 库存表：全表单行不换行 + 长文本省略 + 表头居中 */
-  #view-inventory .data-table th,#view-inventory .data-table td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #view-inventory .data-table th:nth-child(1),#view-inventory .data-table td:nth-child(1){width:6.5%}    /* 讯号 */
+  #view-inventory .data-table th:nth-child(2),#view-inventory .data-table td:nth-child(2){width:11.5%}  /* 物资名称 */
+  #view-inventory .data-table th:nth-child(3),#view-inventory .data-table td:nth-child(3){width:9.0%}   /* 分类 */
+  #view-inventory .data-table th:nth-child(4),#view-inventory .data-table td:nth-child(4){width:4.0%}    /* 品牌 */
+  #view-inventory .data-table th:nth-child(5),#view-inventory .data-table td:nth-child(5){width:5.5%}    /* 规格/型号 */
+  #view-inventory .data-table th:nth-child(6),#view-inventory .data-table td:nth-child(6){width:3.0%}    /* 单位 */
+  #view-inventory .data-table th:nth-child(7),#view-inventory .data-table td:nth-child(7){width:4.5%}    /* 期初数量 */
+  #view-inventory .data-table th:nth-child(8),#view-inventory .data-table td:nth-child(8){width:4.5%}    /* 入库数量 */
+  #view-inventory .data-table th:nth-child(9),#view-inventory .data-table td:nth-child(9){width:4.5%}    /* 出库数量 */
+  #view-inventory .data-table th:nth-child(10),#view-inventory .data-table td:nth-child(10){width:4.5%}  /* 期末数量 */
+  #view-inventory .data-table th:nth-child(11),#view-inventory .data-table td:nth-child(11){width:4.5%}  /* 安全库存 */
+  #view-inventory .data-table th:nth-child(12),#view-inventory .data-table td:nth-child(12){width:11.5%} /* 入库单号（申购单号） */
+  #view-inventory .data-table th:nth-child(13),#view-inventory .data-table td:nth-child(13){width:11.5%} /* 出库单号（审批编号） */
+  #view-inventory .data-table th:nth-child(14),#view-inventory .data-table td:nth-child(14){width:4.0%}  /* 质保期(月) */
+  #view-inventory .data-table th:nth-child(15),#view-inventory .data-table td:nth-child(15){width:7.0%}  /* 到期日 */
+  #view-inventory .data-table th:nth-child(16),#view-inventory .data-table td:nth-child(16){width:4.0%}  /* 状态 */
+  /* 库存表：数据行单行不换行 + 长文本省略；表头允许两行换行（16 列长表头完整可读） */
+  #view-inventory .data-table td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #view-inventory .data-table th{overflow:hidden;text-overflow:ellipsis;white-space:normal;word-break:break-all;line-height:1.25}
   #view-inventory .data-table thead th{text-align:center}
   /* 数据管理（入库/出库）表头居中 */
   #pane-data-in .data-table thead th,#pane-data-out .data-table thead th{text-align:center}
@@ -1349,7 +1351,7 @@
           </div>
           <div class="table-scroll">
             <table class="data-table">
-              <thead><tr><th>讯号</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格</th><th>单位</th><th>库存数量</th><th>安全库存</th><th>入库单号（申购单号）</th><th>入库累计</th><th>出库单号（审批编号）</th><th>出库累计</th><th>质保期(月)</th><th>到期日</th><th>状态</th></tr></thead>
+              <thead><tr><th>讯号</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格/型号</th><th>单位</th><th class="num">期初数量</th><th class="num">入库数量</th><th class="num">出库数量</th><th class="num">期末数量</th><th class="num">安全库存</th><th>入库单号(申购单号)</th><th>出库单号(审批编号)</th><th>质保期(月)</th><th>到期日</th><th>状态</th></tr></thead>
               <tbody id="invBody"></tbody>
             </table>
           </div>
@@ -1527,7 +1529,7 @@
           <div class="card mt">
             <div class="panel-head"><div><h3>抓取数据预览</h3><div class="sub" id="prevInfo"></div></div></div>
             <table>
-              <thead><tr><th>物资名称</th><th>分类</th><th>品牌</th><th>规格(含类别)</th><th>单位</th><th>期末库存</th><th>校验</th></tr></thead>
+              <thead><tr><th>物资名称</th><th>分类</th><th>品牌</th><th>规格/型号</th><th>单位</th><th>期末数量</th><th>校验</th></tr></thead>
               <tbody id="prevBody"></tbody>
             </table>
             <div id="detailPreview" style="margin-top:18px;display:none">
@@ -1572,7 +1574,7 @@
           <div class="tabpane active" id="pane-data-in">
             <div class="table-scroll">
               <table class="data-table">
-                <thead><tr><th>入库单号</th><th>日期</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格</th><th>单位</th><th>数量</th><th>单价</th><th>金额</th><th>供应商</th><th>经办人</th><th>仓库</th><th>质保期</th><th>到期日</th><th>状态</th></tr></thead>
+                <thead><tr><th>入库单号(申购单号)</th><th>日期</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格/型号</th><th>单位</th><th class="num">数量</th><th class="num">单价(元)</th><th class="num">金额(元)</th><th>供应商</th><th>经办人</th><th>仓库</th><th>质保期(月)</th><th>到期日</th><th>状态</th></tr></thead>
                 <tbody id="inBody"></tbody>
               </table>
             </div>
@@ -1583,7 +1585,7 @@
           <div class="tabpane" id="pane-data-out">
             <div class="table-scroll">
               <table class="data-table">
-                <thead><tr><th>出库单号</th><th>日期</th><th>领用人</th><th>部门</th><th>物资名称</th><th>分类</th><th>数量</th><th>单位</th><th>用途</th><th>经办人</th><th>状态</th></tr></thead>
+                <thead><tr><th>出库单号(审批编号)</th><th>日期</th><th>领用人</th><th>部门</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格/型号</th><th>单位</th><th class="num">数量</th><th>用途</th><th>经办人</th><th>状态</th></tr></thead>
                 <tbody id="outBody"></tbody>
               </table>
             </div>
@@ -1671,7 +1673,7 @@
                 <span class="ap-toggle">展开 ▼</span>
               </div>
               <div class="ap-body" style="display:none">
-                <div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th class="num">期初结存</th><th class="num">本期入库</th><th class="num">本期出库</th><th class="num">期末结存</th><th>单位</th><th class="num">期末金额(元)</th><th>勾稽</th></tr></thead><tbody id="trialBody"></tbody><tfoot id="trialFoot" class="arch-foot"></tfoot></table></div>
+                <div class="table-scroll"><table class="data-table"><thead><tr><th>物资名称</th><th>分类</th><th class="num">期初数量</th><th class="num">入库数量</th><th class="num">出库数量</th><th class="num">期末数量</th><th>单位</th><th class="num">期末金额(元)</th><th>勾稽</th></tr></thead><tbody id="trialBody"></tbody><tfoot id="trialFoot" class="arch-foot"></tfoot></table></div>
               </div>
             </div>
             <div class="card arch-panel" data-panel="snap">
@@ -1699,7 +1701,7 @@
                 <span class="ap-toggle">展开 ▼</span>
               </div>
               <div class="ap-body" style="display:none">
-                <div class="table-scroll"><table class="data-table"><thead><tr><th>入库单号</th><th>日期</th><th>物资名称</th><th>分类</th><th class="num">数量</th><th class="num">单价(元)</th><th class="num">金额(元)</th><th>供应商</th></tr></thead><tbody id="archInBody"></tbody><tfoot id="archInFoot" class="arch-foot"></tfoot></table></div>
+                <div class="table-scroll"><table class="data-table"><thead><tr><th>入库单号(申购单号)</th><th>日期</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格/型号</th><th>单位</th><th class="num">数量</th><th class="num">单价(元)</th><th class="num">金额(元)</th><th>供应商</th></tr></thead><tbody id="archInBody"></tbody><tfoot id="archInFoot" class="arch-foot"></tfoot></table></div>
               </div>
             </div>
             <div class="card arch-panel" data-panel="out">
@@ -1708,7 +1710,7 @@
                 <span class="ap-toggle">展开 ▼</span>
               </div>
               <div class="ap-body" style="display:none">
-                <div class="table-scroll"><table class="data-table"><thead><tr><th>出库单号</th><th>日期</th><th>领用人</th><th>物资名称</th><th>分类</th><th class="num">数量</th><th class="num">单位</th><th class="num">单价(元)</th><th class="num">金额(元)</th><th>用途</th></tr></thead><tbody id="archOutBody"></tbody><tfoot id="archOutFoot" class="arch-foot"></tfoot></table></div>
+                <div class="table-scroll"><table class="data-table"><thead><tr><th>出库单号(审批编号)</th><th>日期</th><th>领用人</th><th>物资名称</th><th>分类</th><th>品牌</th><th>规格/型号</th><th>单位</th><th class="num">数量</th><th class="num">单价(元)</th><th class="num">金额(元)</th><th>用途</th></tr></thead><tbody id="archOutBody"></tbody><tfoot id="archOutFoot" class="arch-foot"></tfoot></table></div>
               </div>
             </div>
           </div>
@@ -2724,8 +2726,13 @@
         <td><span class="tag ${m.cls}"><span class="d" style="background:${m.col}"></span>${m.t}</span></td>
         <td>${escHtml(i.b||'—')}</td>
         <td>${escHtml(i.s)}</td><td>${escHtml(i.u)}</td>
-        <td class="num">${i.q} ${escHtml(i.u)}</td><td class="num">${i.safe} ${escHtml(i.u)}</td>
-        <td class="code">${escHtml(latestInNo(i))}</td><td class="num">${inT} ${escHtml(i.u)}</td><td class="code">${escHtml(latestOutNo(i))}</td><td class="num">${outT} ${escHtml(i.u)}</td>
+        <td class="num">${(+i.initQty||0)} ${escHtml(i.u)}</td>
+        <td class="num">${inT} ${escHtml(i.u)}</td>
+        <td class="num">${outT} ${escHtml(i.u)}</td>
+        <td class="num">${i.q} ${escHtml(i.u)}</td>
+        <td class="num">${i.safe} ${escHtml(i.u)}</td>
+        <td class="code">${escHtml(latestInNo(i))}</td>
+        <td class="code">${escHtml(latestOutNo(i))}</td>
         ${warrantyMonthsCell(i)}
         ${warrantyCell(i)}
         <td><span class="status ${st}">${txt}</span></td>
@@ -2734,7 +2741,7 @@
     if(!view.length){
       const scope=(invDateRange.from||invDateRange.to)?('日期 '+invDateRange.from+' 至 '+invDateRange.to+' 范围内')
         :(invViewYear&&invViewYear!=='all'?(invViewYear+' 年（按出入库活动筛选）'):'');
-      body.innerHTML='<tr><td colspan="15" class="empty">'
+      body.innerHTML='<tr><td colspan="16" class="empty">'
         +(scope?scope+'暂无有出入库活动的库存物资':'暂无库存物资')
         +(scope?'（切换「全部年份」或清除日期范围可查看全部）':'，请通过「入库管理 · 入库登记」或「数据导入」添加')
         +'</td></tr>';
@@ -4455,15 +4462,15 @@
 
   // ---- 数据管理（入库 / 出库后台记录）----
   const inCols=[
-    {k:'id',t:'单号'},{k:'date',t:'日期'},{k:'name',t:'物资名称'},{k:'category',t:'分类',tag:true},
-    {k:'brand',t:'品牌'},{k:'spec',t:'规格'},{k:'unit',t:'单位'},{k:'qty',t:'数量'},{k:'price',t:'单价(元)'},
+    {k:'id',t:'入库单号(申购单号)'},{k:'date',t:'日期'},{k:'name',t:'物资名称'},{k:'category',t:'分类',tag:true},
+    {k:'brand',t:'品牌'},{k:'spec',t:'规格/型号'},{k:'unit',t:'单位'},{k:'qty',t:'数量'},{k:'price',t:'单价(元)'},
     {k:'amount',t:'金额(元)'},{k:'supplier',t:'供应商'},{k:'handler',t:'经办人'},{k:'warehouse',t:'仓库'},
     {k:'warranty',t:'质保期(月)'},{k:'expire',t:'到期日'},{k:'status',t:'状态'}
   ];
   const outCols=[
-    {k:'id',t:'单号'},{k:'date',t:'日期'},{k:'applicant',t:'领用人'},{k:'dept',t:'部门'},{k:'name',t:'物资名称'},
-    {k:'category',t:'分类',tag:true},{k:'qty',t:'数量'},{k:'unit',t:'单位'},{k:'purpose',t:'用途'},
-    {k:'handler',t:'经办人'},{k:'status',t:'状态'}
+    {k:'id',t:'出库单号(审批编号)'},{k:'date',t:'日期'},{k:'applicant',t:'领用人'},{k:'dept',t:'部门'},{k:'name',t:'物资名称'},
+    {k:'category',t:'分类',tag:true},{k:'brand',t:'品牌'},{k:'spec',t:'规格/型号'},{k:'unit',t:'单位'},{k:'qty',t:'数量'},
+    {k:'purpose',t:'用途'},{k:'handler',t:'经办人'},{k:'status',t:'状态'}
   ];
   // 入库记录：默认空（不含演示数据），由「入库登记」产生
   const inboundRecords=[];
@@ -5373,18 +5380,18 @@
     if(snapFoot) snapFoot.innerHTML='';
     // ---- 入库明细账 ----
     const ib=document.getElementById('archInBody');
-    ib.innerHTML=inY.length?inY.map(r=>`<tr><td class="code">${escHtml(r.inNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.name)}</td><td>${safeMeta(r.category).t}</td><td class="num">${escHtml(r.qty)}</td><td class="num">${escHtml(r.price!=null?r.price:'—')}</td><td class="num">${escHtml(r.amount||'—')}</td><td>${escHtml(r.supplier||'—')}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">无入库记录</td></tr>';
+    ib.innerHTML=inY.length?inY.map(r=>`<tr><td class="code">${escHtml(r.inNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.name)}</td><td>${safeMeta(r.category).t}</td><td>${escHtml(r.brand||'—')}</td><td>${escHtml(r.spec||'—')}</td><td>${escHtml(r.unit||'件')}</td><td class="num">${escHtml(r.qty)}</td><td class="num">${escHtml(r.price!=null?r.price:'—')}</td><td class="num">${escHtml(r.amount||'—')}</td><td>${escHtml(r.supplier||'—')}</td></tr>`).join(''):'<tr><td colspan="11" class="empty">无入库记录</td></tr>';
     const inQty=inY.reduce((s,r)=>s+(+r.qty||0),0);
     const inAmt=inY.reduce((s,r)=>s+(+r.amount||0),0);
     const inFoot=document.getElementById('archInFoot');
-    if(inFoot) inFoot.innerHTML=inY.length?`<tr class="arch-total"><td colspan="4">入库合计</td><td class="num">${fmtNum(inQty)}</td><td></td><td class="num">${fmtNum(inAmt)}</td><td></td></tr>`:'';
+    if(inFoot) inFoot.innerHTML=inY.length?`<tr class="arch-total"><td colspan="7">入库合计</td><td class="num">${fmtNum(inQty)}</td><td></td><td class="num">${fmtNum(inAmt)}</td><td></td></tr>`:'';
     // ---- 出库明细账（含发出成本）----
     const ob=document.getElementById('archOutBody');
     ob.innerHTML=outY.length?outY.map(r=>{
       const p=(r.price!=null)?r.price:0;
       const amt=(r.amount!=null)?r.amount:(+(+r.qty||0)*p).toFixed(2);
-      return `<tr><td class="code">${escHtml(r.outNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.applicant||'—')}</td><td>${escHtml(r.name)}</td><td>${safeMeta(r.category).t}</td><td class="num">${escHtml(r.qty)}</td><td>${escHtml(r.unit||'件')}</td><td class="num">${escHtml(p||'—')}</td><td class="num">${escHtml(amt)}</td><td>${escHtml(r.purpose||'—')}</td></tr>`;
-    }).join(''):'<tr><td colspan="10" class="empty">无出库记录</td></tr>';
+      return `<tr><td class="code">${escHtml(r.outNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.applicant||'—')}</td><td>${escHtml(r.name)}</td><td>${safeMeta(r.category).t}</td><td>${escHtml(r.brand||'—')}</td><td>${escHtml(r.spec||'—')}</td><td>${escHtml(r.unit||'件')}</td><td class="num">${escHtml(r.qty)}</td><td class="num">${escHtml(p||'—')}</td><td class="num">${escHtml(amt)}</td><td>${escHtml(r.purpose||'—')}</td></tr>`;
+    }).join(''):'<tr><td colspan="12" class="empty">无出库记录</td></tr>';
     // ---- 年度盘点档案（盘点联动 · 账实差异）----
     const cb=document.getElementById('archCheckBody');
     const checks=vm.checks||[];
@@ -5400,7 +5407,7 @@
     const outQty=outY.reduce((s,r)=>s+(+r.qty||0),0);
     const outAmt=outY.reduce((s,r)=>s+(+r.amount||(+r.qty||0)*(+r.price||0)||0),0);
     const outFoot=document.getElementById('archOutFoot');
-    if(outFoot) outFoot.innerHTML=outY.length?`<tr class="arch-total"><td colspan="5">出库合计</td><td class="num">${fmtNum(outQty)}</td><td></td><td></td><td class="num">${fmtNum(outAmt)}</td><td></td></tr>`:'';
+    if(outFoot) outFoot.innerHTML=outY.length?`<tr class="arch-total"><td colspan="8">出库合计</td><td class="num">${fmtNum(outQty)}</td><td></td><td></td><td class="num">${fmtNum(outAmt)}</td><td></td></tr>`:'';
   }
   const _coBtn=document.getElementById('btnCarryover');
   if(_coBtn) _coBtn.addEventListener('click',()=>{
@@ -5769,12 +5776,13 @@
   function exportInv(){
     const ac=document.querySelector('#invChips .chip.active'); const cat=ac?ac.dataset.cat:'all';
     const list=cat==='all'?items:items.filter(i=>i.c===cat);
-    const header=['讯号','物资名称','分类','品牌','规格','单位','库存数量','安全库存','入库单号（申购单号）','入库累计','出库单号（审批编号）','出库累计','质保期(月)','到期日','状态'];
+    const header=['讯号','物资名称','分类','品牌','规格/型号','单位','期初数量','入库数量','出库数量','期末数量','安全库存','入库单号（申购单号）','出库单号（审批编号）','质保期(月)','到期日','状态'];
     // 讯号序号须用物资在 items 中的「全量下标」——导出不受分页影响，仍为全量。
     // 原实现每行 items.indexOf(i) 为全表扫描（O(N²)），3900 物资 ≈ 760 万次比较，导出明显卡顿；预建 Map 后降为 O(N)。
     const _pos=new Map(); for(let _k=0;_k<items.length;_k++) _pos.set(items[_k],_k);
     const body=list.map((i,idx)=>{ const m=safeMeta(i.c); const st=statusOf(i.q,i.safe)[1]; const code=m.cls==='office'?'BXG':m.cls==='tobacco'?'YJC':'LP'; // 未知分类兜底：否则整份库存导出抛错失败
-      return [code+'-'+String((_pos.has(i)?_pos.get(i):idx)+1).padStart(3,'0'), i.n, m.t, i.b||'—', i.s, i.u, i.q+' '+i.u, i.safe+' '+i.u, latestInNo(i), inTotalOf(i.n,i.c)+' '+i.u, latestOutNo(i), outTotalOf(i.n,i.c)+' '+i.u, i.warranty?i.warranty+' 个月':'—', i.expire||'—', st]; });
+      const _init=+i.initQty||0;
+      return [code+'-'+String((_pos.has(i)?_pos.get(i):idx)+1).padStart(3,'0'), i.n, m.t, i.b||'—', i.s, i.u, _init, inTotalOf(i.n,i.c), outTotalOf(i.n,i.c), i.q, i.safe, latestInNo(i), latestOutNo(i), i.warranty?i.warranty+' 个月':'—', i.expire||'—', st]; });
     exportXLSX([header].concat(body), '库存管理_'+(cat==='all'?'全部':safeMeta(cat).t)+'.xlsx');
     toast('已导出库存','ok','库存清单已生成 .xlsx');
   }
