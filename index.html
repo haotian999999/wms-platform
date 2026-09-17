@@ -4638,7 +4638,11 @@
     }else{
       for(let i=0;i<all.length;i++){ const r=all[i]; if(!recInView(r)) continue; if(!hit(r)) continue; rows.push(i); }
       if(useRange){
-        archivedRecords.forEach(a=>{ (type==='in'?(a.inbound||[]):(a.outbound||[])).forEach(r=>{ if(recInView(r)&&hit(r)) archRows.push(r); }); });
+        // 完整性去重：已结转年的封存快照可能与 live 活动流水存在同单号重复（如历史数据补导入 live），
+        // 仅以业务单号(inNo/outNo)为准去重，避免「数据重叠」。
+        const liveKeys=new Set();
+        for(let i=0;i<all.length;i++){ const r=all[i]; if(recInView(r)){ const k=String(type==='in'?(r.inNo||''):(r.outNo||'')); if(k) liveKeys.add(k); } }
+        archivedRecords.forEach(a=>{ (type==='in'?(a.inbound||[]):(a.outbound||[])).forEach(r=>{ if(recInView(r)&&hit(r)){ const k=String(type==='in'?(r.inNo||''):(r.outNo||'')); if(k&&liveKeys.has(k)) return; if(k) liveKeys.add(k); archRows.push(r); } }); });
         for(let j=0;j<archRows.length;j++) rows.push(-1-j);
       }
     }
@@ -4977,6 +4981,26 @@
   document.getElementById('warModalCloseBtn').addEventListener('click',()=>document.getElementById('warModal').classList.remove('show'));
   document.getElementById('warModal').addEventListener('click',e=>{ if(e.target.id==='warModal') document.getElementById('warModal').classList.remove('show'); });
   renderWarranty();
+  // 「库存物资详情」入库/出库明细的完整性抓取：合并 live 活动流水 + 所有归档封存快照，
+  // 按当前视图范围（viewYear 或日期范围）筛选该物资全部出入库记录；
+  // 去重仅以业务单号(inNo/outNo/id)为准，无单号记录一律保留（宁多勿丢），杜绝「数据遗漏」与「数据重叠」。
+  function invFlowOf(i, type){
+    const all=type==='in'?inboundRecords:outboundRecords;
+    const noKey=r=>String(type==='in'?(r.inNo||''):(r.outNo||'')||(r.id||''));
+    const seen=new Set(), out=[];
+    const consider=r=>{
+      if(normName(r.name)!==normName(i.n)) return;   // 名称键归一，避免 NBSP/全角空格差异致漏配
+      if(r.category!==i.c) return;                    // 分类精确匹配
+      if(!recInView(r)) return;                      // 仅当前视图范围内（年份 / 日期范围）
+      const k=noKey(r);
+      if(k && seen.has(k)) return;                    // 重叠防护
+      if(k) seen.add(k);
+      out.push(r);
+    };
+    all.forEach(consider);
+    archivedRecords.forEach(a=>{ (type==='in'?(a.inbound||[]):(a.outbound||[])).forEach(consider); });
+    return out;
+  }
   function openInv(idx){
     const i=items[idx]; if(!i) return;
     currentInvIdx=idx;
@@ -5007,7 +5031,7 @@
 
     // ===== 第二部分：入库明细（按时间倒序，最新在最上，含该物品全部入库记录） =====
     const _yrLabel=(dateRange.from||dateRange.to)?('日期 '+dateRange.from+' 至 '+dateRange.to):(viewYear+' 年');
-    const inRs=inboundRecords.filter(r=>normName(r.name)===normName(i.n) && r.category===i.c && recInView(r))
+    const inRs=invFlowOf(i,'in')
       .slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     document.getElementById('invInCount').textContent='共 '+inRs.length+' 次（'+_yrLabel+'）';
     document.getElementById('invInList').innerHTML = inRs.length ? inRs.map(r=>`
@@ -5032,7 +5056,7 @@
       </div>`).join('') : '<div class="inv-empty">暂无入库记录</div>';
 
     // ===== 第三部分：出库明细（按时间倒序，最新在最上，含该物品全部出库记录） =====
-    const outRs=outboundRecords.filter(r=>normName(r.name)===normName(i.n) && r.category===i.c && recInView(r))
+    const outRs=invFlowOf(i,'out')
       .slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     document.getElementById('invOutCount').textContent='共 '+outRs.length+' 次（'+_yrLabel+'）';
     document.getElementById('invOutList').innerHTML = outRs.length ? outRs.map(r=>`
