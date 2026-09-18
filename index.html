@@ -4360,7 +4360,7 @@
     const deptMap={};
     outSel.forEach(r=>{ const d=r.dept||'未分类'; if(!deptMap[d]) deptMap[d]={cnt:0,qty:0}; deptMap[d].cnt++; deptMap[d].qty+=(+r.qty||0); });
     const totalQty=Object.values(deptMap).reduce((s,x)=>s+x.qty,0)||1;
-    const deptRows=Object.keys(deptMap).sort((a,b)=>deptMap[b].qty-deptMap[a].qty).map(d=>`<tr><td>${d}</td><td class="num">${fmtNum(deptMap[d].cnt)}</td><td class="num">${fmtNum(deptMap[d].qty)}</td><td class="num">${Math.round(deptMap[d].qty/totalQty*100)}%</td></tr>`).join('');
+    const deptRows=Object.keys(deptMap).sort((a,b)=>deptMap[b].qty-deptMap[a].qty).map(d=>`<tr><td>${escHtml(d)}</td><td class="num">${fmtNum(deptMap[d].cnt)}</td><td class="num">${fmtNum(deptMap[d].qty)}</td><td class="num">${Math.round(deptMap[d].qty/totalQty*100)}%</td></tr>`).join('');
     const dt=document.getElementById('repDeptTable');
     if(dt) dt.innerHTML=deptRows||'<tr><td colspan="4" class="empty">该期间暂无领用记录</td></tr>';
     const itemMap={};
