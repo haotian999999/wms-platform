@@ -2283,6 +2283,7 @@
   // ===== R43V2 统一年份上下文（纯显示层 · 永不触碰 SSOT / 期初 / 库存）=====
   // 声明位置必须在 renderDataTables() 首次调用之前，否则 init 期 TDZ ReferenceError 直接白屏。
   let viewYear=new Date().getFullYear();      // 数据管理当前查看年份（默认今年，历史自动隐藏）
+  let _viewYearUser=false;                    // 用户是否已手动切换过数据年份（true 后停止自动纠偏，完全尊重手动选择）
   let archViewYear=new Date().getFullYear();  // 历史归档当前查看年份
   let planViewYear=new Date().getFullYear();  // 盘点计划当前查看年份
   let dateRange={from:null,to:null};          // 搜索栏日期范围（存在时覆盖年份，可跨年）
@@ -2293,12 +2294,26 @@
   // 数据中出现过的全部年份（倒序，今年在前）
   function yearList(){
     const set=new Set();
+    // 库存物资的数据年份（纯库存总表导入、无明细流水时靠文件名推断）：必须纳入，
+    // 否则这些年份既不出现在年份胶囊、切换时物资也因无活动流水而消失 → 信息显示不全
+    items.forEach(r=>{ const y=+r.dataYear; if(!isNaN(y)) set.add(y); });
     inboundRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) set.add(y); });
     outboundRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) set.add(y); });
     checkRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) set.add(y); });
     archivedRecords.forEach(a=>{ const y=+a.year||+((/(19|20)\d{2}/.exec(String(a.label||''))||[])[0]); if(y) set.add(y); });
     set.add(new Date().getFullYear());
     return Array.from(set).filter(y=>!isNaN(y)).sort((a,b)=>b-a);
+  }
+  // 真正「有数据」的年份集合（区别于 yearList：后者为给胶囊兜底会无条件加入当前年，
+  // 即使当前年毫无数据也在列表里，不能用于判断「该年有没有东西可看」）
+  function activeDataYears(){
+    const set=new Set();
+    inboundRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) set.add(y); });
+    outboundRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) set.add(y); });
+    checkRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) set.add(y); });
+    archivedRecords.forEach(a=>{ const y=+a.year; if(y) set.add(y); });
+    items.forEach(r=>{ const y=+r.dataYear; if(!isNaN(y)) set.add(y); });
+    return set;
   }
   // 盘点计划年度：今年 + 已存在计划的年份 + 有盘点记录的年份（不凭空造历史计划）
   function planYearList(){
@@ -2797,7 +2812,7 @@
     for(let j=0;j<a.length;j++){ const d=a[j]; if(from&&d<from) continue; if(to&&d>to) continue; return true; }
     return false;
   }
-  function itemActiveInYear(i,y){ return itemInDateRange(i, y+'-01-01', y+'-12-31'); }
+  function itemActiveInYear(i,y){ return i.dataYear===+y || itemInDateRange(i, y+'-01-01', y+'-12-31'); }
   function renderInvYearSelect(){
     const sel=document.getElementById('invYearSelect'); if(!sel) return;
     const ys=yearList();
@@ -3444,6 +3459,20 @@
     if(/礼/.test(s)) return 'gift';
     return '';
   }
+  // 从文件名推断「数据年份」：库存总表（无明细流水）导入时，物资本身没有年份字段（跨年存在），
+  // 但文件名常含归属年份（"办公用品库存明细--2024"、"2025年赠送礼品库存明细（20251231）"、"烟酒茶库存明细-2025.12.12"）。
+  // 年份胶囊与库存年份筛选原本只认「流水/盘点/归档年份」，纯总表年份既不在胶囊选项里、切换时物资也因无活动流水而消失
+  // → 表现为「上传多年库存后年份胶囊切换信息显示不全」。标记 dataYear 后，年份体系与年份筛选都能涵盖这些库存年份。
+  function detectYearFromName(fn){
+    if(!fn) return NaN;
+    const s=String(fn);
+    let m=s.match(/(\d{4})\s*年/);                       // 优先「2025年」「2024年」
+    if(!m) m=s.match(/(?:--|-)(\d{4})(?!\d)/);           // 其次「--2024」「-2025」（年份后非数字，避免 20251231 被截断）
+    if(!m) m=s.match(/(\d{4})/);                         // 兜底取首个 4 位数（"20251231"→2025）
+    if(!m) return NaN;
+    const y=+m[1];
+    return (y>=2000&&y<=2100)?y:NaN;                     // 仅接受合理年份，过滤 1001 之类编码
+  }
   // 名称归一化：去除首尾空白/不可见字符（Excel 常带 \u00A0/全角空格/制表符）、折叠连续空格，
   // 保证跨文件、跨设备查重口径一致，杜绝「A4纸 」与「A4纸」被当成两条物资
   function normName(v){
@@ -3832,6 +3861,9 @@
     const FI=flowIndex(); // 流水汇总索引（反推期初用，O(1) 查询）
     const touched=new Set(); // 本次导入已处理过的「分类|名称」：总表多批次同一物资需累加期末，否则只留最后一行 → 库存低估
     const fileCat=detectCatFromName(importState.fileName)||''; // 文件名分类是常量，循环外算一次
+    // 纯库存总表（无明细流水）导入：从文件名推断数据年份，标记到物资 dataYear。
+    // 有明细时库存年份由流水日期决定，不强行标记（否则会把 2025 物资误标成表格文件名年份）。
+    const fileYear=useDetail?NaN:detectYearFromName(importState.fileName);
     // 明细去重键 = 业务指纹 + 规格：指纹已含「物资|分类|日期|数量|单号」，可区分一单多品种；
     // 补 spec 是因为同名单日同数量的不同规格批次（茶叶·台湾乌龙 / 茶叶·陈皮茶 各 51）属两笔真实业务，
     // 仅按指纹会指纹碰撞被误杀（既有记录同样按 fprint+spec 建索引，重导防重不失效）
@@ -3923,6 +3955,8 @@
         }
         exist.updatedAt=Date.now(); // 云同步 LWW 需要时间戳
         const sv=toNum(safe); if(!isNaN(sv)) exist.safe=Math.max(0,sv);
+        // 数据年份：仅当该物资尚未标记时记录首次导入年份（后导入的同名物资不覆盖，保留最早归属年）
+        if(!isNaN(fileYear) && isNaN(exist.dataYear)) exist.dataYear=fileYear;
         touched.add(key);
         updated++;
       }else{
@@ -3937,6 +3971,7 @@
         }
         const ni={c:cat,n:name,b:brand?String(brand):'—',s:subSpec||'—',u:unit?String(unit):'件',
           q:initFinal, initQty:niInit,
+          dataYear:!isNaN(fileYear)?fileYear:undefined, // 纯库存总表导入年份（有明细时 undefined，由流水决定）
           safe:!isNaN(sv)?Math.max(0,sv):(catDefault[cat]||Math.ceil(initFinal*0.3)),
           updatedAt:Date.now()};
         items.push(ni);
@@ -4678,6 +4713,15 @@
   function renderViewYearSelect(){
     const sel=document.getElementById('viewYearSelect'); if(!sel) return;
     const ys=yearList(); const cur=new Date().getFullYear();
+    // 用户未手动切换年份时，默认定位到「最近的有数据年份」：
+    // 上传历史年份数据后若仍停在空白的当前年，会被误判为「信息显示不全」；
+    // 每份新文件导入后都会重算，因此始终落在最新的有数据年份上。
+    // 用户一旦手动选过（_viewYearUser），即便选到空年份也完全尊重，不再纠偏。
+    if(!_viewYearUser){
+      const act=activeDataYears();
+      const dataYs=Array.from(act).filter(y=>ys.indexOf(y)>=0).sort((a,b)=>b-a);
+      if(dataYs.length) viewYear=dataYs[0];
+    }
     if(ys.indexOf(+viewYear)<0) viewYear=cur;
     sel.innerHTML=ys.map(y=>`<option value="${y}">${y}</option>`).join('');
     sel.value=String(viewYear);
@@ -5132,7 +5176,7 @@
   });
   document.getElementById('downloadAll').addEventListener('click',downloadAll);
   const _vys=document.getElementById('viewYearSelect');
-  if(_vys) _vys.addEventListener('change',()=>{ viewYear=+_vys.value||new Date().getFullYear(); archViewYear=viewYear; dateRange={from:null,to:null}; syncDateInputs(); dataPage.in=0; dataPage.out=0; renderDataTables(); renderCarryoverCard(); if(activeDataTab==='archive') renderArchive(); });
+  if(_vys) _vys.addEventListener('change',()=>{ _viewYearUser=true; viewYear=+_vys.value||new Date().getFullYear(); archViewYear=viewYear; dateRange={from:null,to:null}; syncDateInputs(); dataPage.in=0; dataPage.out=0; renderDataTables(); renderCarryoverCard(); if(activeDataTab==='archive') renderArchive(); });
   const _drF=document.getElementById('dataFrom'), _drT=document.getElementById('dataTo'), _drC=document.getElementById('dataDateClear');
   if(_drF) _drF.addEventListener('change',()=>{ dateRange.from=_drF.value||null; dataPage.in=0; dataPage.out=0; renderDataTables(); });
   if(_drT) _drT.addEventListener('change',()=>{ dateRange.to=_drT.value||null; dataPage.in=0; dataPage.out=0; renderDataTables(); });
