@@ -21,7 +21,10 @@ const CORE = [
   './fonts/HarmonyOS_Sans_Light.ttf',
   './fonts/HarmonyOS_Sans_Regular.ttf',
   './fonts/HarmonyOS_Sans_Medium.ttf',
-  './fonts/HarmonyOS_Sans_Bold.ttf'
+  './fonts/HarmonyOS_Sans_Bold.ttf',
+  './favicon.svg',
+  './favicon.ico',
+  './apple-touch-icon.png'
 ];
 
 // 空/坏响应判定：GitHub Pages + Fastly 偶发「200 但 0 字节」，content-length 常显式标 0。
