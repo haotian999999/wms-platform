@@ -338,6 +338,11 @@
   .field textarea{height:auto;padding:12px 14px;resize:vertical;min-height:84px}
   .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);box-shadow:var(--focus),0 0 14px rgba(91,140,255,.25)}
   .field select option{background:#0e1526;color:var(--ink)}
+  /* R68 入库登记：三列紧凑表单 + 收紧间距，整页一屏呈现（对齐出库领用） */
+  #view-inbound .form-grid{grid-template-columns:repeat(3,1fr);gap:12px 14px}
+  #view-inbound .field textarea{min-height:64px;padding:10px 14px}
+  #view-inbound .field.full{margin-top:2px}
+  @media(max-width:1280px){#view-inbound .form-grid{grid-template-columns:1fr 1fr}}
   .in-suggest{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;max-height:280px;overflow-y:auto;border-radius:14px;background:rgba(18,26,46,.97);border:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 16px 40px rgba(0,0,0,.45);padding:6px}
   .in-suggest .is-head{padding:8px 10px 6px;font-size:11.5px;color:var(--ink-3);font-weight:600;letter-spacing:.3px;display:flex;align-items:center;gap:6px}
   .in-suggest .is-head::before{content:"";width:3px;height:11px;border-radius:2px;background:var(--primary)}
@@ -518,6 +523,11 @@
     background-color:rgba(255,255,255,.7);color:var(--ink);
     background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235d6883' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
+  /* R68 深色模式年份胶囊下拉选项：显式配色防止原生弹层白底白字不可读 */
+  .year-select{color-scheme:dark}
+  .year-select option{background:#0e1526;color:#eef2fc}
+  [data-theme="light"] .year-select{color-scheme:light}
+  [data-theme="light"] .year-select option{background:#fff;color:#1d2433}
   /* 日期范围搜索：统一一体美观 UI */
   /* ===== R57 日期筛选胶囊：标准区间选择器（32px 高 · 9px 圆角 · 内联无边框日期字段） ===== */
   .date-range{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;box-sizing:border-box;background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:0 5px 0 10px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color var(--dur-base) var(--ease),box-shadow var(--dur-base) var(--ease),background-color var(--dur-base) var(--ease)}
@@ -1396,7 +1406,7 @@
             </div>
           </div>
           <div class="card">
-            <div class="panel-head"><div><h3>最近入库记录</h3><div class="sub" id="recentInSub">共 0 条</div></div></div>
+            <div class="panel-head"><div><h3>最近入库记录</h3><div class="sub">最新 <span id="recentInCount">0</span> 条入库</div></div><span class="more" id="viewAllIn">查看全部</span></div>
             <div class="rec-list" id="recentInList">
               <div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无入库记录</div>
             </div>
@@ -4145,7 +4155,7 @@
     const base=viewRecords('in').rows;
     const list=topNBy(base,8,r=>String(r.date||''),r=>r);
     const el=document.getElementById('recentInList'); if(!el) return;
-    const sub=document.getElementById('recentInSub'); if(sub) sub.textContent='共 '+base.length+' 条 · '+((dateRange.from||dateRange.to)?'日期范围内':(viewYear+' 年'));
+    const cnt=document.getElementById('recentInCount'); if(cnt) cnt.textContent=list.length;
     el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.name)} ×${escHtml(r.qty)} ${escHtml(r.unit||'')}</div><div class="rs">${safeMeta(r.category).t} · ${escHtml(r.supplier||'—')} · ${escHtml(r.handler||'—')}</div></div><div class="rq in">+${escHtml(r.qty)}</div></div>`).join('')
       :'<div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无入库记录</div>';
   }
@@ -5983,6 +5993,11 @@
     const nav=document.querySelector('.nav-item[data-view="data"]'); if(nav) nav.click();
     setTimeout(()=>{ const t=document.querySelector('#dataTabs .tab[data-tab="out"]'); if(t) t.click(); },40);
   }
+  // R68 入库管理：查看全部入库记录（与出库领用「查看全部」同源跳转）
+  function viewAllIn(){
+    const nav=document.querySelector('.nav-item[data-view="data"]'); if(nav) nav.click();
+    setTimeout(()=>{ const t=document.querySelector('#dataTabs .tab[data-tab="in"]'); if(t) t.click(); },40);
+  }
 
   // ============ 按钮接线 ============
   document.getElementById('invExport').addEventListener('click',exportInv);
@@ -6000,6 +6015,7 @@
   document.getElementById('checkItemEditDelete').addEventListener('click',()=>{ const idx=checkItemEditIdx; closeCheckItemEdit(); if(idx>=0) deleteCheckItem(idx); });
   document.getElementById('recActionDel').addEventListener('click',()=>{ const i=recActionIdx; closeRecAction(); if(i>=0) deleteRecCheck(i); });
   document.getElementById('viewAllOut').addEventListener('click',viewAllOut);
+  document.getElementById('viewAllIn').addEventListener('click',viewAllIn);
   renderRecentOut();
 
   // ============ 动画反馈增强 ============
@@ -6320,7 +6336,7 @@
   // --- 通用「更多」操作反馈 ---
   document.addEventListener('click',e=>{
     const more=e.target.closest('.more');
-    if(more && more.id!=='openWarBtn' && more.id!=='viewAllOut' && more.id!=='allCheckRecords' && more.id!=='exportTrendBtn' && more.id!=='processAllAlertBtn'){ toast(more.textContent.trim(),'info',''); }
+    if(more && more.id!=='openWarBtn' && more.id!=='viewAllOut' && more.id!=='viewAllIn' && more.id!=='allCheckRecords' && more.id!=='exportTrendBtn' && more.id!=='processAllAlertBtn'){ toast(more.textContent.trim(),'info',''); }
   });
 
   // 登录相关反馈 toast 已在 initAuth 内动态绑定（避免渲染时序问题）
