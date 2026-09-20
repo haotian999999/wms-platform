@@ -1533,7 +1533,7 @@
             <div class="dz-ico">📥</div>
             <div style="font-size:15px;font-weight:600;margin-top:8px">点击或拖拽 XLSX 文件到此处</div>
             <div class="plan-meta" style="margin-top:6px">支持 .xlsx / .xls，自动读取公式计算结果</div>
-            <input type="file" id="fileInput" accept=".xlsx,.xls" hidden />
+            <input type="file" id="fileInput" accept=".xlsx,.xls" multiple hidden />
           </div>
           <div class="note">智能抓取规则：① 自动选取「库存总表」生成物资（兼容 规格/规格·型号、物品/用品名称 等列名变体，分类按文件名判定，品牌同步收录）；② 若文件含「出入库明细表」，进一步解析主行/分号子行/结余行，将子行流水生成为入库/出库记录（申购单号→入库单号、审批编号→出库单号、含日期/经办人）。无明细表时按期末数量作为当前库存；含明细表时以期初数量为基准、叠加流水，使库存 q=期初+入−出=期末，与表格完全自洽。映射可调，未识别列可手动指定或忽略。</div>
         </div>
@@ -3500,6 +3500,22 @@
   function normName(v){
     return String(v==null?'':v).replace(/[\u00A0\u3000\t\r\n]+/g,' ').replace(/\s+/g,' ').trim();
   }
+  // 名称「强归一键」：在 normName 基础上再做 NFKC 归一（全角→半角、㎜→mm、（）→()）+ 去空格 + 转小写。
+  // 真实表里同一物资在总表/明细表写法不同：总表「圆形铁票夹51㎜」明细表「圆形铁票夹51mm」、
+  // 总表「齐心（COMIX）A4/60页资料册」明细表「齐心（COMIX)A4/60页资料册」。
+  // normName 不处理全角/半角，两侧键对不上 → 流水与物资脱钩（出库不减库存、期初反推漏减流水）。
+  // 仅用于「比对/对齐」，不改动入库存储名（normName 仍是存储口径），避免影响既有数据。
+  function nameKey(v){
+    return normName(v).normalize('NFKC').replace(/\s+/g,'').toLowerCase();
+  }
+  // 分类占位符判定：表里「——」「一一」「/」「-」是「无分类」的占位写法，
+  // 直接当作分类名会生成「——」这种脏分类，且与明细流水的分类口径对不上（流水侧会取文件级分类）
+  function isPlaceholderCat(s){
+    const t=String(s==null?'':s).trim();
+    if(!t) return true;
+    if(t==='一一'||t==='无'||t==='暂无'||t==='其它'||t==='其他') return false; // 有语义，保留
+    return /^[\s\-—–/\\*._·～~]*$/.test(t);
+  }
   // 数字解析：容忍千分位逗号、空格与尾部单位（"1,500.5 件"→1500.5、"12件"→12）；
   // 占位符（/、—、空串）与字母开头（日期对象等）一律返回 NaN，绝不产生错误数值
   function toNum(v){
@@ -3595,7 +3611,6 @@
         let totalName=(wb.SheetNames.find(s=>/库存/.test(s)&&_notDetail(s)))
                      ||(wb.SheetNames.find(s=>/(总|览)/.test(s)&&_notDetail(s)))
                      ||wb.SheetNames[0];
-        const detailName=wb.SheetNames.find(s=>/(出入|明细)/.test(s));
         const totalRows=XLSX.utils.sheet_to_json(wb.Sheets[totalName],{header:1,defval:null,blankrows:false});
         // renderNow=false：推迟预览，待明细表解析完成后统一渲染一次，消除重复渲染
         buildImport(totalRows,totalName,file.name,false);
@@ -3609,27 +3624,61 @@
           const _cands=wb.SheetNames.filter(s=>s!==totalName).sort((a,b)=>(_notDetail(a)?0:1)-(_notDetail(b)?0:1));
           for(const s of _cands){
             const rows2=XLSX.utils.sheet_to_json(wb.Sheets[s],{header:1,defval:null,blankrows:false});
-            buildImport(rows2,s,file.name,false);
+            buildImport(rows2,s,file.name,false,true); // probe：探测期不重建映射 DOM
             if(_hasNameStock()){ totalName=s; break; }
           }
+          renderMapping(); // 探测结束，按最终选定的表补建一次映射 UI
         }
-        // 第二层：若含「出入库明细表」，解析主行/分号子行/结余行，生成入库/出库流水
-        if(detailName){
-          const dRows=XLSX.utils.sheet_to_json(wb.Sheets[detailName],{header:1,defval:null,blankrows:false});
-          importState.detail=parseDetail(dRows,file.name);
-          importState.hasDetail=importState.detail.count>0;
-        }else{
-          importState.detail={count:0,records:[],samples:[]};
-          importState.hasDetail=false;
+        // 第二层：明细流水解析——扫描【全部工作表】并合并，不再只取第一个名字含「出入/明细」的表。
+        // 旧实现的真实损失：2023《物资库存明细》里「全年出入库明细」排在首位但没有日期列（0 笔流水），
+        // 而真正带「出库日期」的「礼品出库明细」「双节走访明细」被整表跳过 → 该年 35 笔真实出库全部丢失。
+        // 合并时按「业务指纹+规格」跨表去重，同一笔业务在多张表里重复出现也只入一次，不会重复计数。
+        const _detSeen=new Set(), _allRecs=[], _detNames=[];
+        let _noDateSkip=0;
+        const _isDetailNamed=s=>/(出入|明细|流水|台账|收发|领用|出库|入库)/.test(s);
+        let _noQtySkip=0;
+        const _parseOne=s=>{
+          let d=null;
+          try{
+            const dRows=XLSX.utils.sheet_to_json(wb.Sheets[s],{header:1,defval:null,blankrows:false});
+            d=parseDetail(dRows,file.name,s);
+          }catch(e){ d=null; }
+          if(!d) return 0;
+          let got=0;
+          for(const rec of (d.records||[])){
+            const _k=(rec.type||'')+'|'+(rec.fprint||'')+'|'+(rec.spec||'');
+            if(_detSeen.has(_k)) continue; // 跨表同一笔业务只入一次
+            _detSeen.add(_k); _allRecs.push(rec); got++;
+          }
+          if(got) _detNames.push(s);
+          // 缺日期列 / 缺数量列的统计只在「名字像明细表」的表上累加，避免把库存总表算进来误报
+          if(_isDetailNamed(s)){ if(d.noDateSkip) _noDateSkip+=d.noDateSkip; if(d.noQtySkip) _noQtySkip+=d.noQtySkip; }
+          return got;
+        };
+        for(const s of wb.SheetNames){
+          // 跳过已选作「库存总表」的那张表：总表里的入库/出库数量是【年度汇总值】，
+          // 与明细表逐笔流水是同一批业务的两种粒度，一起解析会把出库算两遍
+          // （实测 2024 烟酒茶：总表出库 2@入库日期 + 明细表出库 2@出库日期 = 4，真实只有 2）。
+          // 入库因两表单号/日期一致会被指纹去重，正是出库这种「日期不同」的会翻倍，故必须排除。
+          if(s===totalName) continue;
+          _parseOne(s);
         }
+        // 兜底：若其余表都没解析出流水（单表文件），允许把总表本身当明细表再试一次
+        if(!_allRecs.length) _parseOne(totalName);
+        const detailName=_detNames.join('、');
+        importState.detail={count:_allRecs.length,records:_allRecs,samples:_allRecs.slice(0,12),noDateSkip:_noDateSkip,noQtySkip:_noQtySkip};
+        importState.hasDetail=_allRecs.length>0;
         renderPreview();
-        const dInfo=importState.hasDetail?` · 同步解析「${detailName}」：将从 ${importState.detail.count} 笔流水生成入库/出库记录`:'';
+        const dInfo=importState.hasDetail?` · 同步解析明细表 ${_detNames.length} 张（${detailName}）：将从 ${importState.detail.count} 笔流水生成入库/出库记录`:'';
         const _shInfo=_shrunk.length?`（已自动裁剪 ${_shrunk.length} 个工作表的空白行列）`:'';
         // 明细表缺日期列时流水无法定位年份（如 2023 年「全年出入库明细」只有数量/出库数量/结余）：
         // 不静默丢弃，明确告知多少行未生成流水，避免导入后「某年只有库存没有流水」却无从察觉
         const _nd=(importState.detail&&importState.detail.noDateSkip)||0;
-        const _ndInfo=_nd?` · ⚠️ 该明细表没有日期列，${_nd} 行有出入库数量但无法定位年份，未生成流水（库存数量不受影响，如需流水请在表内补「入库日期/出库日期」列）`:'';
-        document.getElementById('sheetInfo').textContent=`库存总表：${totalName}${detailName?` · 明细表：${detailName}`:''} · 共 ${importState.dataRows.length} 项物资${dInfo}${_ndInfo}${_shInfo}`;
+        const _ndInfo=_nd?` · ⚠️ 明细表没有日期列，${_nd} 行有出入库数量但无法定位年份，未生成流水（库存数量不受影响，如需流水请在表内补「入库日期/出库日期」列）`:'';
+        // 有日期但无入库/出库数量列（如 2024「全年入库汇总 」只有「期初数量」）同样会静默 0 流水，一并告知
+        const _nq=(importState.detail&&importState.detail.noQtySkip)||0;
+        const _nqInfo=_nq?` · ⚠️ 明细表未识别到「入库数量/出库数量」列，${_nq} 行有日期但无数量，未生成流水（如需流水请在表内补数量列）`:'';
+        document.getElementById('sheetInfo').textContent=`库存总表：${totalName}${detailName?` · 明细表：${detailName}`:''} · 共 ${importState.dataRows.length} 项物资${dInfo}${_ndInfo}${_nqInfo}${_shInfo}`;
       }catch(err){ if(_si) _si.textContent='解析失败'; alert('解析失败：'+err.message); }
       },0);
     };
@@ -3645,7 +3694,7 @@
   //     否则出库流水日期为空→yearOf=NaN→被结转过滤→2024 年度归档缺失
   //  ③ 期初结转文本("2023年结转"/"2024年结转"/"上年结余")识别为余额而非本年流水，
   //     避免生成孤立的 2023 年归档或重复计数
-  function parseDetail(rows,fileName){
+  function parseDetail(rows,fileName,sheetName){
     let hdrIdx=-1;
     for(let i=0;i<Math.min(rows.length,20);i++){
       const r=rows[i]||[]; const txt=r.map(c=>c==null?'':String(c)).join(' ');
@@ -3659,17 +3708,57 @@
     }
     if(hdrIdx<0) return {count:0,records:[],samples:[],noDateSkip:0};
     const headers=(rows[hdrIdx]||[]).map(h=>h==null?'':String(h).trim());
-    const col=role=>{ const map={groupId:['讯号','序号','行号'],subMark:['分号','子号'],purchaseNo:['申购单号','采购单号','订单号'],inNo:['入库单号'],name:['用品名称','物品名称','名称','物资名称','品名'],catSub:['类别','类型','品类'],brand:['品牌','牌子'],spec:['规格','型号','规格/型号'],unit:['单位','计量单位'],inDate:['入库日期','入库时间','日期','入册日期'],outDate:['出库日期','出库时间','领用日期','发出日期'],opening:['期初数量','上年结余数量','期初','上年结余'],inQty:['入库数量','采购数量','进货数量','购入数量','入库'],outQty:['出库数量','发出数量','出库','领用数量'],operator:['经办人','采购经办人','领用人','操作人'],approvalNo:['审批编号','审批单号']};
-      const kws=map[role]||[];
-      for(let i=0;i<headers.length;i++){ if(kws.some(k=>headers[i]===k||headers[i].includes(k))) return i; }
-      return -1; };
-    const C={groupId:col('groupId'),subMark:col('subMark'),purchaseNo:col('purchaseNo'),inNo:col('inNo'),name:col('name'),catSub:col('catSub'),brand:col('brand'),spec:col('spec'),unit:col('unit'),inDate:col('inDate'),outDate:col('outDate'),opening:col('opening'),inQty:col('inQty'),outQty:col('outQty'),operator:col('operator'),approvalNo:col('approvalNo')};
+    // 列识别三段式：① 表头精确相等优先 ② 包含匹配兜底（可排除单号类列）③ 已被更高优先级角色占用的列不再被抢。
+    // 旧实现「按角色顺序逐个 contains 全表扫描」有两个真实缺陷：
+    //   · inDate 关键词含裸「日期」，会先命中排在前面的「出库日期」列 → 入库与出库日期串列，
+    //     主行同时有入库数量时就会用出库日期生成一笔伪入库流水；
+    //   · inQty/outQty 含裸「入库」「出库」，会命中「入库单号/出库单号」列，
+    //     单号若为纯数字（如 202403040005）会被 toNum 解析成数量 → 虚增库存 2 亿。
+    const _hN=headers.map(h=>String(h==null?'':h).replace(/\s+/g,''));
+    const _taken=new Set();
+    const pickCol=(kws,reject)=>{
+      if(!kws||!kws.length) return -1;
+      for(let i=0;i<_hN.length;i++){ const h=_hN[i]; if(!h||_taken.has(i)) continue; if(kws.some(k=>h===k)){ _taken.add(i); return i; } }
+      for(let i=0;i<_hN.length;i++){ const h=_hN[i]; if(!h||_taken.has(i)) continue; if(reject&&reject.test(h)) continue; if(kws.some(k=>h.indexOf(k)>=0)){ _taken.add(i); return i; } }
+      return -1;
+    };
+    const REJ_NO=/单号|编号|编码|凭证|审批/; // 单号/编号列绝不当数量列
+    // 角色顺序：专有角色先占列，通用角色（inDate 含裸「日期」、inQty 含裸「入库」）后占，避免越界抢占
+    const C={};
+    C.name=pickCol(['用品名称','物品名称','名称','物资名称','品名']);
+    C.catSub=pickCol(['类别','类型','品类']);
+    C.brand=pickCol(['品牌','牌子']);
+    C.spec=pickCol(['规格','型号','规格/型号']);
+    C.unit=pickCol(['单位','计量单位']);
+    C.groupId=pickCol(['讯号','序号','行号']);
+    C.subMark=pickCol(['分号','子号']);
+    C.purchaseNo=pickCol(['申购单号','采购单号','订单号']);
+    C.inNo=pickCol(['入库单号','入库编号']);
+    C.approvalNo=pickCol(['审批编号','审批单号']);
+    C.operator=pickCol(['经办人','采购经办人','领用人','操作人']);
+    C.outDate=pickCol(['出库日期','出库时间','领用日期','发出日期']); // 先于 inDate，防止被裸「日期」抢走
+    C.inDate=pickCol(['入库日期','入库时间','日期','入册日期']);
+    C.opening=pickCol(['期初数量','上年结余数量','期初','上年结余']);
+    C.inQty=pickCol(['入库数量','采购数量','进货数量','购入数量','入库'],REJ_NO);
+    C.outQty=pickCol(['出库数量','发出数量','出库','领用数量'],REJ_NO);
+    // 兜底：既无入库数量也无出库数量列时，若存在裸「数量」列（如「双节走访明细」的中秋走访发放量），
+    // 按表名语义定向为出库/入库数量，避免整张明细表 0 流水（静默丢真实业务数据）
+    if(C.inQty<0&&C.outQty<0){
+      const q=pickCol(['数量'],REJ_NO);
+      if(q>=0){ if(/(出库|领用|走访|发出|发放|赠送)/.test(sheetName||'')) C.outQty=q; else if(/(入库|采购|进货|购入|收货)/.test(sheetName||'')) C.inQty=q; }
+    }
     // 明细流水分类口径与总表保持一致：文件名优先，回退明细表「类别」列(normCat 归一化)。
     // 否则文件名未命中分类时明细流水 category='' 与总表物资(category=normCat(列)) 不匹配 → recomputeStocks 静默排除
     const fileCat=detectCatFromName(fileName)||'';
-    const _d0=rows[hdrIdx+1];
-    const catCol=(C.catSub>=0&&_d0&&_d0[C.catSub]!=null)?normCat(String(_d0[C.catSub])):'';
-    const cat=fileCat||catCol||'';
+    // 分类口径与总表「逐行」一致（文件名 → 行类别 normCat → 行类别原文 → other）。
+    // 旧实现取「首行类别」当整张明细表的常量分类：表里出现「——」「一一」这类占位类别的行，
+    // 总表侧算作 other、流水侧却是首行的分类 → 两者键对不上，该行出入库不并入 SSOT 库存。
+    const rowCat=r=>{
+      const t=C.catSub>=0&&r[C.catSub]!=null?String(r[C.catSub]).trim():'';
+      const s=normName(t);
+      return fileCat||normCat(t)||(isPlaceholderCat(s)?'':s)||'other';
+    };
+    const cat=rowCat(rows[hdrIdx+1]||[]);
     // 期初结转类文本("2023年结转"/"2024年结转"/"上年结余")不是真实日期，应视作余额而非本年流水
     const isCarryIn=v=>{ const s=String(v==null?'':v).trim(); return /结转|期初|上年|结余/.test(s) && !/^\d{4}-\d{2}-\d{2}/.test(s); };
     const toDate=v=>{ if(v==null) return ''; if(v instanceof Date) return dstr(v); const s=String(v).trim(); const m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`; const y=s.match(/(\d{4})/); if(y) return `${y[1]}-01-01`; return ''; };
@@ -3678,6 +3767,10 @@
     // 导入后切到该年份只见库存不见流水，却没有任何提示。这里计数并在导入预览里显式告知。
     const noDateCol=(C.inDate<0&&C.outDate<0);
     let noDateSkip=0;
+    // 有日期列但完全没有数量列（如 2024「全年入库汇总」只有「期初数量」）：
+    // 同样会「静默 0 流水」，必须计数并在预览里显式告知多少行未生成流水
+    const noQtyCol=(C.inQty<0&&C.outQty<0)&&!noDateCol;
+    let noQtySkip=0;
     for(const r of rows.slice(hdrIdx+1)){
       if(!r||!r.some(c=>c!=null&&String(c).trim()!=='')) continue;
       const gid=C.groupId>=0?r[C.groupId]:null;
@@ -3692,7 +3785,7 @@
         // 主行：建立物资上下文（沿用既有逻辑，覆盖 2025 讯号主行与 2024 烟酒茶名称主行）
         const cs=C.catSub>=0&&r[C.catSub]!=null?String(r[C.catSub]).trim():'';
         const sp=C.spec>=0&&r[C.spec]!=null?String(r[C.spec]).trim():'';
-        cur={name:sanitizeText(nm).trim(),brand:sanitizeText(C.brand>=0&&r[C.brand]!=null?String(r[C.brand]).trim():'—'),spec:[sanitizeText(cs),sanitizeText(sp)].filter(Boolean).join(' · '),unit:sanitizeText(C.unit>=0&&r[C.unit]!=null?String(r[C.unit]).trim():'件'),category:cat};
+        cur={name:sanitizeText(nm).trim(),brand:sanitizeText(C.brand>=0&&r[C.brand]!=null?String(r[C.brand]).trim():'—'),spec:[sanitizeText(cs),sanitizeText(sp)].filter(Boolean).join(' · '),unit:sanitizeText(C.unit>=0&&r[C.unit]!=null?String(r[C.unit]).trim():'件'),category:rowCat(r)};
         // 主行入库数量：仅当入库日期为真实日期(非期初结转)才记为本年入库——2025 主行入库数量=上年结余(结转)不记
         if(!isNaN(inV)&&inV>0&&inRaw!=null&&!isCarryIn(inRaw)){
           const date=toDate(inRaw);
@@ -3704,6 +3797,7 @@
           if(date) records.push({type:'out',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:outV,date,operator:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',orderNo:C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'',applicant:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',category:cur.category,fprint:'out|'+cur.name+'|'+cur.category+'|'+date+'|'+outV+(C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'')});
         }
         if(noDateCol&&((!isNaN(inV)&&inV>0)||(!isNaN(outV)&&outV>0))) noDateSkip++;
+        else if(noQtyCol) noQtySkip++;
         continue;
       }
       // 子行/续行：无名称，沿用 cur 上下文（2025 分号子行 + 2024 烟酒茶空名称出库续行）
@@ -3717,10 +3811,11 @@
         if(date) records.push({type:'out',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:outV,date,operator:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',orderNo:C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'',applicant:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',           category:cur.category,fprint:'out|'+cur.name+'|'+cur.category+'|'+date+'|'+outV+(C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'')});
       }
       if(noDateCol&&((!isNaN(inV)&&inV>0)||(!isNaN(outV)&&outV>0))) noDateSkip++;
+      else if(noQtyCol) noQtySkip++;
     }
-    return {count:records.length,records,samples:records.slice(0,12),noDateSkip};
+    return {count:records.length,records,samples:records.slice(0,12),noDateSkip,noQtySkip};
   }
-  function buildImport(rows,sheetName,fileName,renderNow){
+  function buildImport(rows,sheetName,fileName,renderNow,probe){
     // 表头识别加固：命中字段数 ≥ max(2, 非空列数×40%)，且表头上方不得是同样像数据行的完整行，
     // 防止把标题行/数据行误抓为表头
     // 表头识别重构（根治 2024 烟酒茶文件「抓不到数据」）：
@@ -3730,7 +3825,8 @@
     // 导致全表字段映射全空、抓不到任何数据。
     // 改为「首 15 行取字段命中数最多的一行」作表头：跳过仅 1 个单元格的标题行，命中≥2 才作数，更稳健。
     let hdrIdx=0, _bestScore=1;
-    for(let i=0;i<Math.min(rows.length,15);i++){
+    // 扫描范围与明细表解析一致（20 行）：表前有标题行/说明行/空行时，15 行窗口可能整体错过真表头
+    for(let i=0;i<Math.min(rows.length,20);i++){
       const r=rows[i]||[];
       const ne=r.filter(c=>c!=null&&String(c).trim()!=='');
       if(ne.length<2) continue; // 跳过跨列合并的「标题行」（通常只有 1 个单元格）
@@ -3761,7 +3857,10 @@
     };
     const dataRows=rows.slice(hdrIdx+1).filter(r=>r&&r.some(c=>c!=null&&String(c).trim()!=='')&&!isTotalsRow(r)&&!isRepeatedHeaderRow(r)).map(r=>r.map(sanitizeText)); // 入口层消毒：剥离 < > 字节（XSS 纵深防御）
     importState={headers,mapping,dataRows,sheetName,fileName:fileName||'',detail:{count:0,records:[],samples:[]},hasDetail:false};
-    renderMapping();
+    // probe=true：选表探测阶段只算 mapping/dataRows，不重建「每列一个 <select>」的映射表。
+    // 旧实现在候选表循环里每试一张表就重建一次映射 DOM（宽表 200 列 × 每 select 9 个 option ≈ 1800 节点 + 200 监听），
+    // 多工作表文件会连续重建多次 → 选表兜底时明显卡顿。探测结束由调用方补一次 renderMapping 即可。
+    if(!probe) renderMapping();
     // renderNow!==false 时立即渲染预览（默认行为，保持原有调用契约）；
     // handleFile 传 false，等明细表解析完再统一渲染一次，避免同一份数据被连续渲染两遍
     if(renderNow!==false) renderPreview();
@@ -3869,6 +3968,9 @@
     if(el) el.textContent=`${label} ${done}/${total}（${pct}%）…`;
   }
   let importRunning=false;
+  // 多文件导入队列：一次选中/拖入多个年度表格时依次导入（每次导入完成后自动载入下一个）。
+  // 旧实现只取 files[0]，其余文件被静默丢弃——用户以为全导了，实际只进了第一年的数据。
+  let _fileQueue=[];
   document.getElementById('confirmImport').addEventListener('click',()=>{
     if(importRunning) return; // 防重入：导入进行中重复点击不叠加任务
     if(!importState||!importState.dataRows.length){ toast('请先选择文件','warn','未检测到待导入数据'); return; }
@@ -3903,6 +4005,46 @@
     // 补 spec 是因为同名单日同数量的不同规格批次（茶叶·台湾乌龙 / 茶叶·陈皮茶 各 51）属两笔真实业务，
     // 仅按指纹会指纹碰撞被误杀（既有记录同样按 fprint+spec 建索引，重导防重不失效）
     const fpKey=r=>String(r.fprint||'')+'|'+String(r.spec||'');
+    // —— 明细流水名 ↔ 库存总表名 对齐（根治「流水导进来了、库存却纹丝不动」）——
+    // 同一物资在总表与明细表里写法常不一致：总表「圆形铁票夹51㎜」/明细「圆形铁票夹51mm」（全角半角）、
+    // 总表「晨光-米菲考试橡皮」/明细「晨光-米菲考试橡皮12」（带规格后缀）、总表「芦荟胶」/明细「南非芦荟胶」。
+    // 名称键对不上 → 流水与物资在 recomputeStocks 里无法接榫：出库不减库存、期初反推漏减流水。
+    // 实测 2025 办公用品 285 笔里有 85 笔、2025 烟酒茶 86 笔里有 36 笔属此类。
+    // 对齐只改流水的显示名，fprint 仍用原名 → 重复导入的去重口径不受影响。
+    const _stripPunct=s=>String(s||'').replace(/[\s\p{P}\p{S}]/gu,'');
+    const masterByCat=new Map(); // cat -> [{k:强键, ks:去标点键, n:总表原名}]
+    for(const r of importState.dataRows){
+      const mn=normName(get(r,'name')); if(!mn) continue;
+      const cr=get(r,'category');
+      const rawS=(cr!=null&&String(cr).trim()!=='')?normName(cr):'';
+      const mc=fileCat||normCat(cr)||(isPlaceholderCat(rawS)?'':rawS)||'other';
+      let arr=masterByCat.get(mc); if(!arr){ arr=[]; masterByCat.set(mc,arr); }
+      const mk=nameKey(mn);
+      arr.push({k:mk,ks:_stripPunct(mk),n:mn});
+    }
+    const alignName=(nm,c)=>{
+      const nk=nameKey(nm); if(!nk) return nm;
+      const arr=masterByCat.get(c)||[];
+      for(let i=0;i<arr.length;i++) if(arr[i].k===nk) return arr[i].n;   // ① 强归一精确命中（全角/半角/空格差异）
+      const nks=_stripPunct(nk);
+      let best=null,bestLen=0;
+      for(let i=0;i<arr.length;i++){
+        const m=arr[i];
+        if(m.k.length<3||nk.length<3) continue;
+        if(nk.indexOf(m.k)>=0||m.k.indexOf(nk)>=0){ if(m.k.length>bestLen){best=m.n;bestLen=m.k.length;} continue; } // ② 包含关系（规格后缀/前缀产地）
+        if(nks.length>=4&&m.ks===nks&&m.k.length>bestLen){ best=m.n; bestLen=m.k.length; }                            // ③ 仅标点差异（+／（）等）
+      }
+      return best||nm;
+    };
+    let _unalignedN=0; const _unalignedEx=[];
+    if(useDetail&&importState.detail&&importState.detail.records.length){
+      const _mkSet=new Set();
+      masterByCat.forEach((arr,c)=>arr.forEach(m=>_mkSet.add(c+'|'+m.k)));
+      for(const rec of importState.detail.records){
+        rec.name=alignName(rec.name,rec.category); // 对齐后的名字同时用于建键与落库显示
+        if(!_mkSet.has(rec.category+'|'+nameKey(rec.name))){ _unalignedN++; if(_unalignedEx.length<4) _unalignedEx.push(rec.name); }
+      }
+    }
     // 本次实际会入表的明细（去重后）：反推期初用的流水量必须与实际入表量完全一致，
     // 否则「期初 = 期末 − 流水」与「q = 期初 + 流水」两侧口径不同 → q 偏小
     const effRecs=[];
@@ -3949,7 +4091,9 @@
       // 原会落成 cat='' 被脏行守卫整行丢弃（2023 明细 5 项物资静默丢失）；原始类别文本作独立分类键保留数据，
       // 全部为空时归入 other；未知分类键由 safeMeta/allCatKeys 全链路安全兜底（报表聚合、下拉重建均已覆盖）
       const _rawCatS=(catRaw!=null&&String(catRaw).trim()!=='')?normName(catRaw):'';
-      const cat=fileCat||normCat(catRaw)||_rawCatS||'other';
+      // 占位类别（「——」「一一」「/」）不是分类名：直接采用会生成「——」这种脏分类，
+      // 且与明细流水侧（占位→other）算出的分类不一致 → 该行流水与物资对不上。统一归 other。
+      const cat=fileCat||normCat(catRaw)||(isPlaceholderCat(_rawCatS)?'':_rawCatS)||'other';
       // 当前库存的权威值：总表只要提供「期末/当前库存」列就以它为锚（反推期初，保证导入后系统库存 === Excel 库存）；
       // 只有「无期末列、仅期初列」的兜底场景才直接采用期初。
       // initRaw 必须在「行作用域」声明：下方分支要用它做兜底；
@@ -4078,14 +4222,36 @@
     try{ renderDashboard(); renderReports(); }catch(e){ console.warn('导入后图表刷新失败', e); }
     const _ir=document.getElementById('importResult'); if(_ir) _ir.style.display='none';
     const _fi=document.getElementById('fileInput'); if(_fi) _fi.value='';
-    toast('批量导入完成','ok',`已并入库存 ${added+updated} 条物资${useDetail?`、流水 ${inN+outN} 笔`:''}`);
+    // 名称完全对不上总表的流水：以原名入表（不并入任何物资的库存数量），必须显式告知，
+    // 否则用户看到「库存数量与表格对不上」却没有任何线索（旧行为即静默丢弃式的不一致）
+    const _uaMsg=_unalignedN?`。另有 ${_unalignedN} 笔流水的物资名在库存总表中无对应（如 ${_unalignedEx.join('、')}），已保留流水但未并入库存数量，如需并入请在总表补上同名物资`:'';
+    toast('批量导入完成','ok',`已并入库存 ${added+updated} 条物资${useDetail?`、流水 ${inN+outN} 笔`:''}${_uaMsg}`);
+    // 多文件队列：本次导入完成后自动载入下一个待导入文件，避免用户一次选中多个文件时只导入第一个
+    if(_fileQueue.length){
+      const _nxt=_fileQueue.shift();
+      const _si2=document.getElementById('sheetInfo');
+      if(_si2) _si2.textContent=`队列中还剩 ${_fileQueue.length} 个文件，正在读取「${_nxt.name}」…`;
+      handleFile(_nxt);
+    }
   }
   const dropzone=document.getElementById('dropzone'), fileInput=document.getElementById('fileInput');
   dropzone.addEventListener('click',()=>fileInput.click());
-  fileInput.addEventListener('change',()=>{ if(fileInput.files[0]) handleFile(fileInput.files[0]); });
+  // 多文件受理：第一个立即解析预览，其余进队列等前一个导入完成后自动继续（导入中再拖入则全部排队）
+  const _acceptFiles=fs=>{
+    const arr=Array.prototype.slice.call(fs||[]).filter(f=>/\.xlsx?$/i.test(f.name));
+    if(!arr.length) return;
+    if(importRunning){ _fileQueue.push.apply(_fileQueue,arr); return; }
+    _fileQueue=arr.slice(1);
+    if(arr.length>1){
+      const _si3=document.getElementById('sheetInfo');
+      if(_si3) _si3.textContent=`已选择 ${arr.length} 个文件，将依次导入；正在读取第 1 个「${arr[0].name}」…`;
+    }
+    handleFile(arr[0]);
+  };
+  fileInput.addEventListener('change',()=>{ _acceptFiles(fileInput.files); });
   ['dragover','dragenter'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.add('drag');}));
   ['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.remove('drag');}));
-  dropzone.addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) handleFile(f); });
+  dropzone.addEventListener('drop',e=>{ _acceptFiles(e.dataTransfer.files); });
   document.getElementById('resetImport').addEventListener('click',()=>{ document.getElementById('importResult').style.display='none'; fileInput.value=''; });
 
   // ---- Charts ----
