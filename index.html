@@ -2291,12 +2291,30 @@
   let invViewYear='all';                      // 库存管理当前查看年份（'all'=全部年份，否则按当年出入库活动筛选）
   let invDateRange={from:null,to:null};       // 库存管理日期范围（存在时覆盖年份）
   let _daMap=null,_daKey='';                  // 物资→活跃日期索引缓存（库存年份/日期筛选用）
+  // ===== 物资归属年份集合（R71）=====
+  // 一件物资会同时出现在多个年度的库存总表里（如 2024、2025、2026 都有「A4复印纸」），
+  // 单值 dataYear 只能承载一个年份 → 切到其他年份时该物资凭空消失、表现为「信息显示不全」。
+  // 改为集合 dataYears（升序数组）；dataYear 保留为最早年，兼容旧数据与既有读写点。
+  function itemYears(i){
+    if(!i) return [];
+    if(Array.isArray(i.dataYears)) return i.dataYears.map(y=>+y).filter(y=>!isNaN(y));
+    const y=+i.dataYear; return isNaN(y)?[]:[y]; // 旧数据只有 dataYear 单值
+  }
+  // 登记一年（幂等，返回是否新增）；同步维护 dataYear=最早年
+  function itemAddYear(i,y){
+    y=+y; if(!i||isNaN(y)) return false;
+    let arr=itemYears(i);
+    if(arr.indexOf(y)<0){ arr.push(y); arr.sort((a,b)=>a-b); }
+    else arr=arr.slice().sort((a,b)=>a-b);
+    i.dataYears=arr; i.dataYear=arr[0];
+    return true;
+  }
   // 数据中出现过的全部年份（倒序，今年在前）
   function yearList(){
     const set=new Set();
-    // 库存物资的数据年份（纯库存总表导入、无明细流水时靠文件名推断）：必须纳入，
+    // 库存物资的归属年份（导入时由文件名推断，多年累加）：必须纳入，
     // 否则这些年份既不出现在年份胶囊、切换时物资也因无活动流水而消失 → 信息显示不全
-    items.forEach(r=>{ const y=+r.dataYear; if(!isNaN(y)) set.add(y); });
+    items.forEach(r=>{ itemYears(r).forEach(y=>set.add(y)); });
     inboundRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) set.add(y); });
     outboundRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) set.add(y); });
     checkRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) set.add(y); });
@@ -2312,7 +2330,7 @@
     outboundRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) set.add(y); });
     checkRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) set.add(y); });
     archivedRecords.forEach(a=>{ const y=+a.year; if(y) set.add(y); });
-    items.forEach(r=>{ const y=+r.dataYear; if(!isNaN(y)) set.add(y); });
+    items.forEach(r=>{ itemYears(r).forEach(y=>set.add(y)); }); // 多年归属集合，与 yearList 同源
     return set;
   }
   // 盘点计划年度：今年 + 已存在计划的年份 + 有盘点记录的年份（不凭空造历史计划）
@@ -2812,7 +2830,9 @@
     for(let j=0;j<a.length;j++){ const d=a[j]; if(from&&d<from) continue; if(to&&d>to) continue; return true; }
     return false;
   }
-  function itemActiveInYear(i,y){ return i.dataYear===+y || itemInDateRange(i, y+'-01-01', y+'-12-31'); }
+  // 归属年份命中（多年集合，统一 Number 比较，避免云端/JSON 还原后 dataYear 变成字符串时 === 判否导致物资消失）
+  // 或该年在期初期末区间内有出入库活动
+  function itemActiveInYear(i,y){ return itemYears(i).indexOf(+y)>=0 || itemInDateRange(i, y+'-01-01', y+'-12-31'); }
   function renderInvYearSelect(){
     const sel=document.getElementById('invYearSelect'); if(!sel) return;
     const ys=yearList();
@@ -3603,7 +3623,11 @@
         renderPreview();
         const dInfo=importState.hasDetail?` · 同步解析「${detailName}」：将从 ${importState.detail.count} 笔流水生成入库/出库记录`:'';
         const _shInfo=_shrunk.length?`（已自动裁剪 ${_shrunk.length} 个工作表的空白行列）`:'';
-        document.getElementById('sheetInfo').textContent=`库存总表：${totalName}${detailName?` · 明细表：${detailName}`:''} · 共 ${importState.dataRows.length} 项物资${dInfo}${_shInfo}`;
+        // 明细表缺日期列时流水无法定位年份（如 2023 年「全年出入库明细」只有数量/出库数量/结余）：
+        // 不静默丢弃，明确告知多少行未生成流水，避免导入后「某年只有库存没有流水」却无从察觉
+        const _nd=(importState.detail&&importState.detail.noDateSkip)||0;
+        const _ndInfo=_nd?` · ⚠️ 该明细表没有日期列，${_nd} 行有出入库数量但无法定位年份，未生成流水（库存数量不受影响，如需流水请在表内补「入库日期/出库日期」列）`:'';
+        document.getElementById('sheetInfo').textContent=`库存总表：${totalName}${detailName?` · 明细表：${detailName}`:''} · 共 ${importState.dataRows.length} 项物资${dInfo}${_ndInfo}${_shInfo}`;
       }catch(err){ if(_si) _si.textContent='解析失败'; alert('解析失败：'+err.message); }
       },0);
     };
@@ -3631,7 +3655,7 @@
       const hasNo=/申购单号|入库单号|单号/.test(txt);
       if(hasName&&(hasDate||hasQty||hasNo)){ hdrIdx=i; break; }
     }
-    if(hdrIdx<0) return {count:0,records:[],samples:[]};
+    if(hdrIdx<0) return {count:0,records:[],samples:[],noDateSkip:0};
     const headers=(rows[hdrIdx]||[]).map(h=>h==null?'':String(h).trim());
     const col=role=>{ const map={groupId:['讯号','序号','行号'],subMark:['分号','子号'],purchaseNo:['申购单号','采购单号','订单号'],inNo:['入库单号'],name:['用品名称','物品名称','名称','物资名称','品名'],catSub:['类别','类型','品类'],brand:['品牌','牌子'],spec:['规格','型号','规格/型号'],unit:['单位','计量单位'],inDate:['入库日期','入库时间','日期','入册日期'],outDate:['出库日期','出库时间','领用日期','发出日期'],opening:['期初数量','上年结余数量','期初','上年结余'],inQty:['入库数量','采购数量','进货数量','购入数量','入库'],outQty:['出库数量','发出数量','出库','领用数量'],operator:['经办人','采购经办人','领用人','操作人'],approvalNo:['审批编号','审批单号']};
       const kws=map[role]||[];
@@ -3648,6 +3672,10 @@
     const isCarryIn=v=>{ const s=String(v==null?'':v).trim(); return /结转|期初|上年|结余/.test(s) && !/^\d{4}-\d{2}-\d{2}/.test(s); };
     const toDate=v=>{ if(v==null) return ''; if(v instanceof Date) return dstr(v); const s=String(v).trim(); const m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`; const y=s.match(/(\d{4})/); if(y) return `${y[1]}-01-01`; return ''; };
     const records=[]; let cur=null;
+    // 明细表完全没有日期列时，所有带数量的行都生不成年份可定位的流水 → 会「静默丢数据」：
+    // 导入后切到该年份只见库存不见流水，却没有任何提示。这里计数并在导入预览里显式告知。
+    const noDateCol=(C.inDate<0&&C.outDate<0);
+    let noDateSkip=0;
     for(const r of rows.slice(hdrIdx+1)){
       if(!r||!r.some(c=>c!=null&&String(c).trim()!=='')) continue;
       const gid=C.groupId>=0?r[C.groupId]:null;
@@ -3673,6 +3701,7 @@
           const date=toDate(outRaw);
           if(date) records.push({type:'out',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:outV,date,operator:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',orderNo:C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'',applicant:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',category:cur.category,fprint:'out|'+cur.name+'|'+cur.category+'|'+date+'|'+outV+(C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'')});
         }
+        if(noDateCol&&((!isNaN(inV)&&inV>0)||(!isNaN(outV)&&outV>0))) noDateSkip++;
         continue;
       }
       // 子行/续行：无名称，沿用 cur 上下文（2025 分号子行 + 2024 烟酒茶空名称出库续行）
@@ -3683,10 +3712,11 @@
       }
       if(!isNaN(outV)&&outV>0&&outRaw!=null&&!isCarryIn(outRaw)){
         const date=toDate(outRaw);
-        if(date) records.push({type:'out',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:outV,date,operator:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',orderNo:C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'',applicant:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',category:cur.category,fprint:'out|'+cur.name+'|'+cur.category+'|'+date+'|'+outV+(C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'')});
+        if(date) records.push({type:'out',name:cur.name,spec:cur.spec,unit:cur.unit,brand:cur.brand,qty:outV,date,operator:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',orderNo:C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'',applicant:C.operator>=0&&r[C.operator]!=null?sanitizeText(r[C.operator]).trim():'',           category:cur.category,fprint:'out|'+cur.name+'|'+cur.category+'|'+date+'|'+outV+(C.approvalNo>=0&&r[C.approvalNo]!=null?sanitizeText(r[C.approvalNo]).trim():'')});
       }
+      if(noDateCol&&((!isNaN(inV)&&inV>0)||(!isNaN(outV)&&outV>0))) noDateSkip++;
     }
-    return {count:records.length,records,samples:records.slice(0,12)};
+    return {count:records.length,records,samples:records.slice(0,12),noDateSkip};
   }
   function buildImport(rows,sheetName,fileName,renderNow){
     // 表头识别加固：命中字段数 ≥ max(2, 非空列数×40%)，且表头上方不得是同样像数据行的完整行，
@@ -3861,9 +3891,12 @@
     const FI=flowIndex(); // 流水汇总索引（反推期初用，O(1) 查询）
     const touched=new Set(); // 本次导入已处理过的「分类|名称」：总表多批次同一物资需累加期末，否则只留最后一行 → 库存低估
     const fileCat=detectCatFromName(importState.fileName)||''; // 文件名分类是常量，循环外算一次
-    // 纯库存总表（无明细流水）导入：从文件名推断数据年份，标记到物资 dataYear。
-    // 有明细时库存年份由流水日期决定，不强行标记（否则会把 2025 物资误标成表格文件名年份）。
-    const fileYear=useDetail?NaN:detectYearFromName(importState.fileName);
+    // 导入年份：由文件名推断，标记到物资归属年份集合 dataYears。
+    // R71 关键修正——旧版写成 useDetail?NaN:...，即「带明细表的文件不标记」，
+    // 结果表里那些当年零流水的物资（有库存但没动过）拿不到任何年份归属，
+    // 切换到该年份时集体消失：2026 两个文件共 71 项物资却只显示 7 项（仅 9 笔流水）。
+    // 年份归属与流水归属是两回事（前者=该年库存总表里有它，后者=该年发生过出入库），必须都记。
+    const fileYear=detectYearFromName(importState.fileName);
     // 明细去重键 = 业务指纹 + 规格：指纹已含「物资|分类|日期|数量|单号」，可区分一单多品种；
     // 补 spec 是因为同名单日同数量的不同规格批次（茶叶·台湾乌龙 / 茶叶·陈皮茶 各 51）属两笔真实业务，
     // 仅按指纹会指纹碰撞被误杀（既有记录同样按 fprint+spec 建索引，重导防重不失效）
@@ -3955,8 +3988,9 @@
         }
         exist.updatedAt=Date.now(); // 云同步 LWW 需要时间戳
         const sv=toNum(safe); if(!isNaN(sv)) exist.safe=Math.max(0,sv);
-        // 数据年份：仅当该物资尚未标记时记录首次导入年份（后导入的同名物资不覆盖，保留最早归属年）
-        if(!isNaN(fileYear) && isNaN(exist.dataYear)) exist.dataYear=fileYear;
+        // 归属年份：同一物资会连续出现在多个年度总表里，必须累加而非「首次为准」，
+        // 否则先导入 2025 再导入 2024 时，重叠物资只剩 2025 → 切到 2024 看不到它（信息显示不全）
+        if(!isNaN(fileYear)) itemAddYear(exist,fileYear);
         touched.add(key);
         updated++;
       }else{
@@ -3971,7 +4005,8 @@
         }
         const ni={c:cat,n:name,b:brand?String(brand):'—',s:subSpec||'—',u:unit?String(unit):'件',
           q:initFinal, initQty:niInit,
-          dataYear:!isNaN(fileYear)?fileYear:undefined, // 纯库存总表导入年份（有明细时 undefined，由流水决定）
+          dataYear:!isNaN(fileYear)?fileYear:undefined, // 归属最早年（兼容旧读点）；完整集合见下方 dataYears
+          dataYears:!isNaN(fileYear)?[fileYear]:undefined, // 该物资出现过的年度总表年份（多年累加）
           safe:!isNaN(sv)?Math.max(0,sv):(catDefault[cat]||Math.ceil(initFinal*0.3)),
           updatedAt:Date.now()};
         items.push(ni);
@@ -4718,9 +4753,18 @@
     // 每份新文件导入后都会重算，因此始终落在最新的有数据年份上。
     // 用户一旦手动选过（_viewYearUser），即便选到空年份也完全尊重，不再纠偏。
     if(!_viewYearUser){
+      // 优先落在「最近的有流水年份」：本页是流水视图，若定位到只有库存总表、没有出入库流水的年份
+      // （例如只上传了 2024 纯库存总表），入库/出库会是空的，同样被感知为「信息显示不全」。
+      // 无任何流水时，再退回到最近的库存归属年份，保证至少落在有东西可看的年份上。
       const act=activeDataYears();
-      const dataYs=Array.from(act).filter(y=>ys.indexOf(y)>=0).sort((a,b)=>b-a);
-      if(dataYs.length) viewYear=dataYs[0];
+      const trans=new Set();
+      inboundRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) trans.add(y); });
+      outboundRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) trans.add(y); });
+      checkRecords.forEach(r=>{ const y=yearOf(r); if(!isNaN(y)) trans.add(y); });
+      archivedRecords.forEach(a=>{ const y=+a.year; if(y) trans.add(y); });
+      let pick=Array.from(trans).filter(y=>ys.indexOf(y)>=0).sort((a,b)=>b-a);
+      if(!pick.length) pick=Array.from(act).filter(y=>ys.indexOf(y)>=0).sort((a,b)=>b-a);
+      if(pick.length) viewYear=pick[0];
     }
     if(ys.indexOf(+viewYear)<0) viewYear=cur;
     sel.innerHTML=ys.map(y=>`<option value="${y}">${y}</option>`).join('');
