@@ -1018,6 +1018,18 @@
   [data-theme="light"] .kpi-sum b{color:#1d2433}
   [data-theme="light"] .kpi-sum b.down{color:#e05060}
   .modal-tag{display:inline-block;padding:3px 10px;border-radius:var(--radius-xs);font-size:12px;font-weight:600;color:#fff}
+  /* 统一确认/提示对话框（替代原生 confirm/alert，保持全站玻璃拟态一致） */
+  .modal-dlg{width:min(440px,calc(100vw - 40px))}
+  .dlg-head{justify-content:flex-start;position:relative;gap:12px;padding-right:38px}
+  .dlg-head h3{margin:0;flex:1 1 auto;min-width:0}
+  .dlg-head .modal-close{position:absolute;right:18px;top:50%;transform:translateY(-50%)}
+  .dlg-ico{width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:grid;place-items:center;font-size:15px;font-weight:800;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+  .dlg-ico.info{background:linear-gradient(135deg,#5b8cff,#7d8cff)}
+  .dlg-ico.warn{background:linear-gradient(135deg,#f0a93b,#f5c46b)}
+  .dlg-ico.danger{background:linear-gradient(135deg,#ff6b6b,#ff8f8f)}
+  .dlg-ico.success{background:linear-gradient(135deg,#2ecc8f,#4ce0a8)}
+  .dlg-msg{font-size:14px;line-height:1.75;color:var(--ink);padding:10px 2px 2px;white-space:pre-wrap;word-break:break-word}
+  .dlg-msg b{color:var(--ink);font-weight:700}
 
   /* ===== 动画反馈增强 ===== */
   /* 1. Toast 轻提示（操作反馈主入口） */
@@ -2996,9 +3008,9 @@
     toast('记录已更新','ok','修改后的盘点记录已保存');
   }
   function closeRecCheckEdit(){ const m=document.getElementById('recCheckEditModal'); if(m) m.classList.remove('show'); }
-  function deleteRecCheck(i){
+  async function deleteRecCheck(i){
     const r=checkRecords[i]; if(!r) return;
-    if(!confirm('确定删除该盘点记录「'+r.title+'」吗？此操作不可撤销。')) return;
+    if(!await confirmBox({title:'删除盘点记录',msg:'确定删除该盘点记录「'+r.title+'」吗？\n此操作不可撤销。',danger:true,icon:'danger'})) return;
     checkRecords.splice(i,1); renderCheckTimeline(); wmsSave();
     toast('记录已删除','ok','已移除该条盘点记录');
   }
@@ -3271,9 +3283,9 @@
     toast('盘点项已更新','ok','修改后的盘点项已保存');
   }
   function closeCheckItemEdit(){ document.getElementById('checkItemEditModal').classList.remove('show'); }
-  function deleteCheckItem(idx){
+  async function deleteCheckItem(idx){
     const it=checkItems[idx]; if(!it) return;
-    if(!confirm('确定删除盘点项「'+it.n+'」吗？此操作不可撤销。')) return;
+    if(!await confirmBox({title:'删除盘点项',msg:'确定删除盘点项「'+it.n+'」吗？\n此操作不可撤销。',danger:true,icon:'danger'})) return;
     checkItems.splice(idx,1); renderCheck(); renderCheckKpi();
     toast('盘点项已删除','ok','已移除该项');
   }
@@ -3597,7 +3609,7 @@
     return {oldRef,newRef};
   }
   function handleFile(file){
-    if(typeof XLSX==='undefined'){ alert('表格组件未加载，请检查网络后重试'); return; }
+    if(typeof XLSX==='undefined'){ msgBox({title:'组件未加载',msg:'表格组件未加载，请检查网络后重试',icon:'warn'}); return; }
     const _si=document.getElementById('sheetInfo');
     if(_si) _si.textContent=`正在读取「${file.name}」…（${(file.size/1024).toFixed(0)} KB，文件较大时请稍候）`;
     const reader=new FileReader();
@@ -3691,7 +3703,7 @@
         const _nq=(importState.detail&&importState.detail.noQtySkip)||0;
         const _nqInfo=_nq?` · ⚠️ 明细表未识别到「入库数量/出库数量」列，${_nq} 行有日期但无数量，未生成流水（如需流水请在表内补数量列）`:'';
         document.getElementById('sheetInfo').textContent=`库存总表：${totalName}${detailName?` · 明细表：${detailName}`:''} · 共 ${importState.dataRows.length} 项物资${dInfo}${_ndInfo}${_nqInfo}${_shInfo}`;
-      }catch(err){ if(_si) _si.textContent='解析失败'; alert('解析失败：'+err.message); }
+      }catch(err){ if(_si) _si.textContent='解析失败'; msgBox({title:'解析失败',msg:'解析失败：'+err.message,icon:'danger'}); }
       },0);
     };
     reader.readAsArrayBuffer(file);
@@ -4990,7 +5002,7 @@
       opts=opts||{};
       const headerAt=(typeof opts.headerAt==='number')?opts.headerAt:null;
       const titleMerge=!!opts.titleMerge;
-      if(typeof XLSX==='undefined'){ alert('表格组件未加载，请联网后重试'); return; }
+      if(typeof XLSX==='undefined'){ msgBox({title:'组件未加载',msg:'表格组件未加载，请联网后重试',icon:'warn'}); return; }
       const ws=XLSX.utils.aoa_to_sheet(rows.map(r=>Array.isArray(r)?r.map(xlsxSafe):r));
       const colCount=rows.reduce((m,r)=>Math.max(m,Array.isArray(r)?r.length:0),0);
       const rowCount=rows.length;
@@ -5171,7 +5183,7 @@
       const wb=XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb,ws,'记录');
       XLSX.writeFile(wb,filename,{cellStyles:true});
-    }catch(e){ alert('导出失败：'+e.message); }
+    }catch(e){ msgBox({title:'导出失败',msg:'导出失败：'+e.message,icon:'danger'}); }
   }
   function recToRows(type,rec){
     const cols=type==='in'?inCols:outCols;
@@ -5835,12 +5847,12 @@
   const _expA=document.getElementById('exportArchiveBtn'); if(_expA) _expA.addEventListener('click',exportArchiveYear);
   const _expJ=document.getElementById('exportArchiveJsonBtn'); if(_expJ) _expJ.addEventListener('click',exportArchiveJson);
   const _delA=document.getElementById('delArchiveBtn');
-  if(_delA) _delA.addEventListener('click',()=>{
+  if(_delA) _delA.addEventListener('click',async()=>{
     const y=+archViewYear;
     const idx=archivedRecords.findIndex(a=>+a.year===y);
     if(idx<0){ toast('未结转年度无封存数据可删除','warn',y+' 年尚未结转，仅可查看与下载'); return; }
     const a=archivedRecords[idx];
-    if(!confirm('确定删除「'+(a.label||a.year||y)+' 年」的归档封存数据吗？此操作不可恢复。')) return;
+    if(!await confirmBox({title:'删除归档',msg:'确定删除「'+(a.label||a.year||y)+' 年」的归档封存数据吗？\n此操作不可恢复。',danger:true,icon:'danger'})) return;
     archivedRecords.splice(idx,1);
     wmsSave();
     renderArchive();
@@ -6046,7 +6058,7 @@
   if(_outCatEl) _outCatEl.addEventListener('change',renderOutNameSuggest);
 
   function resetOutbound(){ ['outNo','outApplicant','outName','outSpec','outUnit','outQty','outHandler','outPurpose','outCat','outDept'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';}); }
-  document.getElementById('submitOutbound').addEventListener('click',()=>{
+  document.getElementById('submitOutbound').addEventListener('click',async()=>{
     const applicant=sanitizeText(document.getElementById('outApplicant').value.trim());
     const dept=document.getElementById('outDept').value;
     const cat=normCat(document.getElementById('outCat').value);
@@ -6061,9 +6073,9 @@
     const _it=items.find(i=>i.c===cat && normName(i.n)===_nm);
     const _stock=_it? (+_it.q||0) : 0;
     if(!_it){
-      if(!confirm('⚠️ 物资「'+name+'」当前不在库存台账中（无库存记录）。\n\n继续将按「0 库存」建档并登记本次出库，系统库存为 0。\n如名称/分类填写有误，请点「取消」核对后再提交。')) return;
+      if(!await confirmBox({title:'物资不在台账',msg:'物资「'+name+'」当前不在库存台账中（无库存记录）。\n\n继续将按「0 库存」建档并登记本次出库，系统库存为 0。\n如名称/分类填写有误，请点「取消」核对后再提交。',icon:'warn'})) return;
     } else if(qty>_stock){
-      if(!confirm('⚠️ 库存不足：当前「'+name+'」账面库存仅 '+_stock+' '+unit0+'，本次申请出库 '+qty+' '+unit0+'（超出 '+(qty-_stock)+' '+unit0+'）。\n\n继续将按「超量出库」登记，系统库存归零，超出部分形成账实缺口。\n如属数据录入错误，请点「取消」核对后再提交。')) return;
+      if(!await confirmBox({title:'库存不足',msg:'当前「'+name+'」账面库存仅 '+_stock+' '+unit0+'，本次申请出库 '+qty+' '+unit0+'（超出 '+(qty-_stock)+' '+unit0+'）。\n\n继续将按「超量出库」登记，系统库存归零，超出部分形成账实缺口。\n如属数据录入错误，请点「取消」核对后再提交。',icon:'warn'})) return;
     }
     const outNo=document.getElementById('outNo').value.trim();
     if(outNo && outboundRecords.some(r=>r.outNo===outNo)){ toast('单号已存在','warn','出库单号「'+outNo+'」已登记过，请核对或留空自动生成'); return; }
@@ -6168,12 +6180,12 @@
     toast(invEditIdx>=0?'已更新物资':'已新增物资','ok',n);
   }
   function closeInvEdit(){ document.getElementById('invEditModal').classList.remove('show'); }
-  function deleteInv(idx){
+  async function deleteInv(idx){
     const i=items[idx]; if(!i) return;
     const _ik=normName(i.n); // R35: 匹配与墓碑统一用 normName 键（旧导入档案 n 可含 NBSP/全角空格，裸 i.n 会漏删关联流水且墓碑键≠mergeCloud keyFn → 已删物资云端复活）
     const inRel=inboundRecords.filter(r=>normName(r.name)===_ik && r.category===i.c);
     const outRel=outboundRecords.filter(r=>normName(r.name)===_ik && r.category===i.c);
-    if(!confirm('确定删除该物资「'+i.n+'」吗？\n（将同步删除关联入库 '+inRel.length+' 条 / 出库 '+outRel.length+' 条记录）')) return;
+    if(!await confirmBox({title:'删除物资',msg:'确定删除该物资「'+i.n+'」吗？\n（将同步删除关联入库 '+inRel.length+' 条 / 出库 '+outRel.length+' 条记录）',danger:true,icon:'danger'})) return;
     for(let k=inboundRecords.length-1;k>=0;k--){ const r=inboundRecords[k]; if(normName(r.name)===_ik && r.category===i.c){ tombstone('in:'+(r.id||r.inNo)); inboundRecords.splice(k,1); } }
     for(let k=outboundRecords.length-1;k>=0;k--){ const r=outboundRecords[k]; if(normName(r.name)===_ik && r.category===i.c){ tombstone('out:'+(r.id||r.outNo)); outboundRecords.splice(k,1); } }
     tombstone('item:'+_ik+'|'+i.c); // 墓碑：防止其他设备同步时把已删除物资拉回
@@ -6245,10 +6257,10 @@
     toast('记录已更新','ok','修改后的记录已保存');
   }
   function closeRecEdit(){ document.getElementById('recEditModal').classList.remove('show'); }
-  function deleteRec(type,idx){
+  async function deleteRec(type,idx){
     const arr=(type==='in'?inboundRecords:outboundRecords);
     const rec=arr[idx]; if(!rec) return;
-    if(!confirm('确定删除该记录「'+rec.id+'」吗？此操作不可撤销。')) return;
+    if(!await confirmBox({title:'删除记录',msg:'确定删除该记录「'+rec.id+'」吗？\n此操作不可撤销。',danger:true,icon:'danger'})) return;
     if(type==='in'){ tombstone('in:'+(rec.id||rec.inNo)); inboundRecords.splice(idx,1); }
     else { tombstone('out:'+(rec.id||rec.outNo)); outboundRecords.splice(idx,1); } // 墓碑：防止其他设备同步时把已删除记录拉回
     adjustInventory(rec.name,rec.category,rec.qty, type==='in'?-1:1); // 先删记录再统一重算，确保库存与流水同步
@@ -6312,6 +6324,97 @@
     setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),360); }, type==='err'?3800:2600);
   }
 
+  // ============ 统一对话框引擎（替代原生 confirm/alert） ============
+  // 复用 .modal-mask/.modal 玻璃拟态样式，保证全站弹窗视觉一致；
+  // 全部文本走 textContent，杜绝用户数据注入 XSS；支持 ESC/遮罩关闭、焦点管理、层级堆叠。
+  function _ensureDlg(){
+    let m=document.getElementById('dlgBox');
+    if(m) return m;
+    m=document.createElement('div');
+    m.className='modal-mask'; m.id='dlgBox';
+    m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true');
+    m.setAttribute('aria-labelledby','dlgTitle'); m.setAttribute('aria-describedby','dlgMsg');
+    m.innerHTML='<div class="modal modal-dlg"><div class="modal-head dlg-head">'
+      +'<span class="dlg-ico" id="dlgIco">i</span>'
+      +'<h3 id="dlgTitle">提示</h3>'
+      +'<button class="modal-close" id="dlgClose" aria-label="关闭">✕</button></div>'
+      +'<div class="modal-body"><div class="dlg-msg" id="dlgMsg"></div></div>'
+      +'<div class="modal-foot"><button class="btn btn-ghost" id="dlgCancel">取消</button><button class="btn btn-primary" id="dlgOk">确定</button></div></div>';
+    document.body.appendChild(m);
+    return m;
+  }
+  function _dlgEls(){ return { mask:_ensureDlg(), ico:document.getElementById('dlgIco'), title:document.getElementById('dlgTitle'), msg:document.getElementById('dlgMsg'), ok:document.getElementById('dlgOk'), cancel:document.getElementById('dlgCancel'), close:document.getElementById('dlgClose') }; }
+  let _dlgStack=0;
+  function _openDlg(){ const m=_ensureDlg(); m.classList.add('show'); _dlgStack++; m.style.zIndex=String(2000+_dlgStack); }
+  function _closeDlg(){ _dlgStack=Math.max(0,_dlgStack-1); const m=document.getElementById('dlgBox'); if(m){ m.classList.remove('show'); m.style.zIndex=''; } }
+  function confirmBox(opts){
+    opts=opts||{}; const e=_dlgEls();
+    const ic=opts.icon||'warn';
+    e.ico.className='dlg-ico '+(ic==='danger'?'danger':ic==='success'?'success':ic==='info'?'info':'warn');
+    e.ico.textContent=ic==='danger'?'!':ic==='success'?'✓':ic==='info'?'i':'?';
+    e.title.textContent=opts.title||'请确认';
+    e.msg.textContent=opts.msg||'';
+    e.ok.textContent=opts.ok||'确定';
+    e.cancel.textContent=opts.cancel||'取消';
+    e.ok.className='btn '+(opts.danger?'btn-danger':'btn-primary');
+    e.cancel.style.display=(opts.cancel===null||opts.cancel===false)?'none':'';
+    return new Promise(resolve=>{
+      let done=false;
+      const fin=v=>{ if(done) return; done=true; _closeDlg(); cleanup(); resolve(v); };
+      const onOk=()=>fin(true);
+      const onCancel=()=>fin(false);
+      const onKey=ev=>{
+        if(ev.key==='Escape'){ ev.preventDefault(); onCancel(); }
+        else if(ev.key==='Enter' && !opts.danger && !(ev.target && (ev.target.tagName==='INPUT'||ev.target.tagName==='TEXTAREA'))){ ev.preventDefault(); onOk(); }
+      };
+      const onMask=ev=>{ if(ev.target===e.mask) onCancel(); };
+      const cleanup=()=>{ e.ok.removeEventListener('click',onOk); e.cancel.removeEventListener('click',onCancel); e.close.removeEventListener('click',onCancel); e.mask.removeEventListener('click',onMask); document.removeEventListener('keydown',onKey); };
+      e.ok.addEventListener('click',onOk);
+      e.cancel.addEventListener('click',onCancel);
+      e.close.addEventListener('click',onCancel);
+      e.mask.addEventListener('click',onMask);
+      document.addEventListener('keydown',onKey);
+      _openDlg();
+      requestAnimationFrame(()=>{ (opts.danger?e.cancel:e.ok).focus(); });
+    });
+  }
+  function msgBox(opts){
+    opts=opts||{}; const e=_dlgEls();
+    const ic=opts.icon||'info';
+    e.ico.className='dlg-ico '+(ic==='danger'?'danger':ic==='success'?'success':ic==='info'?'info':'warn');
+    e.ico.textContent=ic==='danger'?'!':ic==='success'?'✓':ic==='info'?'i':'?';
+    e.title.textContent=opts.title||'提示';
+    e.msg.textContent=opts.msg||'';
+    e.ok.textContent=opts.ok||'我知道了';
+    e.ok.className='btn btn-primary';
+    if(e.cancel) e.cancel.style.display='none';
+    return new Promise(resolve=>{
+      let done=false;
+      const fin=()=>{ if(done) return; done=true; _closeDlg(); cleanup(); resolve(); };
+      const onOk=()=>fin();
+      const onKey=ev=>{ if(ev.key==='Escape'||ev.key==='Enter'){ ev.preventDefault(); fin(); } };
+      const onMask=ev=>{ if(ev.target===e.mask) fin(); };
+      const cleanup=()=>{ e.ok.removeEventListener('click',onOk); e.close.removeEventListener('click',fin); e.mask.removeEventListener('click',onMask); document.removeEventListener('keydown',onKey); };
+      e.ok.addEventListener('click',onOk);
+      e.close.addEventListener('click',fin);
+      e.mask.addEventListener('click',onMask);
+      document.addEventListener('keydown',onKey);
+      _openDlg();
+      requestAnimationFrame(()=>e.ok.focus());
+    });
+  }
+  // 全站模态框：统一 ESC 关闭（点击其自带关闭按钮，零侵入现有 20+ 弹窗）
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Escape') return;
+    const dlg=document.getElementById('dlgBox');
+    if(dlg && dlg.classList.contains('show')) return; // 统一对话框自行处理 ESC
+    const open=[...document.querySelectorAll('.modal-mask.show')].filter(m=>m.id!=='dlgBox');
+    if(!open.length) return;
+    const top=open[open.length-1];
+    const x=top.querySelector('.modal-close');
+    if(x){ e.preventDefault(); x.click(); }
+  });
+
   // --- KPI 数字滚动 ---
   function countUp(el){
     const target=+el.dataset.count; if(!target) return;
@@ -6368,14 +6471,14 @@
     }catch(e){ console.warn('备份还原后刷新界面失败', e); }
     return true;
   }
-  function restoreAutoBackup(){
+  async function restoreAutoBackup(){
     const b=readAutoBackup();
     if(!b||!b.data||!Array.isArray(b.data.items)){ toast('恢复失败','err','未找到有效备份'); return; }
     const _ep=getEpoch();
     if(_ep && (b.epoch||0) && (b.epoch||0)<_ep){
-      if(!confirm('⚠️ 该备份产生于最近一次「重置数据」之前，恢复将带回已重置的旧数据。确定恢复吗？')) return;
+      if(!await confirmBox({title:'恢复备份',msg:'该备份产生于最近一次「重置数据」之前，恢复将带回已重置的旧数据。\n确定恢复吗？',danger:true,icon:'danger'})) return;
     }
-    if(!confirm('确定用上次自动备份恢复数据吗？当前未备份的更改将被覆盖。')) return;
+    if(!await confirmBox({title:'恢复备份',msg:'确定用上次自动备份恢复数据吗？\n当前未备份的更改将被覆盖。',danger:true,icon:'danger'})) return;
     try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify(b.data)); }catch(e){ toast('恢复失败','err','存储空间不足'); return; }
     hydrateAll();
     toast('已恢复备份','ok','已恢复到 '+fmtCNDate((b.ts||'').slice(0,10))+' 的备份');
@@ -6402,8 +6505,8 @@
   // 重置数据：清空本地业务数据，并（若已开启云同步）同步清空云端。
   // 否则 reload 后云端自动拉回会把「已重置」的旧数据又恢复出来（重置失效的根因）
   async function resetData(){
-    if(!confirm('⚠️ 确定重置所有业务数据吗？\n此操作不可撤销，库存/出入库/盘点等全部业务数据将清空，系统回到不含演示数据的空白架构。')) return;
-    if(!confirm('再次确认：清空全部业务数据并恢复为空白原始架构？')) return;
+    if(!await confirmBox({title:'重置数据',msg:'确定重置所有业务数据吗？\n此操作不可撤销，库存/出入库/盘点等全部业务数据将清空，系统回到不含演示数据的空白架构。',danger:true,icon:'danger'})) return;
+    if(!await confirmBox({title:'再次确认',msg:'再次确认：清空全部业务数据并恢复为空白原始架构？',danger:true,icon:'danger'})) return;
     _resetting=true;                 // ① 阻止 pagehide 兜底把内存旧数据写成自动备份
     clearTimeout(cloudTimer);        // ② 取消排队中的云推送，避免清空后又被写回
     clearTimeout(_autoBkTimer); _autoBkTimer=null;
@@ -6433,7 +6536,7 @@
     return [keys].concat(arr.map(r=>keys.map(k=> r[k]==null?'':r[k])));
   }
   function buildWorkbook(sheets,filename){
-    if(typeof XLSX==='undefined'){ alert('表格组件未加载，请联网后重试'); return; }
+    if(typeof XLSX==='undefined'){ msgBox({title:'组件未加载',msg:'表格组件未加载，请联网后重试',icon:'warn'}); return; }
     const wb=XLSX.utils.book_new();
     const thin={style:'thin',color:{rgb:'BFBFBF'}};
     const border={top:thin,bottom:thin,left:thin,right:thin};
@@ -6541,12 +6644,12 @@
     if(!file) return;
     const info=document.getElementById('jsonRestoreInfo');
     const reader=new FileReader();
-    reader.onload=()=>{
+    reader.onload=async()=>{
       let obj;
       try{ obj=JSON.parse(reader.result); }catch(e){ info.textContent='✕ 文件解析失败：不是有效的 JSON'; toast('还原失败','err','文件格式错误'); return; }
       const data=obj&&obj.data?obj.data:obj;
       if(!data||!Array.isArray(data.items)){ info.textContent='✕ 备份文件缺少有效的 items 数据'; toast('还原失败','err','结构不合法'); return; }
-      if(!confirm('确定用此备份覆盖当前全部业务数据吗？当前数据将被替换。')) return;
+      if(!await confirmBox({title:'还原备份',msg:'确定用此备份覆盖当前全部业务数据吗？\n当前数据将被替换。',danger:true,icon:'danger'})) return;
       try{
         localStorage.setItem(WMS_DB_KEY, JSON.stringify({
           items:data.items, inboundRecords:data.inboundRecords||[], outboundRecords:data.outboundRecords||[],
