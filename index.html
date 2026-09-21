@@ -377,6 +377,8 @@
   .rec .rs{font-size:var(--fs-sm);color:var(--ink-3);margin-top:1px}
   .rec .rq{margin-left:auto;font-weight:700;font-size:14px}
   .rec .rq.in{color:var(--success)} .rec .rq.out{color:#9db4ff}
+  .gap-badge{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:700;color:#ff6b6b;background:rgba(255,107,107,.14);border:1px solid rgba(255,107,107,.4);white-space:nowrap}
+  .gap-mini{display:inline-block;margin-left:5px;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:700;color:#ff6b6b;background:rgba(255,107,107,.16);border:1px solid rgba(255,107,107,.45);vertical-align:middle}
 
   .section-title{font-size:var(--fs-title);font-weight:700;margin:4px 2px 2px;color:#fff}
   /* ===== 数据维护 ===== */
@@ -1731,7 +1733,7 @@
                 <span class="ap-toggle">展开 ▼</span>
               </div>
               <div class="ap-body" style="display:none">
-                <div class="table-scroll"><table class="data-table"><thead><tr><th title="出库单号（审批编号）">出库单号</th><th title="日期">日期</th><th title="领用人">领用人</th><th title="物资名称">物资名称</th><th title="分类">分类</th><th title="品牌">品牌</th><th title="规格 / 型号">规格/型号</th><th title="单位">单位</th><th class="num" title="数量">数量</th><th class="num" title="单价(元)">单价</th><th class="num" title="金额(元)">金额</th><th title="用途">用途</th></tr></thead><tbody id="archOutBody"></tbody><tfoot id="archOutFoot" class="arch-foot"></tfoot></table></div>
+                <div class="table-scroll"><table class="data-table"><thead><tr><th title="出库单号（审批编号）">出库单号</th><th title="日期">日期</th><th title="领用人">领用人</th><th title="物资名称">物资名称</th><th title="分类">分类</th><th title="品牌">品牌</th><th title="规格 / 型号">规格/型号</th><th title="单位">单位</th><th class="num" title="数量">数量</th><th class="num" title="单价(元)">单价</th><th class="num" title="金额(元)">金额</th><th title="用途">用途</th><th title="账实缺口（超量出库）">账实缺口</th></tr></thead><tbody id="archOutBody"></tbody><tfoot id="archOutFoot" class="arch-foot"></tfoot></table></div>
               </div>
             </div>
           </div>
@@ -2444,6 +2446,7 @@
   // 改为 12s 合并写一次 + 页面卸载（pagehide）兜底写，保底备份新鲜度且不阻塞交互。
   let _autoBkTimer=null;
   let _resetting=false; // 重置数据进行中：阻止 pagehide 兜底把内存旧数据写成备份（旧数据复活链路之一）
+  let _quotaWarnedAt=0; // 配额告警节流时间戳：避免每次保存失败都弹 toast 刷屏
   function scheduleAutoBackup(){
     if(!autoBackupEnabled) return;
     clearTimeout(_autoBkTimer);
@@ -2455,11 +2458,20 @@
     // 拒绝写回主库（否则重置后旧标签页的任何操作都会把历史数据重新灌回 localStorage）
     if(getEpoch()>pageEpoch){ console.warn('检测到数据已重置，本页数据过期，已拒绝保存'); return false; }
     invalidateFlowIndex(); // 兜底：所有写操作最终都会保存，统一在此失效流水索引，防止渲染读到过期汇总
-    let ok=false;
-    try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify(dbSnapshot())); ok=true; }catch(e){ console.warn('wms 保存失败',e); }
+    let ok=false, quotaErr=null;
+    const _isQuota=e=> e && (e.name==='QuotaExceededError' || e.code===22 || e.code===1014);
+    try{ localStorage.setItem(WMS_DB_KEY, JSON.stringify(dbSnapshot())); ok=true; }catch(e){ if(_isQuota(e)) quotaErr=e; console.warn('wms 保存失败',e); }
     if(!ok){
       // 存储配额不足（库存/流水量大时）：先删自动备份腾出空间，再重试主库一次，避免静默丢数据
-      try{ localStorage.removeItem(WMS_AUTO_KEY); localStorage.setItem(WMS_DB_KEY, JSON.stringify(dbSnapshot())); ok=true; }catch(e2){ console.warn('wms 保存失败(重试)',e2); }
+      try{ localStorage.removeItem(WMS_AUTO_KEY); localStorage.setItem(WMS_DB_KEY, JSON.stringify(dbSnapshot())); ok=true; }catch(e2){ if(_isQuota(e2)) quotaErr=e2; console.warn('wms 保存失败(重试)',e2); }
+    }
+    if(!ok && quotaErr){
+      // 配额耗尽：主库与备份均写不进，数据面临丢失风险，必须明确提示用户（节流，避免每次操作刷屏）
+      const _now=Date.now();
+      if(!_quotaWarnedAt || _now-_quotaWarnedAt>30000){
+        _quotaWarnedAt=_now;
+        toast('本地存储空间不足，本次改动未保存','err','容量已用尽，请尽快「导出备份」或清理历史数据；若已开启云端同步可暂存于 GitHub');
+      }
     }
     if(autoBackupEnabled) scheduleAutoBackup();
     scheduleCloudSync();
@@ -5692,8 +5704,8 @@
     ob.innerHTML=outY.length?outY.map(r=>{
       const p=(r.price!=null)?r.price:0;
       const amt=(r.amount!=null)?r.amount:(+(+r.qty||0)*p).toFixed(2);
-      return `<tr><td class="code">${escHtml(r.outNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.applicant||'—')}</td><td>${escHtml(r.name)}</td><td>${safeMeta(r.category).t}</td><td>${escHtml(r.brand||'—')}</td><td>${escHtml(r.spec||'—')}</td><td>${escHtml(r.unit||'件')}</td><td class="num">${escHtml(r.qty)}</td><td class="num">${escHtml(p||'—')}</td><td class="num">${escHtml(amt)}</td><td>${escHtml(r.purpose||'—')}</td></tr>`;
-    }).join(''):'<tr><td colspan="12" class="empty">无出库记录</td></tr>';
+      return `<tr><td class="code">${escHtml(r.outNo||r.id)}</td><td>${escHtml(r.date)}</td><td>${escHtml(r.applicant||'—')}</td><td>${escHtml(r.name)}</td><td>${safeMeta(r.category).t}</td><td>${escHtml(r.brand||'—')}</td><td>${escHtml(r.spec||'—')}</td><td>${escHtml(r.unit||'件')}</td><td class="num">${escHtml(r.qty)}</td><td class="num">${escHtml(p||'—')}</td><td class="num">${escHtml(amt)}</td><td>${escHtml(r.purpose||'—')}</td><td class="gap">${r.shortQty>0?`<span class="gap-badge" title="本次超量出库，账面缺口">⚠ 缺口 ${escHtml(r.shortQty)} ${escHtml(r.unit||'件')}</span>`:'—'}</td></tr>`;
+    }).join(''):'<tr><td colspan="13" class="empty">无出库记录</td></tr>';
     // ---- 年度盘点档案（盘点联动 · 账实差异）----
     const cb=document.getElementById('archCheckBody');
     const checks=vm.checks||[];
@@ -5798,8 +5810,8 @@
     rows.push(['入库明细账'],['入库单号','日期','物资名称','分类','数量','单价(元)','金额(元)','供应商']);
     inY.forEach(r=>rows.push([r.inNo||r.id,r.date,r.name,safeMeta(r.category).t,r.qty,r.price!=null?r.price:'—',r.amount||'—',r.supplier||'—']));
     rows.push([]);
-    rows.push(['出库明细账'],['出库单号','日期','领用人','物资名称','分类','数量','单价(元)','金额(元)','用途']);
-    outY.forEach(r=>rows.push([r.outNo||r.id,r.date,r.applicant||'—',r.name,safeMeta(r.category).t,r.qty,(r.price!=null)?r.price:'—',(r.amount!=null)?r.amount:(+(+r.qty||0)*(+r.price||0)).toFixed(2),r.purpose||'—']));
+    rows.push(['出库明细账'],['出库单号','日期','领用人','物资名称','分类','数量','单价(元)','金额(元)','用途','账实缺口']);
+    outY.forEach(r=>rows.push([r.outNo||r.id,r.date,r.applicant||'—',r.name,safeMeta(r.category).t,r.qty,(r.price!=null)?r.price:'—',(r.amount!=null)?r.amount:(+(+r.qty||0)*(+r.price||0)).toFixed(2),r.purpose||'—',(r.shortQty>0?('⚠ 超量·缺口 '+r.shortQty+(r.unit||'件')):'—')]));
     rows.push([]);
     rows.push(['年度盘点档案'],['盘点日期','盘点类型','盘点范围','差异项数','净差异','差异绝对值','结论']);
     (vm.checks||[]).forEach(c=>rows.push([c.date||'—',c.title||'盘点',c.scope||'—',c.diffCount!=null?c.diffCount:'—',c.diffNet!=null?c.diffNet:'—',c.diffAbs!=null?c.diffAbs:'—',(c.diffCount==null)?'—':(c.diffCount>0?'存在差异':'账实相符')]));
@@ -6058,7 +6070,9 @@
     const recId=outNo||genId('CK');
     const unit=sanitizeText(document.getElementById('outUnit').value.trim())||'件';
     const spec=sanitizeText(document.getElementById('outSpec').value.trim());
-    const rec={id:recId,outNo:outNo||recId,date:dstr(),applicant,dept,name:_nm,category:cat,qty,unit,spec,purpose,handler:approver,status:'已出库',updatedAt:Date.now()};
+    const _over = _it && qty>_stock;            // 账面有库存但不足 → 超量出库（形成账实缺口）
+    const _short = _over ? (qty-_stock) : 0;     // 缺口数量 = 申请量 − 账面可用量
+    const rec={id:recId,outNo:outNo||recId,date:dstr(),applicant,dept,name:_nm,category:cat,qty,unit,spec,purpose,handler:approver,status:'已出库',updatedAt:Date.now(),over:_over,shortQty:_short};
     if(_it){ // 主键对齐：流水采用档案标准名/分类，保证「名称|分类」键一致，重算时库存才能正确归集
       rec.name=_it.n; rec.category=_it.c;
     }
@@ -6250,7 +6264,7 @@
     const base=viewRecords('out').rows;
     const list=topNBy(base,8,r=>String(r.date||''),r=>r);
     const el=document.getElementById('recentOutList'); if(!el) return;
-    el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.applicant)} 领用 ${escHtml(r.name)} ×${escHtml(r.qty)} ${escHtml(r.unit||'件')}</div><div class="rs">${escHtml(r.dept)} · ${escHtml(r.purpose||'—')} · ${escHtml(r.date)}</div></div><div class="rq out">−${escHtml(r.qty)} ${escHtml(r.unit||'件')}</div></div>`).join('')
+    el.innerHTML = list.length ? list.map(r=>`<div class="rec"><div class="ri">${ICON[r.category]||'📦'}</div><div><div class="rt">${escHtml(r.applicant)} 领用 ${escHtml(r.name)} ×${escHtml(r.qty)} ${escHtml(r.unit||'件')}</div><div class="rs">${escHtml(r.dept)} · ${escHtml(r.purpose||'—')} · ${escHtml(r.date)}</div></div><div class="rq out">−${escHtml(r.qty)} ${escHtml(r.unit||'件')}${r.shortQty>0?` <span class="gap-mini" title="超量出库·账实缺口 ${r.shortQty}${r.unit||'件'}">超量</span>`:''}</div></div>`).join('')
       : '<div class="empty" style="padding:18px 20px;color:var(--ink-3);font-size:13px">暂无出库记录</div>';
     const cnt=document.getElementById('recentOutCount'); if(cnt) cnt.textContent=list.length;
   }
@@ -6502,8 +6516,8 @@
       const archInRows=[['年度','入库单号','日期','名称','分类','数量','单位','供应商']].concat(
         archivedRecords.flatMap(a=>(a.inbound||[]).map(r=>[a.year||a.label, r.inNo||r.id||'', r.date||'', r.name||'', safeMeta(r.category).t, r.qty, r.unit||'', r.supplier||'']))
       );
-      const archOutRows=[['年度','出库单号','日期','领用人','名称','分类','数量','单位','用途']].concat(
-        archivedRecords.flatMap(a=>(a.outbound||[]).map(r=>[a.year||a.label, r.outNo||r.id||'', r.date||'', r.applicant||'', r.name||'', safeMeta(r.category).t, r.qty, r.unit||'', r.purpose||'']))
+      const archOutRows=[['年度','出库单号','日期','领用人','名称','分类','数量','单位','用途','账实缺口']].concat(
+        archivedRecords.flatMap(a=>(a.outbound||[]).map(r=>[a.year||a.label, r.outNo||r.id||'', r.date||'', r.applicant||'', r.name||'', safeMeta(r.category).t, r.qty, r.unit||'', r.purpose||'', (r.shortQty>0?('⚠ 缺口 '+r.shortQty+(r.unit||'件')):'—')]))
       );
       const archCheckRows=[['年度','盘点日期','标题','范围','差异项数','净差异','差异绝对值']].concat(
         archivedRecords.flatMap(a=>(a.checks||[]).map(c=>[a.year||a.label, c.date||'', c.title||'', c.scope||'', c.diffCount==null?'':c.diffCount, c.diffNet==null?'':c.diffNet, c.diffAbs==null?'':c.diffAbs]))
